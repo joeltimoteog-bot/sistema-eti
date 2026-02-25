@@ -1,25 +1,21 @@
 /* ============================================================
-   SISTEMA ETI – LÓGICA PRINCIPAL
+   SISTEMA ETI v2.0 – LÓGICA PRINCIPAL
    Autor: Joel A. Timoteo Gonza – Relaciones Laborales
    ============================================================ */
 
 'use strict';
 
-// ─── CONSTANTES ───────────────────────────────────────────────
-const STORAGE_KEY = 'eti_registros_v2';
+const STORAGE_KEY = 'eti_registros_v3';
 
-// Días festivos nacionales Perú (MM-DD) – ampliar según necesidad
 const FESTIVOS_PERU = [
   '01-01','04-17','04-18','05-01','06-29','07-28','07-29',
   '08-30','10-08','11-01','12-08','12-09','12-25'
 ];
 
-// ─── ESTADO GLOBAL ────────────────────────────────────────────
 let registros = [];
 let charts = {};
-let editingId = null;
 
-// ─── INICIALIZACIÓN ───────────────────────────────────────────
+// ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   cargarRegistros();
   actualizarHeaderFecha();
@@ -49,28 +45,21 @@ function initTabs() {
 
 // ─── TEMPORADA ────────────────────────────────────────────────
 function detectarTemporada(fecha) {
-  // fecha: objeto Date o string YYYY-MM-DD
   const d = typeof fecha === 'string' ? new Date(fecha + 'T12:00:00') : new Date(fecha);
-  const mes = d.getMonth() + 1; // 1-12
-  const dia = d.getDate();
-  const val = mes * 100 + dia;
-  // Baja: 05 Ene (0105) – 26 Jun (0626)
-  // Alta: 27 Jun (0627) – 31 Dic (1231)
-  if (val >= 105 && val <= 626) return 'baja';
-  return 'alta';
+  const val = (d.getMonth() + 1) * 100 + d.getDate();
+  return (val >= 105 && val <= 626) ? 'baja' : 'alta';
 }
 
 function esFestivo(fecha) {
-  const d = new Date(fecha.getTime());
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
   return FESTIVOS_PERU.includes(mm + '-' + dd);
 }
 
 function esDiaHabil(fecha, temporada) {
-  const dow = fecha.getDay(); // 0=Dom,6=Sab
-  if (dow === 0) return false; // Domingo nunca
-  if (temporada === 'baja' && dow === 6) return false; // Sábado solo en alta
+  const dow = fecha.getDay();
+  if (dow === 0) return false;
+  if (temporada === 'baja' && dow === 6) return false;
   if (esFestivo(fecha)) return false;
   return true;
 }
@@ -83,125 +72,213 @@ function calcularFechaLimite(fechaEjecStr) {
     d.setDate(d.getDate() + 1);
     if (esDiaHabil(d, temporada)) habiles++;
   }
-  return {
-    fechaLimite: formatDate(d),
-    temporada
-  };
+  return { fechaLimite: formatDate(d), temporada };
 }
 
-// ─── ESTADO DEL REGISTRO ──────────────────────────────────────
+// ─── ESTADO ───────────────────────────────────────────────────
+/*
+  LÓGICA CORRECTA:
+  - En plazo:   avance = (días usados / 3) × 100,  retraso = 0
+  - Con envío a tiempo: avance = 100, retraso = 0
+  - Con envío tardío:   retraso = (días tardíos / 3) × 100,  avance = 100 - retraso
+  - Sin envío y vencido: retraso = (días vencidos / 3) × 100, avance = 100 - retraso
+  Ejemplo: 1 día de retraso → retraso=33%, avance=67%
+*/
 function calcularEstado(reg) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const fEjec  = new Date(reg.fechaEjecucion + 'T12:00:00');
   const fLimite = new Date(reg.fechaLimite + 'T12:00:00');
+  const fEjec   = new Date(reg.fechaEjecucion + 'T12:00:00');
   const fEnvio  = reg.fechaEnvio ? new Date(reg.fechaEnvio + 'T12:00:00') : null;
 
-  // Si hay fecha de envío → comparar con límite
+  // CASO 1: Ya se envió
   if (fEnvio) {
-    const diffMs = fEnvio - fLimite;
-    const diffDias = Math.round(diffMs / 86400000);
-    if (diffDias <= 0) {
+    const diff = Math.round((fEnvio - fLimite) / 86400000);
+    if (diff <= 0) {
+      // Enviado a tiempo → cumplido 100%
       return { estado: 'cumplido', avance: 100, retraso: 0, diasRetraso: 0 };
     } else {
-      const pctRetraso = Math.min(Math.round((diffDias / 3) * 100), 100);
-      return { estado: 'critico', avance: 100, retraso: pctRetraso, diasRetraso: diffDias };
+      // Enviado tarde → retraso = diff/3×100, avance = 100 - retraso
+      const pctRetraso = Math.min(Math.round((diff / 3) * 100), 100);
+      const pctAvance  = Math.max(100 - pctRetraso, 0);
+      return { estado: diff <= 2 ? 'leve' : 'critico', avance: pctAvance, retraso: pctRetraso, diasRetraso: diff };
     }
   }
 
-  // Sin fecha de envío → calcular con fecha actual
+  // CASO 2: Sin envío y aún en plazo
   if (hoy <= fLimite) {
-    // En plazo → calcular avance
     const diasUsados = Math.max(0, Math.round((hoy - fEjec) / 86400000));
-    const avance = Math.min(Math.round((diasUsados / 3) * 100), 100);
-    return { estado: 'proceso', avance, retraso: 0, diasRetraso: 0 };
-  } else {
-    // Retraso
-    const diasRet = Math.round((hoy - fLimite) / 86400000);
-    const pctRetraso = Math.min(Math.round((diasRet / 3) * 100), 100);
-    const nivel = diasRet <= 2 ? 'leve' : 'critico';
-    return { estado: nivel, avance: 100, retraso: pctRetraso, diasRetraso: diasRet };
+    const pctAvance  = Math.min(Math.round((diasUsados / 3) * 100), 99); // máx 99% hasta que se envíe
+    return { estado: 'proceso', avance: pctAvance, retraso: 0, diasRetraso: 0 };
   }
+
+  // CASO 3: Sin envío y vencido → retraso sube, avance baja
+  const diasRet    = Math.round((hoy - fLimite) / 86400000);
+  const pctRetraso = Math.min(Math.round((diasRet / 3) * 100), 100);
+  const pctAvance  = Math.max(100 - pctRetraso, 0);
+  return {
+    estado: diasRet <= 2 ? 'leve' : 'critico',
+    avance: pctAvance,
+    retraso: pctRetraso,
+    diasRetraso: diasRet
+  };
 }
 
-// ─── HEADER FECHA Y TEMPORADA ─────────────────────────────────
+// ─── HEADER ───────────────────────────────────────────────────
 function actualizarHeaderFecha() {
   const hoy = new Date();
   const temporada = detectarTemporada(hoy);
   const badge = document.getElementById('seasonBadge');
   badge.textContent = temporada === 'alta' ? '🌡 Temporada Alta' : '❄ Temporada Baja';
   badge.className = 'season-badge ' + temporada;
-
   const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   document.getElementById('currentDate').textContent =
     `${dias[hoy.getDay()]}, ${hoy.getDate()} de ${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
 }
 
-// ─── FORMULARIO REGISTRO ──────────────────────────────────────
+// ─── FORMULARIO ───────────────────────────────────────────────
 function initForm() {
-  const form = document.getElementById('etiForm');
-  const btnPreview = document.getElementById('btnPreview');
-
-  btnPreview.addEventListener('click', mostrarPreview);
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    guardarRegistro();
+  // Auto-completar sector al elegir supervisor
+  document.getElementById('fSupervisor').addEventListener('change', function() {
+    const val = this.value;
+    if (val) {
+      const sector = val.split('|')[1] || '';
+      document.getElementById('fSector').value = sector;
+    } else {
+      document.getElementById('fSector').value = '';
+    }
   });
+
+  // Auto-calcular total trabajadores
+  ['fVarones','fMujeres'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calcularTotal);
+  });
+
+  // Radio rutas
+  document.querySelectorAll('input[name="tipoRutas"]').forEach(r => {
+    r.addEventListener('change', function() {
+      document.getElementById('rutasNumeroCont').style.display = this.value === 'numero' ? 'block' : 'none';
+      document.getElementById('rutasVariasCont').style.display = this.value === 'varias' ? 'block' : 'none';
+    });
+  });
+
+  // Cantidad de rutas → generar filas
+  document.getElementById('fCantRutas').addEventListener('input', function() {
+    generarFilasRutas(parseInt(this.value) || 0);
+  });
+
+  document.getElementById('btnPreview').addEventListener('click', mostrarPreview);
+  document.getElementById('etiForm').addEventListener('submit', e => { e.preventDefault(); guardarRegistro(); });
+}
+
+function calcularTotal() {
+  const v = parseInt(document.getElementById('fVarones').value) || 0;
+  const m = parseInt(document.getElementById('fMujeres').value) || 0;
+  document.getElementById('fTotal').value = (v + m) + ' trabajadores';
+}
+
+function generarFilasRutas(cant) {
+  const cont = document.getElementById('rutasItemsCont');
+  if (cant < 1 || cant > 25) { cont.innerHTML = ''; return; }
+
+  let html = `<div class="ruta-header">
+    <span>#</span><span>Código de Ruta</span><span>Nombre de Ruta</span>
+  </div>`;
+
+  for (let i = 1; i <= cant; i++) {
+    html += `<div class="ruta-item-row">
+      <div class="ruta-num">${i}</div>
+      <input type="text" class="ruta-codigo" placeholder="Ej: RT-0${i}" maxlength="20" />
+      <input type="text" class="ruta-nombre" placeholder="Ej: Ruta Panamericana Norte" maxlength="80" />
+    </div>`;
+  }
+  cont.innerHTML = html;
+}
+
+function obtenerRutas() {
+  const tipo = document.querySelector('input[name="tipoRutas"]:checked');
+  if (!tipo) return { tipo: 'ninguna', rutas: [] };
+  if (tipo.value === 'varias') return { tipo: 'varias', rutas: [] };
+
+  const codigos = document.querySelectorAll('.ruta-codigo');
+  const nombres = document.querySelectorAll('.ruta-nombre');
+  const rutas = [];
+  codigos.forEach((c, i) => {
+    if (c.value.trim() || nombres[i].value.trim()) {
+      rutas.push({ codigo: c.value.trim(), nombre: nombres[i].value.trim() });
+    }
+  });
+  return { tipo: 'detalle', rutas };
 }
 
 function mostrarPreview() {
   const fechaE = document.getElementById('fFechaEjecucion').value;
   if (!fechaE) { showToast('Ingresa la fecha de ejecución primero.', true); return; }
   const { fechaLimite, temporada } = calcularFechaLimite(fechaE);
-  const previewBox = document.getElementById('previewBox');
-  const grid = document.getElementById('previewGrid');
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const fLim = new Date(fechaLimite + 'T12:00:00');
   const restante = Math.round((fLim - hoy) / 86400000);
-  const estado = restante >= 0 ? 'En plazo' : `Vencido (${Math.abs(restante)} días)`;
+  const v = parseInt(document.getElementById('fVarones').value) || 0;
+  const m = parseInt(document.getElementById('fMujeres').value) || 0;
 
-  grid.innerHTML = `
+  document.getElementById('previewGrid').innerHTML = `
     <div class="preview-item"><div class="p-label">Temporada</div><div class="p-value">${temporada === 'alta' ? '🌡 Alta' : '❄ Baja'}</div></div>
-    <div class="preview-item"><div class="p-label">Días hábiles contados</div><div class="p-value">Lunes–${temporada === 'alta' ? 'Sábado' : 'Viernes'}</div></div>
+    <div class="preview-item"><div class="p-label">Días hábiles</div><div class="p-value">Lun–${temporada === 'alta' ? 'Sáb' : 'Vie'}</div></div>
     <div class="preview-item highlight"><div class="p-label">Fecha Límite</div><div class="p-value">${formatDateDisplay(fechaLimite)}</div></div>
-    <div class="preview-item"><div class="p-label">Estado actual</div><div class="p-value">${estado}</div></div>
+    <div class="preview-item"><div class="p-label">Estado</div><div class="p-value">${restante >= 0 ? '✅ En plazo' : '🔴 Vencido'}</div></div>
+    <div class="preview-item"><div class="p-label">Total capacitados</div><div class="p-value">${v + m} (${v}♂ + ${m}♀)</div></div>
   `;
-  previewBox.style.display = 'block';
+  document.getElementById('previewBox').style.display = 'block';
 }
 
 function guardarRegistro() {
-  const supervisor  = document.getElementById('fSupervisor').value.trim();
-  const sector      = document.getElementById('fSector').value.trim();
-  const trabajadores= document.getElementById('fTrabajadores').value;
-  const tema        = document.getElementById('fTema').value.trim();
-  const fechaEjec   = document.getElementById('fFechaEjecucion').value;
-  const fechaEnvio  = document.getElementById('fFechaEnvio').value;
-  const obs         = document.getElementById('fObservaciones').value.trim();
+  const supVal    = document.getElementById('fSupervisor').value;
+  const varones   = document.getElementById('fVarones').value;
+  const mujeres   = document.getElementById('fMujeres').value;
+  const tema      = document.getElementById('fTema').value.trim();
+  const fechaEjec = document.getElementById('fFechaEjecucion').value;
+  const fechaEnvio= document.getElementById('fFechaEnvio').value;
+  const obs       = document.getElementById('fObservaciones').value.trim();
 
-  if (!supervisor || !sector || !trabajadores || !tema || !fechaEjec) {
-    showToast('Por favor completa todos los campos obligatorios (*).', true);
+  if (!supVal || varones === '' || mujeres === '' || !tema || !fechaEjec) {
+    showToast('Completa todos los campos obligatorios (*).', true);
     return;
   }
 
+  const [supervisor, sector] = supVal.split('|');
+  const v = parseInt(varones) || 0;
+  const m = parseInt(mujeres) || 0;
   const { fechaLimite, temporada } = calcularFechaLimite(fechaEjec);
+  const rutasData = obtenerRutas();
 
   const reg = {
     id: Date.now().toString(),
-    supervisor, sector, trabajadores: Number(trabajadores),
+    supervisor, sector,
+    varones: v, mujeres: m, total: v + m,
     tema, fechaEjecucion: fechaEjec,
     fechaLimite, fechaEnvio: fechaEnvio || null,
     temporada, observaciones: obs,
+    rutasTipo: rutasData.tipo,
+    rutas: rutasData.rutas,
     creadoEn: new Date().toISOString()
   };
 
   registros.push(reg);
   guardarStorage();
   renderAll();
+
+  // Reset
   document.getElementById('etiForm').reset();
+  document.getElementById('fSector').value = '';
+  document.getElementById('fTotal').value = '';
   document.getElementById('previewBox').style.display = 'none';
+  document.getElementById('rutasNumeroCont').style.display = 'none';
+  document.getElementById('rutasVariasCont').style.display = 'none';
+  document.getElementById('rutasItemsCont').innerHTML = '';
+
   showToast('✅ Registro guardado correctamente.');
 
-  // Cambiar a tabla
+  // Ir a tabla
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.querySelector('[data-tab="tabla"]').classList.add('active');
@@ -209,7 +286,7 @@ function guardarRegistro() {
   renderTabla();
 }
 
-// ─── TABLA PRINCIPAL ──────────────────────────────────────────
+// ─── TABLA ────────────────────────────────────────────────────
 let filtroTexto = '';
 
 function initBuscador() {
@@ -228,52 +305,53 @@ function renderTabla() {
   );
 
   if (filtrados.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="13" class="no-records">No hay registros que mostrar.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="no-records">No hay registros que mostrar.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtrados.map((r, i) => {
     const est = calcularEstado(r);
-    const badgeClass = {
-      cumplido: 'badge-cumplido', proceso: 'badge-proceso',
-      leve: 'badge-leve', critico: 'badge-critico'
-    }[est.estado] || 'badge-proceso';
-    const estadoLabel = {
-      cumplido: '✔ Cumplido', proceso: '⏳ En proceso',
-      leve: '⚠ Retraso leve', critico: '🔴 Retraso crítico'
-    }[est.estado] || est.estado;
+    const badgeClass = { cumplido:'badge-cumplido', proceso:'badge-proceso', leve:'badge-leve', critico:'badge-critico' }[est.estado];
+    const estadoLabel = { cumplido:'✔ Cumplido', proceso:'⏳ En proceso', leve:'⚠ Retraso leve', critico:'🔴 Retraso crítico' }[est.estado];
 
-    const avancePct = est.avance;
-    const retrasoPct = est.retraso;
-    const colorAvance = avancePct === 100 ? 'fill-green' : 'fill-green';
-    const colorRetraso = retrasoPct > 50 ? 'fill-red' : 'fill-orange';
+    // Rutas resumen
+    let rutasCell = '<span class="cell-muted">–</span>';
+    if (r.rutasTipo === 'varias') rutasCell = '<span class="badge badge-baja">Rutas Varias</span>';
+    else if (r.rutasTipo === 'detalle' && r.rutas && r.rutas.length > 0) {
+      rutasCell = `<span title="${r.rutas.map(x=>x.codigo+' '+x.nombre).join(', ')}">${r.rutas.length} ruta(s)</span>`;
+    }
+
+    const colorRetraso = est.retraso > 50 ? 'fill-red' : 'fill-orange';
 
     return `<tr>
       <td>${i + 1}</td>
       <td><strong>${esc(r.supervisor)}</strong></td>
       <td>${esc(r.sector)}</td>
-      <td class="text-right">${r.trabajadores}</td>
+      <td class="text-right"><strong style="color:#3a7bd5">${r.varones}</strong></td>
+      <td class="text-right"><strong style="color:#e07a2a">${r.mujeres}</strong></td>
+      <td class="text-right"><strong>${r.total}</strong></td>
       <td>${esc(r.tema)}</td>
+      <td>${rutasCell}</td>
       <td>${formatDateDisplay(r.fechaEjecucion)}</td>
       <td>${formatDateDisplay(r.fechaLimite)}</td>
       <td>${r.fechaEnvio ? formatDateDisplay(r.fechaEnvio) : '<span class="cell-muted">–</span>'}</td>
       <td><span class="badge ${r.temporada === 'alta' ? 'badge-alta' : 'badge-baja'}">${r.temporada === 'alta' ? '🌡 Alta' : '❄ Baja'}</span></td>
       <td>
         <div class="progress-wrap">
-          <div class="progress-bar"><div class="progress-fill ${colorAvance}" style="width:${avancePct}%"></div></div>
-          <span class="progress-pct" style="color:var(--green-bright)">${avancePct}%</span>
+          <div class="progress-bar"><div class="progress-fill fill-green" style="width:${est.avance}%"></div></div>
+          <span class="progress-pct" style="color:var(--green-bright)">${est.avance}%</span>
         </div>
       </td>
       <td>
         <div class="progress-wrap">
-          <div class="progress-bar"><div class="progress-fill ${colorRetraso}" style="width:${retrasoPct}%"></div></div>
-          <span class="progress-pct" style="color:${retrasoPct > 0 ? 'var(--red)' : 'var(--text-muted)'}">${retrasoPct}%</span>
+          <div class="progress-bar"><div class="progress-fill ${colorRetraso}" style="width:${est.retraso}%"></div></div>
+          <span class="progress-pct" style="color:${est.retraso > 0 ? 'var(--red)' : 'var(--text-muted)'}">${est.retraso}%</span>
         </div>
       </td>
       <td><span class="badge ${badgeClass}">${estadoLabel}</span></td>
       <td>
-        <button class="btn btn-icon" title="Editar" onclick="abrirModal('${r.id}')">✏️</button>
-        <button class="btn btn-icon" title="Eliminar" onclick="eliminarRegistro('${r.id}')">🗑</button>
+        <button class="btn btn-icon" onclick="abrirModal('${r.id}')" title="Editar">✏️</button>
+        <button class="btn btn-icon" onclick="eliminarRegistro('${r.id}')" title="Eliminar">🗑</button>
       </td>
     </tr>`;
   }).join('');
@@ -281,195 +359,154 @@ function renderTabla() {
 
 // ─── DASHBOARD ────────────────────────────────────────────────
 function renderDashboard() {
-  // Recalcular todos
-  const totales = { total: registros.length, cumplido: 0, proceso: 0, retraso: 0 };
+  let cumplido = 0, proceso = 0, leve = 0, critico = 0;
   const alertas = [];
 
   registros.forEach(r => {
     const est = calcularEstado(r);
-    if (est.estado === 'cumplido') totales.cumplido++;
-    else if (est.estado === 'proceso') totales.proceso++;
-    else { totales.retraso++; }
+    if (est.estado === 'cumplido') cumplido++;
+    else if (est.estado === 'proceso') proceso++;
+    else if (est.estado === 'leve') leve++;
+    else critico++;
 
+    const motivo = r.observaciones ? r.observaciones : 'Sin observaciones registradas';
     if (est.estado === 'critico') {
-      alertas.push({ tipo: 'critico', texto: `${r.supervisor} – <em>${r.sector}</em> lleva ${est.diasRetraso} día(s) de retraso crítico.`, extra: `Capacitación: ${r.tema}` });
+      alertas.push({ tipo:'critico', texto:`<strong>${r.supervisor}</strong> – ${r.sector} lleva <strong>${est.diasRetraso} día(s)</strong> de retraso crítico.`, extra: r.tema, motivo });
     } else if (est.estado === 'leve') {
-      alertas.push({ tipo: 'leve', texto: `${r.supervisor} – <em>${r.sector}</em> presenta retraso leve (${est.diasRetraso} día/s).`, extra: `Capacitación: ${r.tema}` });
+      alertas.push({ tipo:'leve', texto:`<strong>${r.supervisor}</strong> – ${r.sector} tiene retraso leve (<strong>${est.diasRetraso} día/s</strong>).`, extra: r.tema, motivo });
     } else if (est.estado === 'proceso') {
-      const fLim = new Date(r.fechaLimite + 'T12:00:00');
-      const hoy = new Date(); hoy.setHours(0,0,0,0);
-      const restante = Math.round((fLim - hoy) / 86400000);
-      if (restante <= 1) {
-        alertas.push({ tipo: 'proceso', texto: `${r.supervisor} vence ${restante === 0 ? 'HOY' : 'MAÑANA'} – <em>${r.sector}</em>.`, extra: `Capacitación: ${r.tema}` });
-      }
+      const restante = Math.round((new Date(r.fechaLimite+'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000);
+      if (restante <= 1) alertas.push({ tipo:'proceso', texto:`<strong>${r.supervisor}</strong> vence ${restante === 0 ? '<strong>HOY</strong>' : 'MAÑANA'} – ${r.sector}.`, extra: r.tema, motivo: '' });
     }
   });
 
-  // KPIs
-  document.getElementById('kpiTotal').textContent = totales.total;
-  document.getElementById('kpiCumplido').textContent = totales.cumplido;
-  document.getElementById('kpiProceso').textContent = totales.proceso;
-  document.getElementById('kpiRetraso').textContent = totales.retraso;
-  const pct = totales.total > 0 ? Math.round((totales.cumplido / totales.total) * 100) : 0;
-  document.getElementById('kpiPct').textContent = pct + '%';
+  const total = registros.length;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiCumplido').textContent = cumplido;
+  document.getElementById('kpiProceso').textContent = proceso;
+  document.getElementById('kpiRetraso').textContent = leve + critico;
+  document.getElementById('kpiPct').textContent = total > 0 ? Math.round((cumplido/total)*100)+'%' : '0%';
 
-  // Alertas
   const alertsList = document.getElementById('alertsList');
   if (alertas.length === 0) {
     alertsList.innerHTML = '<p class="empty-msg">✅ Sin alertas activas. Todo en orden.</p>';
   } else {
-    const icons = { critico: '🔴', leve: '⚠️', proceso: '⏰' };
+    const icons = { critico:'🔴', leve:'⚠️', proceso:'⏰' };
     alertsList.innerHTML = alertas.map(a => `
       <div class="alert-item alert-${a.tipo}">
         <span class="alert-icon">${icons[a.tipo]}</span>
-        <div class="alert-text"><strong>${a.texto}</strong><span>${a.extra}</span></div>
-      </div>
-    `).join('');
+        <div class="alert-text">
+          <span>${a.texto}</span>
+          <small style="display:block;margin-top:3px;opacity:.8">📚 Tema: ${a.extra}</small>
+          ${a.motivo ? `<small style="display:block;margin-top:2px;color:inherit;font-style:italic">📝 Motivo retraso: ${a.motivo}</small>` : ''}
+        </div>
+      </div>`).join('');
   }
 
-  // Gráficos
-  renderCharts(totales, alertas);
+  renderCharts(cumplido, proceso, leve, critico);
 }
 
-function renderCharts(totales) {
-  const estado_data = [totales.cumplido, totales.proceso,
-    registros.filter(r => calcularEstado(r).estado === 'leve').length,
-    registros.filter(r => calcularEstado(r).estado === 'critico').length
-  ];
+function renderCharts(cumplido, proceso, leve, critico) {
+  const destroyC = (id) => { const c = Chart.getChart(id); if(c) c.destroy(); };
 
-  // Chart 1: Estado
-  destroyChart('chartEstado');
-  charts.estado = new Chart(document.getElementById('chartEstado'), {
+  destroyC('chartEstado');
+  new Chart(document.getElementById('chartEstado'), {
     type: 'doughnut',
-    data: {
-      labels: ['Cumplido','En Proceso','Retraso Leve','Retraso Crítico'],
-      datasets: [{ data: estado_data, backgroundColor: ['#2ea86a','#3a7bd5','#e07a2a','#e05252'], borderWidth: 0 }]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 } } } }, cutout: '65%' }
+    data: { labels:['Cumplido','En Proceso','Retraso Leve','Retraso Crítico'], datasets:[{ data:[cumplido,proceso,leve,critico], backgroundColor:['#2ea86a','#3a7bd5','#e07a2a','#e05252'], borderWidth:0 }] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'DM Sans', size:11 } } } }, cutout:'65%' }
   });
 
-  // Chart 2: Por supervisor
   const supMap = {};
   registros.forEach(r => {
-    if (!supMap[r.supervisor]) supMap[r.supervisor] = { cumplido: 0, total: 0 };
-    supMap[r.supervisor].total++;
-    if (calcularEstado(r).estado === 'cumplido') supMap[r.supervisor].cumplido++;
+    if (!supMap[r.supervisor]) supMap[r.supervisor] = { c:0, t:0 };
+    supMap[r.supervisor].t++;
+    if (calcularEstado(r).estado === 'cumplido') supMap[r.supervisor].c++;
   });
   const supLabels = Object.keys(supMap);
-  const supPct = supLabels.map(s => Math.round((supMap[s].cumplido / supMap[s].total) * 100));
+  const supPct = supLabels.map(s => Math.round((supMap[s].c/supMap[s].t)*100));
 
-  destroyChart('chartSupervisor');
-  charts.supervisor = new Chart(document.getElementById('chartSupervisor'), {
-    type: 'bar',
-    data: {
-      labels: supLabels.map(s => s.split(' ')[0]),
-      datasets: [{ label: '% Cumplimiento', data: supPct, backgroundColor: '#1a6645', borderRadius: 6 }]
-    },
-    options: {
-      responsive: true, indexAxis: 'y',
-      plugins: { legend: { display: false } },
-      scales: { x: { max: 100, ticks: { callback: v => v + '%' } } }
-    }
+  destroyC('chartSupervisor');
+  new Chart(document.getElementById('chartSupervisor'), {
+    type:'bar',
+    data:{ labels:supLabels.map(s=>s.split(' ')[0]), datasets:[{ label:'% Cumplimiento', data:supPct, backgroundColor:'#1a6645', borderRadius:6 }] },
+    options:{ responsive:true, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ max:100, ticks:{ callback:v=>v+'%' } } } }
   });
 
-  // Chart 3: Por mes
   const mesMap = {};
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  registros.forEach(r => {
-    const m = new Date(r.fechaEjecucion + 'T12:00:00').getMonth();
-    mesMap[m] = (mesMap[m] || 0) + 1;
-  });
-  const mesLabels = Object.keys(mesMap).sort((a,b)=>a-b).map(k => meses[k]);
-  const mesCounts = Object.keys(mesMap).sort((a,b)=>a-b).map(k => mesMap[k]);
+  const mNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  registros.forEach(r => { const m = new Date(r.fechaEjecucion+'T12:00:00').getMonth(); mesMap[m]=(mesMap[m]||0)+1; });
+  const mesKeys = Object.keys(mesMap).sort((a,b)=>a-b);
 
-  destroyChart('chartMes');
-  charts.mes = new Chart(document.getElementById('chartMes'), {
-    type: 'line',
-    data: {
-      labels: mesLabels,
-      datasets: [{ label: 'Registros', data: mesCounts, borderColor: '#2ea86a', backgroundColor: 'rgba(46,168,106,.1)', tension: .4, fill: true, pointRadius: 5 }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+  destroyC('chartMes');
+  new Chart(document.getElementById('chartMes'), {
+    type:'line',
+    data:{ labels:mesKeys.map(k=>mNombres[k]), datasets:[{ label:'Registros', data:mesKeys.map(k=>mesMap[k]), borderColor:'#2ea86a', backgroundColor:'rgba(46,168,106,.1)', tension:.4, fill:true, pointRadius:5 }] },
+    options:{ responsive:true, plugins:{ legend:{ display:false } } }
   });
 
-  // Chart 4: Temporada
-  const alta = registros.filter(r => r.temporada === 'alta').length;
-  const baja = registros.length - alta;
-  destroyChart('chartTemporada');
-  charts.temporada = new Chart(document.getElementById('chartTemporada'), {
-    type: 'pie',
-    data: {
-      labels: ['Temporada Alta','Temporada Baja'],
-      datasets: [{ data: [alta, baja], backgroundColor: ['#e8b94a','#3a7bd5'], borderWidth: 0 }]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 } } } } }
+  const alta = registros.filter(r=>r.temporada==='alta').length;
+  destroyC('chartTemporada');
+  new Chart(document.getElementById('chartTemporada'), {
+    type:'pie',
+    data:{ labels:['Temporada Alta','Temporada Baja'], datasets:[{ data:[alta, registros.length-alta], backgroundColor:['#e8b94a','#3a7bd5'], borderWidth:0 }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'DM Sans', size:11 } } } } }
   });
-}
-
-function destroyChart(id) {
-  if (charts[id.replace('chart','').toLowerCase()]) {
-    charts[id.replace('chart','').toLowerCase()].destroy();
-  }
-  const existing = Chart.getChart(document.getElementById(id));
-  if (existing) existing.destroy();
 }
 
 // ─── RANKING ──────────────────────────────────────────────────
 function renderRanking() {
-  const container = document.getElementById('rankingContainer');
-  if (registros.length === 0) {
-    container.innerHTML = '<p class="empty-msg">No hay registros para generar ranking.</p>';
-    return;
-  }
+  const cont = document.getElementById('rankingContainer');
+  if (registros.length === 0) { cont.innerHTML = '<p class="empty-msg">No hay registros para generar ranking.</p>'; return; }
 
-  const supMap = {};
+  const map = {};
   registros.forEach(r => {
-    if (!supMap[r.supervisor]) supMap[r.supervisor] = { cumplido: 0, proceso: 0, retraso: 0, total: 0, sector: r.sector };
-    supMap[r.supervisor].total++;
-    const est = calcularEstado(r).estado;
-    if (est === 'cumplido') supMap[r.supervisor].cumplido++;
-    else if (est === 'proceso') supMap[r.supervisor].proceso++;
-    else supMap[r.supervisor].retraso++;
+    if (!map[r.supervisor]) map[r.supervisor] = { c:0, p:0, ret:0, t:0, sector:r.sector };
+    map[r.supervisor].t++;
+    const e = calcularEstado(r).estado;
+    if (e==='cumplido') map[r.supervisor].c++;
+    else if (e==='proceso') map[r.supervisor].p++;
+    else map[r.supervisor].ret++;
   });
 
-  const ranking = Object.entries(supMap)
-    .map(([nombre, d]) => ({ nombre, ...d, pct: Math.round((d.cumplido / d.total) * 100) }))
-    .sort((a, b) => b.pct - a.pct || a.retraso - b.retraso);
+  const ranking = Object.entries(map)
+    .map(([n,d])=>({ n, ...d, pct: Math.round((d.c/d.t)*100) }))
+    .sort((a,b)=>b.pct-a.pct||a.ret-b.ret);
 
-  const medalColor = ['gold', 'silver', 'bronze'];
-  container.innerHTML = ranking.map((r, i) => `
-    <div class="ranking-card ${i < 3 ? 'rank' + (i+1) : ''}">
-      <div class="ranking-pos ${medalColor[i] || ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : '#' + (i + 1)}</div>
+  const medals = ['gold','silver','bronze'];
+  cont.innerHTML = ranking.map((r,i) => `
+    <div class="ranking-card ${i<3?'rank'+(i+1):''}">
+      <div class="ranking-pos ${medals[i]||''}">${i<3?['🥇','🥈','🥉'][i]:'#'+(i+1)}</div>
       <div class="ranking-info">
-        <h4>${esc(r.nombre)}</h4>
-        <p>${esc(r.sector)} · ${r.total} registro(s) · ${r.cumplido} cumplidos · ${r.retraso} retrasos</p>
+        <h4>${esc(r.n)}</h4>
+        <p>${esc(r.sector)} · ${r.t} registro(s) · ${r.c} cumplidos · ${r.ret} retraso(s)</p>
       </div>
       <div class="ranking-pct">${r.pct}%</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // ─── MODAL EDITAR ─────────────────────────────────────────────
 function initModal() {
   document.getElementById('modalClose').addEventListener('click', cerrarModal);
   document.getElementById('btnCancelEdit').addEventListener('click', cerrarModal);
-  document.getElementById('modalOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('modalOverlay')) cerrarModal();
-  });
-  document.getElementById('editForm').addEventListener('submit', e => {
-    e.preventDefault();
-    guardarEdicion();
+  document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===document.getElementById('modalOverlay')) cerrarModal(); });
+  document.getElementById('editForm').addEventListener('submit', e => { e.preventDefault(); guardarEdicion(); });
+
+  document.getElementById('eSupervisor').addEventListener('change', function() {
+    const v = this.value;
+    document.getElementById('eSector').value = v ? v.split('|')[1] || '' : '';
   });
 }
 
 function abrirModal(id) {
   const reg = registros.find(r => r.id === id);
   if (!reg) return;
-  editingId = id;
   document.getElementById('editId').value = id;
-  document.getElementById('eSupervisor').value = reg.supervisor;
+  // Reconstruir valor del select
+  const supVal = reg.supervisor + '|' + reg.sector;
+  document.getElementById('eSupervisor').value = supVal;
   document.getElementById('eSector').value = reg.sector;
-  document.getElementById('eTrabajadores').value = reg.trabajadores;
+  document.getElementById('eVarones').value = reg.varones;
+  document.getElementById('eMujeres').value = reg.mujeres;
   document.getElementById('eTema').value = reg.tema;
   document.getElementById('eFechaEjecucion').value = reg.fechaEjecucion;
   document.getElementById('eFechaEnvio').value = reg.fechaEnvio || '';
@@ -479,7 +516,6 @@ function abrirModal(id) {
 
 function cerrarModal() {
   document.getElementById('modalOverlay').style.display = 'none';
-  editingId = null;
 }
 
 function guardarEdicion() {
@@ -487,18 +523,20 @@ function guardarEdicion() {
   const idx = registros.findIndex(r => r.id === id);
   if (idx === -1) return;
 
+  const supVal = document.getElementById('eSupervisor').value;
+  const [supervisor, sector] = supVal.split('|');
   const fechaEjec = document.getElementById('eFechaEjecucion').value;
   const { fechaLimite, temporada } = calcularFechaLimite(fechaEjec);
+  const v = parseInt(document.getElementById('eVarones').value) || 0;
+  const m = parseInt(document.getElementById('eMujeres').value) || 0;
 
   registros[idx] = {
     ...registros[idx],
-    supervisor:    document.getElementById('eSupervisor').value.trim(),
-    sector:        document.getElementById('eSector').value.trim(),
-    trabajadores:  Number(document.getElementById('eTrabajadores').value),
-    tema:          document.getElementById('eTema').value.trim(),
-    fechaEjecucion: fechaEjec,
-    fechaLimite, temporada,
-    fechaEnvio:    document.getElementById('eFechaEnvio').value || null,
+    supervisor, sector,
+    varones: v, mujeres: m, total: v + m,
+    tema: document.getElementById('eTema').value.trim(),
+    fechaEjecucion: fechaEjec, fechaLimite, temporada,
+    fechaEnvio: document.getElementById('eFechaEnvio').value || null,
     observaciones: document.getElementById('eObservaciones').value.trim()
   };
 
@@ -510,7 +548,7 @@ function guardarEdicion() {
 
 // ─── ELIMINAR ─────────────────────────────────────────────────
 function eliminarRegistro(id) {
-  if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
   registros = registros.filter(r => r.id !== id);
   guardarStorage();
   renderAll();
@@ -523,19 +561,26 @@ function exportarExcel() {
 
   const data = registros.map((r, i) => {
     const est = calcularEstado(r);
-    const estadoLabel = { cumplido:'Cumplido', proceso:'En Proceso', leve:'Retraso Leve', critico:'Retraso Crítico' }[est.estado] || est.estado;
+    const estadoLabel = { cumplido:'Cumplido', proceso:'En Proceso', leve:'Retraso Leve', critico:'Retraso Crítico' }[est.estado];
+    let rutasStr = '–';
+    if (r.rutasTipo === 'varias') rutasStr = 'Rutas Varias';
+    else if (r.rutas && r.rutas.length > 0) rutasStr = r.rutas.map(x => `[${x.codigo}] ${x.nombre}`).join(' | ');
+
     return {
-      '#': i + 1,
+      '#': i+1,
       'Supervisor': r.supervisor,
       'Sector': r.sector,
-      'Trabajadores': r.trabajadores,
+      'Varones Capacitados': r.varones,
+      'Mujeres Capacitadas': r.mujeres,
+      'Total Trabajadores': r.total,
       'Tema': r.tema,
+      'Rutas': rutasStr,
       'Fecha Ejecución': formatDateDisplay(r.fechaEjecucion),
       'Fecha Límite (3 días háb.)': formatDateDisplay(r.fechaLimite),
       'Fecha Envío Actas': r.fechaEnvio ? formatDateDisplay(r.fechaEnvio) : 'Pendiente',
       'Temporada': r.temporada === 'alta' ? 'Alta' : 'Baja',
-      '% Avance': est.avance + '%',
-      '% Retraso': est.retraso + '%',
+      '% Avance': est.avance+'%',
+      '% Retraso': est.retraso+'%',
       'Estado': estadoLabel,
       'Días Retraso': est.diasRetraso,
       'Observaciones': r.observaciones || ''
@@ -545,29 +590,23 @@ function exportarExcel() {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Capacitaciones ETI');
+  ws['!cols'] = [{wch:4},{wch:24},{wch:20},{wch:10},{wch:10},{wch:8},{wch:28},{wch:40},{wch:14},{wch:20},{wch:16},{wch:10},{wch:10},{wch:10},{wch:16},{wch:10},{wch:30}];
 
-  // Ancho de columnas
-  ws['!cols'] = [
-    {wch:4},{wch:22},{wch:18},{wch:13},{wch:30},{wch:16},{wch:20},{wch:18},{wch:10},{wch:10},{wch:10},{wch:18},{wch:12},{wch:30}
-  ];
-
-  const fecha = new Date();
-  const nombre = `Capacitaciones_ETI_${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}.xlsx`;
-  XLSX.writeFile(wb, nombre);
-  showToast('📥 Excel exportado: ' + nombre);
+  const f = new Date();
+  XLSX.writeFile(wb, `ETI_${f.getFullYear()}${String(f.getMonth()+1).padStart(2,'0')}${String(f.getDate()).padStart(2,'0')}.xlsx`);
+  showToast('📥 Excel exportado correctamente.');
 }
 
 // ─── LIMPIAR TODO ─────────────────────────────────────────────
 function limpiarTodo() {
-  if (!confirm('⚠️ ¿Eliminar TODOS los registros? Esto no se puede deshacer.')) return;
+  if (!confirm('⚠️ ¿Eliminar TODOS los registros?')) return;
   if (!confirm('¿Confirmas que deseas borrar todos los datos?')) return;
   registros = [];
   guardarStorage();
   renderAll();
-  showToast('🗑 Todos los registros han sido eliminados.');
+  showToast('🗑 Todos los registros eliminados.');
 }
 
-// ─── BOTONES ──────────────────────────────────────────────────
 function initBotones() {
   document.getElementById('btnExportExcel').addEventListener('click', exportarExcel);
   document.getElementById('btnClearAll').addEventListener('click', limpiarTodo);
@@ -578,60 +617,45 @@ function cargarRegistros() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     registros = raw ? JSON.parse(raw) : [];
-    // Recalcular límites al cargar (por si cambió la lógica)
     registros = registros.map(r => {
       const { fechaLimite, temporada } = calcularFechaLimite(r.fechaEjecucion);
       return { ...r, fechaLimite, temporada };
     });
-  } catch(e) {
-    registros = [];
-  }
+  } catch(e) { registros = []; }
 }
 
 function guardarStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
 }
 
-// ─── RENDER ALL ───────────────────────────────────────────────
 function renderAll() {
   renderDashboard();
   renderTabla();
   renderRanking();
 }
 
-// ─── UTILIDADES ───────────────────────────────────────────────
+// ─── UTILS ────────────────────────────────────────────────────
 function formatDate(d) {
-  // Returns YYYY-MM-DD
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-
 function formatDateDisplay(str) {
   if (!str) return '–';
-  const [y, m, d] = str.split('-');
-  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  return `${d}/${meses[parseInt(m)-1]}/${y}`;
+  const [y,m,d] = str.split('-');
+  const mn = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d}/${mn[parseInt(m)-1]}/${y}`;
 }
-
 function esc(str) {
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-function showToast(msg, isError = false) {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
+function showToast(msg, isError=false) {
+  const e = document.querySelector('.toast');
+  if (e) e.remove();
   const t = document.createElement('div');
-  t.className = 'toast' + (isError ? ' error' : '');
+  t.className = 'toast'+(isError?' error':'');
   t.innerHTML = msg;
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 3500);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); },3500);
 }
 
-// Exponer función global para onclick en tabla
 window.abrirModal = abrirModal;
 window.eliminarRegistro = eliminarRegistro;
