@@ -118,6 +118,7 @@ function initTabs() {
       if(target==='dashboard') renderDashboard();
       if(target==='tabla') renderTabla();
       if(target==='ranking') renderRanking();
+      if(target==='estadisticas') renderEstadisticas();
     });
   });
 }
@@ -454,23 +455,29 @@ function renderDashboard(){
   renderCharts(cumplido,proceso,leve,critico);
 }
 
+let _chartEstado=null,_chartSupervisor=null,_chartMes=null,_chartTemporada=null;
 function renderCharts(cumplido,proceso,leve,critico){
-  const dc=(id)=>{const c=Chart.getChart(id);if(c)c.destroy();};
-  dc('chartEstado');
-  new Chart(document.getElementById('chartEstado'),{type:'doughnut',data:{labels:['Cumplido','En Proceso','Retraso Leve','Retraso Crítico'],datasets:[{data:[cumplido,proceso,leve,critico],backgroundColor:['#1a8040','#1a6fd4','#e07a2a','#cc0000'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},cutout:'65%'}});
+  // Estado
+  const estadoData=[cumplido,proceso,leve,critico];
+  if(_chartEstado){_chartEstado.data.datasets[0].data=estadoData;_chartEstado.update('none');}
+  else{_chartEstado=new Chart(document.getElementById('chartEstado'),{type:'doughnut',data:{labels:['Cumplido','En Proceso','Retraso Leve','Retraso Crítico'],datasets:[{data:estadoData,backgroundColor:['#1a8040','#1a6fd4','#e07a2a','#cc0000'],borderWidth:0}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},cutout:'65%'}});}
+  // Supervisor
   const sm={};
   registros.forEach(r=>{if(!sm[r.supervisor])sm[r.supervisor]={c:0,t:0};sm[r.supervisor].t++;if(calcularEstado(r).estado==='cumplido')sm[r.supervisor].c++;});
   const sl=Object.keys(sm),sp=sl.map(s=>Math.round((sm[s].c/sm[s].t)*100));
-  dc('chartSupervisor');
-  new Chart(document.getElementById('chartSupervisor'),{type:'bar',data:{labels:sl.map(s=>s.split(' ')[0]),datasets:[{label:'% Cumplimiento',data:sp,backgroundColor:'#003087',borderRadius:5}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}}}}});
+  if(_chartSupervisor){_chartSupervisor.data.labels=sl.map(s=>s.split(' ')[0]);_chartSupervisor.data.datasets[0].data=sp;_chartSupervisor.update('none');}
+  else{_chartSupervisor=new Chart(document.getElementById('chartSupervisor'),{type:'bar',data:{labels:sl.map(s=>s.split(' ')[0]),datasets:[{label:'% Cumplimiento',data:sp,backgroundColor:'#003087',borderRadius:5}]},options:{responsive:true,animation:{duration:300},indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}}}}});}
+  // Mes
   const mm={},mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   registros.forEach(r=>{const m2=new Date(r.fechaEjecucion+'T12:00:00').getMonth();mm[m2]=(mm[m2]||0)+1;});
   const mk=Object.keys(mm).sort((a,b)=>a-b);
-  dc('chartMes');
-  new Chart(document.getElementById('chartMes'),{type:'line',data:{labels:mk.map(k=>mn[k]),datasets:[{label:'Registros',data:mk.map(k=>mm[k]),borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.10)',tension:.4,fill:true,pointRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+  if(_chartMes){_chartMes.data.labels=mk.map(k=>mn[k]);_chartMes.data.datasets[0].data=mk.map(k=>mm[k]);_chartMes.update('none');}
+  else{_chartMes=new Chart(document.getElementById('chartMes'),{type:'line',data:{labels:mk.map(k=>mn[k]),datasets:[{label:'Registros',data:mk.map(k=>mm[k]),borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.10)',tension:.4,fill:true,pointRadius:5}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{display:false}}}});}
+  // Temporada
   const alta=registros.filter(r=>r.temporada==='alta').length;
-  dc('chartTemporada');
-  new Chart(document.getElementById('chartTemporada'),{type:'pie',data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:[alta,registros.length-alta],backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}});
+  const tempData=[alta,registros.length-alta];
+  if(_chartTemporada){_chartTemporada.data.datasets[0].data=tempData;_chartTemporada.update('none');}
+  else{_chartTemporada=new Chart(document.getElementById('chartTemporada'),{type:'pie',data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:tempData,backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}});}
 }
 
 // ─── RANKING ──────────────────────────────────────────────────
@@ -582,7 +589,7 @@ function initBotones(){
   if(bc) bc.addEventListener('click',limpiarTodo);
 }
 
-function renderAll(){renderDashboard();renderTabla();renderRanking();renderEstadisticas();}
+function renderAll(){renderDashboard();renderTabla();renderRanking();}
 
 // ─── UTILS ────────────────────────────────────────────────────
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -608,6 +615,7 @@ window.eliminarRegistro=eliminarRegistro;
 // ═══════════════════════════════════════════════════════════════
 
 let chartGeneroStats=null, chartAvanceRetraso=null, chartMesStats=null;
+let statsInitialized=false;
 
 function initEstadisticas() {
   const selSup = document.getElementById('statSupervisor');
@@ -615,7 +623,15 @@ function initEstadisticas() {
   if(!selSup||!selTipo) return;
   selSup.addEventListener('change', () => { actualizarSectorDisplay(); renderEstadisticas(); });
   selTipo.addEventListener('change', renderEstadisticas);
-  renderEstadisticas();
+  statsInitialized=true;
+}
+
+// Solo renderiza si la pestaña estadísticas está activa
+function renderEstadisticasSiActivo() {
+  const tab = document.getElementById('tab-estadisticas');
+  if(tab && tab.classList.contains('active') && statsInitialized) {
+    renderEstadisticas();
+  }
 }
 
 function actualizarSectorDisplay() {
@@ -698,23 +714,29 @@ function renderEstadisticas() {
   const tituloG = tipoVal ? `👥 Género – ${tipoVal}` : '👥 Distribución General por Género';
   document.getElementById('statsGeneroTitle').textContent = tituloG;
 
-  // Chart género
-  if(chartGeneroStats) chartGeneroStats.destroy();
-  chartGeneroStats = new Chart(document.getElementById('chartGeneroStats'),{
-    type:'doughnut',
-    data:{
-      labels:[lV,lM],
-      datasets:[{data:[totalV,totalM],backgroundColor:['#0050c8','#cc0000'],borderWidth:2,borderColor:'#fff'}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10},boxWidth:12}},
-        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)`}}
+  // Chart género - update sin destruir para evitar parpadeo
+  if(chartGeneroStats) {
+    chartGeneroStats.data.labels=[lV,lM];
+    chartGeneroStats.data.datasets[0].data=[totalV,totalM];
+    chartGeneroStats.update('none');
+  } else {
+    chartGeneroStats = new Chart(document.getElementById('chartGeneroStats'),{
+      type:'doughnut',
+      data:{
+        labels:[lV,lM],
+        datasets:[{data:[totalV,totalM],backgroundColor:['#0050c8','#cc0000'],borderWidth:2,borderColor:'#fff'}]
       },
-      cutout:'60%'
-    }
-  });
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:400},
+        plugins:{
+          legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10},boxWidth:12}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)`}}
+        },
+        cutout:'60%'
+      }
+    });
+  }
 
   // ── SECTOR ──
   renderSectorStats(data);
@@ -755,8 +777,6 @@ function renderSectorStats(data) {
 }
 
 function renderChartAvanceRetraso(data) {
-  if(chartAvanceRetraso) chartAvanceRetraso.destroy();
-  // Agrupar por tipo de actividad
   const tipos = ['CAPACITACIONES ETI','EVALUACIONES DE CHECKLIST','REFORZAMIENTO'];
   const labels = ['Cap. ETI','Checklist','Reforzamiento'];
   const plazoData=[], retrasoData=[];
@@ -767,49 +787,60 @@ function renderChartAvanceRetraso(data) {
     plazoData.push(p);
     retrasoData.push(r);
   });
-  chartAvanceRetraso = new Chart(document.getElementById('chartAvanceRetraso'),{
-    type:'bar',
-    data:{
-      labels,
-      datasets:[
-        {label:'En Plazo',data:plazoData,backgroundColor:'#1a8040',borderRadius:5},
-        {label:'En Retraso',data:retrasoData,backgroundColor:'#cc0000',borderRadius:5}
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},
-      scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{stepSize:1}}}
-    }
-  });
+  if(chartAvanceRetraso) {
+    chartAvanceRetraso.data.datasets[0].data=plazoData;
+    chartAvanceRetraso.data.datasets[1].data=retrasoData;
+    chartAvanceRetraso.update('none');
+  } else {
+    chartAvanceRetraso = new Chart(document.getElementById('chartAvanceRetraso'),{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:'En Plazo',data:plazoData,backgroundColor:'#1a8040',borderRadius:5},
+          {label:'En Retraso',data:retrasoData,backgroundColor:'#cc0000',borderRadius:5}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:true,
+        animation:{duration:400},
+        plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},
+        scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{stepSize:1}}}
+      }
+    });
+  }
 }
 
 function renderChartMesStats(data) {
-  if(chartMesStats) chartMesStats.destroy();
   const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const mm={};
   data.forEach(r=>{const m=new Date(r.fechaEjecucion+'T12:00:00').getMonth();mm[m]=(mm[m]||0)+1;});
   const keys=Object.keys(mm).sort((a,b)=>a-b);
-  if(keys.length===0){
-    document.getElementById('chartMesStats').getContext('2d').clearRect(0,0,999,999);
-    return;
+  const newLabels=keys.map(k=>mn[k]);
+  const newData=keys.map(k=>mm[k]);
+  if(chartMesStats) {
+    chartMesStats.data.labels=newLabels;
+    chartMesStats.data.datasets[0].data=newData;
+    chartMesStats.update('none');
+  } else {
+    chartMesStats = new Chart(document.getElementById('chartMesStats'),{
+      type:'bar',
+      data:{
+        labels:newLabels,
+        datasets:[{
+          label:'Actividades',data:newData,
+          backgroundColor:'#0050c8',borderRadius:6,
+          borderSkipped:false
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:true,
+        animation:{duration:400},
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}
+      }
+    });
   }
-  chartMesStats = new Chart(document.getElementById('chartMesStats'),{
-    type:'bar',
-    data:{
-      labels:keys.map(k=>mn[k]),
-      datasets:[{
-        label:'Actividades',data:keys.map(k=>mm[k]),
-        backgroundColor:'#0050c8',borderRadius:6,
-        borderSkipped:false
-      }]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}
-    }
-  });
 }
 
 function renderRutasStats(data) {
