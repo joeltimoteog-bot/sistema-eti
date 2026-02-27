@@ -69,6 +69,7 @@
   <button class="tab-btn" data-tab="tabla">📋 Registros</button>
   <button class="tab-btn" data-tab="ranking">🏆 Ranking</button>
   <button class="tab-btn" data-tab="estadisticas">📈 Estadísticas</button>
+  <button class="tab-btn" data-tab="unidades">🚗 Unidades</button>
 </nav>
 
 <!-- DASHBOARD -->
@@ -483,6 +484,181 @@
 
   </div>
 </section>
+
+<!-- ══════════════════════════════════════
+     MÓDULO UNIDADES Y LICENCIAS
+══════════════════════════════════════ -->
+<section class="tab-content" id="tab-unidades">
+  <div class="unid-wrapper">
+
+    <!-- SUB-TABS -->
+    <div class="unid-subnav">
+      <button class="unid-tab active" data-utab="u-dashboard">📊 Dashboard</button>
+      <button class="unid-tab" data-utab="u-unidades">🚗 Unidades</button>
+      <button class="unid-tab" data-utab="u-mantenimiento">🔧 Mantenimiento</button>
+      <button class="unid-tab" data-utab="u-licencias">📋 Licencias</button>
+    </div>
+
+    <!-- ── DASHBOARD ── -->
+    <div class="unid-content active" id="u-dashboard">
+      <div class="unid-kpi-row">
+        <div class="unid-kpi azul"><div class="unid-kpi-icon">🚗</div><div class="unid-kpi-val" id="ukTotal">0</div><div class="unid-kpi-lab">Total Unidades</div></div>
+        <div class="unid-kpi verde"><div class="unid-kpi-icon">✅</div><div class="unid-kpi-val" id="ukOperativas">0</div><div class="unid-kpi-lab">Operativas</div></div>
+        <div class="unid-kpi rojo"><div class="unid-kpi-icon">⛔</div><div class="unid-kpi-val" id="ukInoperativas">0</div><div class="unid-kpi-lab">Inoperativas</div></div>
+        <div class="unid-kpi verde"><div class="unid-kpi-icon">📋</div><div class="unid-kpi-val" id="ukVigentes">0</div><div class="unid-kpi-lab">Licencias Vigentes</div></div>
+        <div class="unid-kpi amarillo"><div class="unid-kpi-icon">⚠️</div><div class="unid-kpi-val" id="ukPorVencer">0</div><div class="unid-kpi-lab">Por Vencer</div></div>
+        <div class="unid-kpi rojo"><div class="unid-kpi-icon">🚨</div><div class="unid-kpi-val" id="ukVencidas">0</div><div class="unid-kpi-lab">Vencidas</div></div>
+        <div class="unid-kpi azul"><div class="unid-kpi-icon">🔧</div><div class="unid-kpi-val" id="ukMant">0</div><div class="unid-kpi-lab">Mantenimientos</div></div>
+      </div>
+      <div class="unid-panel">
+        <div class="unid-panel-title">🚨 Alertas Activas – Licencias</div>
+        <div id="uAlertas"><p class="unid-empty">Sin alertas activas.</p></div>
+      </div>
+      <div class="unid-charts-row">
+        <div class="unid-chart-card"><div class="unid-chart-title">Estado de Unidades</div><canvas id="uChartUnid" height="180"></canvas></div>
+        <div class="unid-chart-card"><div class="unid-chart-title">Estado de Licencias</div><canvas id="uChartLic" height="180"></canvas></div>
+        <div class="unid-chart-card"><div class="unid-chart-title">Mantenimientos por Mes</div><canvas id="uChartMant" height="180"></canvas></div>
+        <div class="unid-chart-card"><div class="unid-chart-title">Licencias por Mes Vencimiento</div><canvas id="uChartLicMes" height="180"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── UNIDADES ── -->
+    <div class="unid-content" id="u-unidades">
+      <div class="unid-panel">
+        <div class="unid-toolbar">
+          <div class="unid-panel-title" style="margin:0">🚗 Base General de Unidades</div>
+          <div class="unid-actions">
+            <input class="unid-filter" id="uFiltDni" placeholder="🔍 DNI..."/>
+            <input class="unid-filter" id="uFiltUser" placeholder="🔍 Usuario..."/>
+            <select class="unid-filter" id="uFiltEmp"><option value="">Todas las empresas</option><option>RAPEL</option><option>VERFRUT</option></select>
+            <select class="unid-filter" id="uFiltEst"><option value="">Todos los estatus</option><option>Operativo</option><option>Inoperativo</option></select>
+            <button class="unid-btn unid-btn-excel" id="uBtnExpUnid">📥 Excel</button>
+          </div>
+        </div>
+        <div class="unid-scroll">
+          <table class="unid-table">
+            <thead><tr>
+              <th>DNI</th><th>Usuario</th><th>Cargo</th><th>Modelo</th><th>Marca</th>
+              <th>Cód. Interno</th><th>Cód. Sist.</th><th>Nº Motor</th><th>Nº Chasis</th>
+              <th>Año</th><th>Estatus ✏️</th><th>Zona Recorrido</th><th>Empresa</th>
+              <th>Zona Abastec. ✏️</th>
+            </tr></thead>
+            <tbody id="uTbodyUnid"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MANTENIMIENTO ── -->
+    <div class="unid-content" id="u-mantenimiento">
+      <div class="unid-panel">
+        <div class="unid-panel-title">➕ Registrar Mantenimiento</div>
+        <div class="unid-form-grid">
+          <div class="unid-fg">
+            <label>Supervisor *</label>
+            <select id="uMSup"><option value="">— Seleccionar —</option></select>
+          </div>
+          <div class="unid-fg"><label>Cód. Interno</label><input id="uMCod" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Modelo</label><input id="uMModelo" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Marca</label><input id="uMMarca" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Fecha *</label><input type="date" id="uMFecha"/></div>
+          <div class="unid-fg">
+            <label>Tipo *</label>
+            <select id="uMTipo">
+              <option value="">— Seleccionar —</option>
+              <option value="Preventivo">🔵 Preventivo (+2,500 km)</option>
+              <option value="General">🟠 General (+5,000 km)</option>
+            </select>
+          </div>
+          <div class="unid-fg"><label>KM Anterior</label><input type="number" id="uMKmAnt" placeholder="0"/></div>
+          <div class="unid-fg"><label>KM Actual *</label><input type="number" id="uMKmAct" placeholder="0"/></div>
+          <div class="unid-fg"><label>KM Recorrido</label><input id="uMKmRec" readonly class="unid-calc"/></div>
+          <div class="unid-fg"><label>Próximo KM</label><input id="uMProxKm" readonly class="unid-calc"/></div>
+          <div class="unid-fg" style="grid-column:1/-1"><label>Observaciones</label><textarea id="uMObs" rows="2" placeholder="Detalles..."></textarea></div>
+        </div>
+        <div class="unid-actions" style="margin-top:12px;">
+          <button class="unid-btn unid-btn-primary" id="uBtnSaveMant">💾 Guardar</button>
+          <button class="unid-btn unid-btn-danger" id="uBtnClearMant">🗑 Limpiar</button>
+        </div>
+      </div>
+      <div class="unid-panel">
+        <div class="unid-toolbar">
+          <div class="unid-panel-title" style="margin:0">📋 Historial de Mantenimientos</div>
+          <div class="unid-actions">
+            <input class="unid-filter" id="uFiltMUser" placeholder="🔍 Buscar..."/>
+            <select class="unid-filter" id="uFiltMTipo"><option value="">Todos</option><option>Preventivo</option><option>General</option></select>
+            <button class="unid-btn unid-btn-excel" id="uBtnExpMant">📥 Excel</button>
+          </div>
+        </div>
+        <div class="unid-scroll">
+          <table class="unid-table">
+            <thead><tr><th>#</th><th>Supervisor</th><th>Cód.</th><th>Fecha</th><th>Tipo</th><th>KM Ant.</th><th>KM Act.</th><th>KM Rec.</th><th>Próx. KM</th><th>Estado KM</th><th>Obs.</th><th>Acc.</th></tr></thead>
+            <tbody id="uTbodyMant"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LICENCIAS ── -->
+    <div class="unid-content" id="u-licencias">
+      <div class="unid-panel">
+        <div class="unid-panel-title">➕ Registrar Licencia</div>
+        <div class="unid-form-grid">
+          <div class="unid-fg">
+            <label>Supervisor *</label>
+            <select id="uLSup"><option value="">— Seleccionar —</option></select>
+          </div>
+          <div class="unid-fg"><label>DNI</label><input id="uLDni" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Cód. Interno</label><input id="uLCod" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Cargo</label><input id="uLCargo" readonly class="unid-readonly"/></div>
+          <div class="unid-fg"><label>Nº Licencia *</label><input id="uLNum" placeholder="Ej: Q70123456"/></div>
+          <div class="unid-fg">
+            <label>Tipo *</label>
+            <select id="uLTipo">
+              <option value="">— Seleccionar —</option>
+              <option>A-I</option><option>A-IIa</option><option>A-IIb</option>
+              <option>A-IIIa</option><option>A-IIIb</option><option>A-IIIc</option>
+              <option>B-I</option><option>B-IIa</option><option>B-IIb</option><option>B-IIc</option>
+            </select>
+          </div>
+          <div class="unid-fg"><label>F. Expedición</label><input type="date" id="uLFExp"/></div>
+          <div class="unid-fg"><label>F. Revalidación *</label><input type="date" id="uLFReval"/></div>
+          <div class="unid-fg"><label>Días Restantes</label><input id="uLDias" readonly class="unid-calc"/></div>
+          <div class="unid-fg"><label>Estado</label><input id="uLEstado" readonly class="unid-calc"/></div>
+        </div>
+        <div class="unid-actions" style="margin-top:12px;">
+          <button class="unid-btn unid-btn-primary" id="uBtnSaveLic">💾 Guardar</button>
+          <button class="unid-btn unid-btn-danger" id="uBtnClearLic">🗑 Limpiar</button>
+        </div>
+      </div>
+      <div class="unid-panel">
+        <div class="unid-toolbar">
+          <div class="unid-panel-title" style="margin:0">📋 Registro de Licencias</div>
+          <div class="unid-actions">
+            <input class="unid-filter" id="uFiltLUser" placeholder="🔍 Buscar..."/>
+            <select class="unid-filter" id="uFiltLEst">
+              <option value="">Todos los estados</option>
+              <option value="vigente">Vigente</option>
+              <option value="por_vencer">Por Vencer</option>
+              <option value="riesgo">Riesgo</option>
+              <option value="critico">Crítico</option>
+              <option value="vencido">Vencida</option>
+            </select>
+            <button class="unid-btn unid-btn-excel" id="uBtnExpLic">📥 Excel</button>
+          </div>
+        </div>
+        <div class="unid-scroll">
+          <table class="unid-table">
+            <thead><tr><th>#</th><th>Supervisor</th><th>DNI</th><th>Cód.</th><th>Nº Licencia</th><th>Tipo</th><th>F. Expedición</th><th>F. Revalidación</th><th>Días Rest.</th><th>Estado</th><th>Acc.</th></tr></thead>
+            <tbody id="uTbodyLic"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 
 <footer class="site-footer">
   <div class="footer-inner">
