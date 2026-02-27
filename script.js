@@ -122,9 +122,13 @@ function initTabs() {
 }
 
 // ─── TEMPORADA ────────────────────────────────────────────────
+// ─── TEMPORADA ────────────────────────────────────────────────
+// Baja: 5-ene al 26-jun → Lun-Vie
+// Alta: 27-jun al 31-dic → Lun-Sáb
 function detectarTemporada(fecha) {
   const d=typeof fecha==='string'?new Date(fecha+'T12:00:00'):new Date(fecha);
   const val=(d.getMonth()+1)*100+d.getDate();
+  // Baja: 01-05 (105) hasta 06-26 (626)
   return (val>=105&&val<=626)?'baja':'alta';
 }
 function esFestivo(fecha) {
@@ -133,46 +137,92 @@ function esFestivo(fecha) {
   return FESTIVOS_PERU.includes(mm+'-'+dd);
 }
 function esDiaHabil(fecha,temporada) {
-  const dow=fecha.getDay();
-  if(dow===0) return false;
-  if(temporada==='baja'&&dow===6) return false;
-  if(esFestivo(fecha)) return false;
+  const dow=fecha.getDay(); // 0=Dom,1=Lun,...,6=Sáb
+  if(dow===0) return false;                          // Domingo: nunca hábil
+  if(temporada==='baja'&&dow===6) return false;      // Sáb en temporada baja: no hábil
+  if(esFestivo(fecha)) return false;                 // Festivo: no hábil
   return true;
 }
+
+// Paso 1: Calcular fecha límite
+// Regla: El día de ejecución NO cuenta. Se suman 3 días hábiles desde el día SIGUIENTE.
+// La temporada se determina según la fecha de ejecución.
 function calcularFechaLimite(fechaEjecStr) {
   const temporada=detectarTemporada(fechaEjecStr);
   let d=new Date(fechaEjecStr+'T12:00:00');
   let habiles=0;
-  while(habiles<3){d.setDate(d.getDate()+1);if(esDiaHabil(d,temporada))habiles++;}
+  // Avanzar día por día desde el día SIGUIENTE a la ejecución
+  while(habiles<3){
+    d.setDate(d.getDate()+1);
+    if(esDiaHabil(d,temporada)) habiles++;
+  }
   return {fechaLimite:formatDate(d),temporada};
 }
-function contarDiasHabiles(desde,hasta,temporada) {
-  let count=0,d=new Date(desde.getTime());
-  d.setDate(d.getDate()+1);
-  while(d<=hasta){if(esDiaHabil(d,temporada))count++;d.setDate(d.getDate()+1);}
+
+// Contar días hábiles entre dos fechas (excluyendo 'desde', incluyendo 'hasta')
+// La temporada se detecta DÍA A DÍA para manejar cambios de temporada dentro del rango
+function contarDiasHabiles(desde,hasta) {
+  let count=0;
+  let d=new Date(desde.getTime());
+  d.setDate(d.getDate()+1); // Empezar desde el día SIGUIENTE
+  while(d<=hasta){
+    const temp=detectarTemporada(d); // Detectar temporada de cada día
+    if(esDiaHabil(d,temp)) count++;
+    d.setDate(d.getDate()+1);
+  }
   return count;
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────
+// Lógica:
+// A) Si tiene fecha de envío:
+//    - fEnvio <= fLimite → CUMPLIDO (avance 100%, retraso 0%)
+//    - fEnvio > fLimite  → RETRASO (días hábiles entre fLimite y fEnvio)
+// B) Sin fecha de envío (pendiente):
+//    - hoy <= fLimite → EN PROCESO (avance = días hábiles transcurridos desde ejecución / 3)
+//    - hoy > fLimite  → RETRASO (días hábiles entre fLimite y hoy)
+// Porcentajes: plazo total = 3 días hábiles
+//    avance%  = diasTranscurridos/3 * 100
+//    retraso% = diasRetraso/3 * 100 (puede superar 100%)
 function calcularEstado(reg) {
-  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
   const fLimite=new Date(reg.fechaLimite+'T12:00:00');
   const fEjec=new Date(reg.fechaEjecucion+'T12:00:00');
-  const temporada=reg.temporada||detectarTemporada(reg.fechaEjecucion);
   const fEnvio=reg.fechaEnvio?new Date(reg.fechaEnvio+'T12:00:00'):null;
+
   if(fEnvio) {
-    if(fEnvio<=fLimite) return {estado:'cumplido',avance:100,retraso:0,diasRetraso:0};
-    const dr=contarDiasHabiles(fLimite,fEnvio,temporada);
-    const pct=Math.min(Math.round((dr/3)*100),100);
-    return {estado:dr<=2?'leve':'critico',avance:Math.max(100-pct,0),retraso:pct,diasRetraso:dr};
+    // Caso A: Ya se envió
+    if(fEnvio<=fLimite) {
+      return {estado:'cumplido',avance:100,retraso:0,diasRetraso:0};
+    }
+    // Retraso: días hábiles entre fecha límite y fecha de envío
+    const dr=contarDiasHabiles(fLimite,fEnvio);
+    const pctRetraso=Math.round((dr/3)*100);
+    return {
+      estado: dr<=2?'leve':'critico',
+      avance: 0,
+      retraso: Math.min(pctRetraso,100),
+      diasRetraso: dr
+    };
   }
+
+  // Caso B: Aún no se envía
   if(hoy<=fLimite) {
-    const du=contarDiasHabiles(fEjec,hoy,temporada);
-    return {estado:'proceso',avance:Math.min(Math.round((du/3)*100),99),retraso:0,diasRetraso:0};
+    // En proceso: calcular avance según días hábiles transcurridos desde ejecución
+    const duTranscurridos=contarDiasHabiles(fEjec,hoy);
+    const pctAvance=Math.min(Math.round((duTranscurridos/3)*100),99);
+    return {estado:'proceso',avance:pctAvance,retraso:0,diasRetraso:0};
   }
-  const dr=contarDiasHabiles(fLimite,hoy,temporada);
-  const pct=Math.min(Math.round((dr/3)*100),100);
-  return {estado:dr<=2?'leve':'critico',avance:Math.max(100-pct,0),retraso:pct,diasRetraso:dr};
+
+  // Retraso sin envío: días hábiles entre fecha límite y hoy
+  const dr=contarDiasHabiles(fLimite,hoy);
+  const pctRetraso=Math.round((dr/3)*100);
+  return {
+    estado: dr<=2?'leve':'critico',
+    avance: 0,
+    retraso: Math.min(pctRetraso,100),
+    diasRetraso: dr
+  };
 }
 
 // ─── HEADER ───────────────────────────────────────────────────
