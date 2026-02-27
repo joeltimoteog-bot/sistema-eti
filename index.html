@@ -167,8 +167,20 @@
         </div>
       </div>
 
-      <!-- RUTAS -->
-      <div class="section-block">
+      <!-- TIPO DE PERSONAL -->
+      <div class="section-block" id="bloquePersonal" style="display:none;">
+        <h3 class="section-subtitle">👷 Tipo de Personal</h3>
+        <div class="form-group">
+          <label>¿A qué tipo de personal está dirigida esta actividad? *</label>
+          <div class="rutas-opciones">
+            <label class="radio-option"><input type="radio" name="tipoPersonal" value="OBREROS" id="tpObreros" /><span>👷 Obreros</span></label>
+            <label class="radio-option"><input type="radio" name="tipoPersonal" value="EMPLEADOS" id="tpEmpleados" /><span>💼 Empleados</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- RUTAS (solo Obreros) -->
+      <div class="section-block" id="bloqueRutas">
         <h3 class="section-subtitle">📍 Rutas Capacitadas</h3>
         <div class="form-group">
           <label>¿Cuántas rutas capacitó el supervisor?</label>
@@ -187,6 +199,16 @@
         <div id="rutasVariasCont" style="display:none; margin-top:12px;">
           <div class="rutas-varias-badge">✅ Rutas Varias – No se requiere ingresar detalle</div>
         </div>
+      </div>
+
+      <!-- ÁREAS (solo Empleados) -->
+      <div class="section-block" id="bloqueAreas" style="display:none;">
+        <h3 class="section-subtitle">🏢 Áreas Intervenidas</h3>
+        <div class="form-group" style="max-width:260px;">
+          <label for="fCantAreas">¿Cuántas áreas fueron intervenidas?</label>
+          <input type="number" id="fCantAreas" min="1" max="50" placeholder="Ej: 3" />
+        </div>
+        <div id="areasItemsCont" style="margin-top:14px;"></div>
       </div>
 
       <!-- OBSERVACIONES -->
@@ -226,7 +248,7 @@
       <table id="mainTable">
         <thead>
           <tr>
-            <th>#</th><th>Supervisor</th><th>Sector</th><th>♂ Varones</th><th>♀ Mujeres</th><th>Total</th>
+            <th>#</th><th>Supervisor</th><th>Sector</th><th>Personal</th><th>♂ Varones</th><th>♀ Mujeres</th><th>Total</th>
             <th>Tema</th><th>Rutas</th><th>F. Ejecución</th><th>F. Límite</th><th>F. Envío</th>
             <th>Temporada</th><th>% Avance</th><th>% Retraso</th><th>Estado</th><th>Acciones</th>
           </tr>
@@ -337,6 +359,14 @@
           <option value="REFORZAMIENTO">Reforzamiento</option>
         </select>
       </div>
+      <div class="stats-filter-group">
+        <label class="stats-filter-label">👷 Tipo de Personal</label>
+        <select id="statPersonal" class="stats-select">
+          <option value="">Todos (Obreros + Empleados)</option>
+          <option value="OBREROS">👷 Obreros</option>
+          <option value="EMPLEADOS">💼 Empleados</option>
+        </select>
+      </div>
     </div>
 
     <!-- CARDS KPI -->
@@ -436,10 +466,18 @@
     </div>
 
     <!-- RUTAS -->
-    <div class="stats-panel stats-panel-full">
-      <div class="stats-panel-title">🗺 Estadísticas por Rutas</div>
+    <div class="stats-panel stats-panel-full" id="statsRutasPanel">
+      <div class="stats-panel-title">🗺 Estadísticas por Rutas (Obreros)</div>
       <div id="statsRutasBody">
         <p class="stats-empty">Sin datos de rutas para mostrar.</p>
+      </div>
+    </div>
+
+    <!-- ÁREAS -->
+    <div class="stats-panel stats-panel-full" id="statsAreasPanel" style="display:none;">
+      <div class="stats-panel-title">🏢 Estadísticas por Áreas (Empleados)</div>
+      <div id="statsAreasBody">
+        <p class="stats-empty">Sin datos de áreas para mostrar.</p>
       </div>
     </div>
 
@@ -462,3 +500,4 @@
 <script type="module" src="script.js"></script>
 </body>
 </html>
+
