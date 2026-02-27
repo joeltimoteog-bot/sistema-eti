@@ -73,6 +73,7 @@ function intentarLogin() {
   initModal();
   initBotones();
   initEstadisticas();
+  initUnidades();
   // Escuchar cambios en tiempo real desde Firebase
   escucharFirebase();
 }
@@ -119,6 +120,7 @@ function initTabs() {
       if(target==='tabla') renderTabla();
       if(target==='ranking') renderRanking();
       if(target==='estadisticas') renderEstadisticas();
+      if(target==='unidades') uRenderDashboard();
     });
   });
 }
@@ -1050,3 +1052,464 @@ function renderAreasStats(data) {
 
 // Hook al cambio de tab para inicializar estadísticas
 const _origInitTabs = initTabs;
+
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO UNIDADES Y LICENCIAS
+// ═══════════════════════════════════════════════════════════════
+
+const COL_UNID = 'unidades_rrhh';
+const COL_MANT = 'mantenimientos_rrhh';
+const COL_LIC  = 'licencias_rrhh';
+
+let uUnidades=[], uMantenimientos=[], uLicencias=[];
+let uChartU=null, uChartL=null, uChartM=null, uChartLM=null;
+
+const UNIDADES_BASE=[
+  {dni:'46793507',usuario:'PULACHE VIERA FLOR DE LOS MILAGROS',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'TRX-420',marca:'HONDA',cod_interno:'CM-48',cod_sist:'VMT1056',numero_motor:'TE40E8702565',numero_chasis:'1HFTE40U4L4650073',anio:2020,estatus:'Operativo',zona_recorrido:'LOS OLIVARES',empresa:'RAPEL',zona_abastecimiento_actual:'LOS OLIVARES'},
+  {dni:'73332618',usuario:'TINEO RAMOS ALEXANDER',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-122',cod_sist:'VMT1098',numero_motor:'KF07E-3021257',numero_chasis:'LTMKD0798P5306754',anio:2023,estatus:'Operativo',zona_recorrido:'FUNDOS VARIOS',empresa:'RAPEL',zona_abastecimiento_actual:'EL PAPAYO'},
+  {dni:'76329783',usuario:'LUZON VENEGAS YHANELLY GERALDENY',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'TRX-250',marca:'HONDA',cod_interno:'CM-61',cod_sist:'VMT1075',numero_motor:'TE48-8401766',numero_chasis:'1HFTE21U3M4550048',anio:2021,estatus:'Operativo',zona_recorrido:'LOS ALGARROBOS',empresa:'RAPEL',zona_abastecimiento_actual:'LOS ALGARROBOS'},
+  {dni:'44369480',usuario:'PACHERRE ORTIZ ALBERTH',cargo:'ASISTENTE DE BIENESTAR SOCIAL',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-71',cod_sist:'VMT1054',numero_motor:'KD07E3006782',numero_chasis:'LTMKD0796L5302082',anio:2020,estatus:'Operativo',zona_recorrido:'FUNDOS VARIOS',empresa:'RAPEL',zona_abastecimiento_actual:'EL PAPAYO'},
+  {dni:'46073509',usuario:'TIMOTEO GONZA JOEL ANGEL',cargo:'COORDINADOR(a) DE RELACIONES LABORALES',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-122',cod_sist:'VMT1053',numero_motor:'KD07E3006686',numero_chasis:'LTMKD0799XL5302070',anio:2020,estatus:'Operativo',zona_recorrido:'FUNDOS VARIOS',empresa:'RAPEL',zona_abastecimiento_actual:'SANTA ROSA'},
+  {dni:'72952979',usuario:'MARTINEZ JUAREZ ALEXANDER',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-74',cod_sist:'VMT0059',numero_motor:'KD07E-3010238',numero_chasis:'LTMKD0797M5302593',anio:2021,estatus:'Operativo',zona_recorrido:'APROA',empresa:'RAPEL',zona_abastecimiento_actual:'APROA'},
+  {dni:'47070759',usuario:'CHAVEZ CORDOVA JORGE',cargo:'COORDINADOR(a) DE RELACIONES LABORALES',modelo:'TRX-420',marca:'HONDA',cod_interno:'CM-49',cod_sist:'VMT1060',numero_motor:'TE40E8702563',numero_chasis:'1HFTE40U4L4650079',anio:2020,estatus:'Operativo',zona_recorrido:'OLIVARES BAJO',empresa:'RAPEL',zona_abastecimiento_actual:'OLIVARES BAJO'},
+  {dni:'77299457',usuario:'YPANAQUE YMAN MARCO POLO',cargo:'ASISTENTE DE RELACIONES LABORALES',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-72',cod_sist:'VMT1053',numero_motor:'KD07E3006686',numero_chasis:'LTMKD079XL5302070',anio:2020,estatus:'Operativo',zona_recorrido:'OLIVARES BAJO',empresa:'RAPEL',zona_abastecimiento_actual:'SANTA ROSA'},
+  {dni:'72954772',usuario:'TAMAYO RODRIGUEZ POOL WILFREDO',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-44',cod_sist:'VMT0035',numero_motor:'KD07E-2120190',numero_chasis:'LTMKD0797G5212199',anio:2015,estatus:'Operativo',zona_recorrido:'EL PAPAYO',empresa:'RAPEL',zona_abastecimiento_actual:'EL PAPAYO'},
+  {dni:'73091524',usuario:'CASTRO BAYONA ELBERTH JAN PIERRE',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-92',cod_sist:'VMT1061',numero_motor:'KD07E-3006683',numero_chasis:'LTMKD0794L5302002',anio:2020,estatus:'Operativo',zona_recorrido:'SANTA ROSA I Y II',empresa:'VERFRUT',zona_abastecimiento_actual:'SANTA ROSA'},
+  {dni:'75656528',usuario:'ZAPATA SUAREZ ALEX FABIAN',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-89',cod_sist:'VMT0056',numero_motor:'KD07E-3010262',numero_chasis:'LTMKD0793M5302722',anio:2021,estatus:'Operativo',zona_recorrido:'PUNTA ARENAS',empresa:'RAPEL',zona_abastecimiento_actual:'PUNTA ARENAS'},
+  {dni:'46066300',usuario:'VIERA GIRON SERGIO',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-73',cod_sist:'VMT1048',numero_motor:'KD07E3006645',numero_chasis:'LTMKD0795L5302106',anio:2020,estatus:'Operativo',zona_recorrido:'SAN VICENTE',empresa:'RAPEL',zona_abastecimiento_actual:'SAN VICENTE'},
+  {dni:'76308925',usuario:'MORALES YARLEQUE BILL',cargo:'ANALISTA DE BIENESTAR SOCIAL',modelo:'XR-150L',marca:'HONDA',cod_interno:'ML-71',cod_sist:'VMT1054',numero_motor:'KD07E3006782',numero_chasis:'LTMKD0796L5302082',anio:2020,estatus:'Operativo',zona_recorrido:'FUNDOS VARIOS',empresa:'RAPEL',zona_abastecimiento_actual:'EL PAPAYO'},
+  {dni:'45984661',usuario:'HERNANDEZ BORRERO JOHN',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'TRX-250',marca:'HONDA',cod_interno:'CM-61',cod_sist:'VMT1075',numero_motor:'TE48-8401766',numero_chasis:'1HFTE21U3M4550048',anio:2021,estatus:'Operativo',zona_recorrido:'LOS ALGARROBOS',empresa:'RAPEL',zona_abastecimiento_actual:'LOS ALGARROBOS'},
+  {dni:'74218729',usuario:'MOLERO ABAD ROBERTO CARLOS',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'TRX-250',marca:'HONDA',cod_interno:'CM-61',cod_sist:'VMT1075',numero_motor:'TE48-8401766',numero_chasis:'1HFTE21U3M4550048',anio:2021,estatus:'Operativo',zona_recorrido:'LOS ALGARROBOS',empresa:'RAPEL',zona_abastecimiento_actual:'LOS ALGARROBOS'}
+];
+
+// ── INIT ──────────────────────────────────────────────────────
+async function initUnidades() {
+  if(document.getElementById('u-dashboard')===null) return;
+  initSubTabs();
+  await uCargarUnidades();
+  await uCargarMantenimientos();
+  await uCargarLicencias();
+  uPoblarSelectores();
+  uInitFormMant();
+  uInitFormLic();
+  uInitFiltros();
+  uInitBotones();
+  uRenderDashboard();
+  uRenderTablaUnid();
+  uRenderTablaMant();
+  uRenderTablaLic();
+}
+
+function initSubTabs(){
+  document.querySelectorAll('.unid-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.unid-tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.unid-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.utab).classList.add('active');
+    });
+  });
+}
+
+// ── CARGAR DATOS ──────────────────────────────────────────────
+async function uCargarUnidades(){
+  try{
+    const snap=await getDocs(collection(db,COL_UNID));
+    if(snap.empty){
+      for(const u of UNIDADES_BASE) await addDoc(collection(db,COL_UNID),u);
+      const s2=await getDocs(collection(db,COL_UNID));
+      uUnidades=s2.docs.map(d=>({id:d.id,...d.data()}));
+    } else {
+      uUnidades=snap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+  }catch(e){uUnidades=[...UNIDADES_BASE.map((u,i)=>({id:'local'+i,...u}))];}
+}
+
+async function uCargarMantenimientos(){
+  try{
+    const snap=await getDocs(query(collection(db,COL_MANT),orderBy('fecha_registro','desc')));
+    uMantenimientos=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){uMantenimientos=[];}
+}
+
+async function uCargarLicencias(){
+  try{
+    const snap=await getDocs(query(collection(db,COL_LIC),orderBy('fecha_registro','desc')));
+    uLicencias=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){uLicencias=[];}
+}
+
+// ── SELECTORES ────────────────────────────────────────────────
+function uPoblarSelectores(){
+  const opts=uUnidades.map(u=>`<option value="${u.dni}">${esc(u.usuario)} – ${esc(u.cod_interno)}</option>`).join('');
+  ['uMSup','uLSup'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML='<option value="">— Seleccionar —</option>'+opts;
+  });
+}
+
+// ── FORM MANTENIMIENTO ─────────────────────────────────────────
+function uInitFormMant(){
+  document.getElementById('uMSup')?.addEventListener('change',function(){
+    const u=uUnidades.find(x=>x.dni===this.value);
+    document.getElementById('uMCod').value=u?u.cod_interno:'';
+    document.getElementById('uMModelo').value=u?u.modelo:'';
+    document.getElementById('uMMarca').value=u?u.marca:'';
+  });
+  ['uMKmAnt','uMKmAct','uMTipo'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('input',uCalcKm);
+    document.getElementById(id)?.addEventListener('change',uCalcKm);
+  });
+  document.getElementById('uBtnSaveMant')?.addEventListener('click',uGuardarMant);
+  document.getElementById('uBtnClearMant')?.addEventListener('click',uLimpiarMant);
+}
+
+function uCalcKm(){
+  const ant=parseInt(document.getElementById('uMKmAnt').value)||0;
+  const act=parseInt(document.getElementById('uMKmAct').value)||0;
+  const tipo=document.getElementById('uMTipo').value;
+  const rec=act-ant;
+  const prox=tipo==='Preventivo'?act+2500:tipo==='General'?act+5000:0;
+  document.getElementById('uMKmRec').value=rec>0?rec:'';
+  document.getElementById('uMProxKm').value=prox>0?prox:'';
+}
+
+async function uGuardarMant(){
+  const dni=document.getElementById('uMSup').value;
+  const u=uUnidades.find(x=>x.dni===dni);
+  if(!u){showToast('Selecciona un supervisor',true);return;}
+  const fecha=document.getElementById('uMFecha').value;
+  const tipo=document.getElementById('uMTipo').value;
+  const kmAct=parseInt(document.getElementById('uMKmAct').value);
+  if(!fecha||!tipo||!kmAct){showToast('Completa los campos obligatorios (*)',true);return;}
+  const kmAnt=parseInt(document.getElementById('uMKmAnt').value)||0;
+  const reg={
+    dni,usuario:u.usuario,cod_interno:u.cod_interno,
+    fecha_mantenimiento:fecha,tipo_mantenimiento:tipo,
+    km_anterior:kmAnt,km_actual:kmAct,km_recorrido:kmAct-kmAnt,
+    proximo_km:tipo==='Preventivo'?kmAct+2500:kmAct+5000,
+    observaciones:document.getElementById('uMObs').value.trim(),
+    fecha_registro:new Date().toISOString()
+  };
+  try{
+    const ref=await addDoc(collection(db,COL_MANT),reg);
+    uMantenimientos.unshift({id:ref.id,...reg});
+    uRenderTablaMant(); uRenderDashboard(); uLimpiarMant();
+    showToast('✅ Mantenimiento registrado',false,true);
+  }catch(e){showToast('Error al guardar',true);}
+}
+
+function uLimpiarMant(){
+  ['uMSup','uMTipo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['uMCod','uMModelo','uMMarca','uMFecha','uMKmAnt','uMKmAct','uMKmRec','uMProxKm','uMObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+
+// ── FORM LICENCIAS ─────────────────────────────────────────────
+function uInitFormLic(){
+  document.getElementById('uLSup')?.addEventListener('change',function(){
+    const u=uUnidades.find(x=>x.dni===this.value);
+    document.getElementById('uLDni').value=u?u.dni:'';
+    document.getElementById('uLCod').value=u?u.cod_interno:'';
+    document.getElementById('uLCargo').value=u?u.cargo:'';
+  });
+  document.getElementById('uLFReval')?.addEventListener('change',uCalcLic);
+  document.getElementById('uBtnSaveLic')?.addEventListener('click',uGuardarLic);
+  document.getElementById('uBtnClearLic')?.addEventListener('click',uLimpiarLic);
+}
+
+function uCalcLic(){
+  const reval=document.getElementById('uLFReval').value;
+  if(!reval){document.getElementById('uLDias').value='';document.getElementById('uLEstado').value='';return;}
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const dias=Math.round((new Date(reval+'T12:00:00')-hoy)/(1000*60*60*24));
+  document.getElementById('uLDias').value=dias;
+  let estado='';
+  if(dias>30)estado='Vigente ✅';
+  else if(dias>15)estado='Por Vencer ⚠️';
+  else if(dias>7)estado='Riesgo 🟠';
+  else if(dias>0)estado='Crítico 🔴';
+  else estado='Vencida 🚨';
+  document.getElementById('uLEstado').value=estado;
+}
+
+async function uGuardarLic(){
+  const dni=document.getElementById('uLSup').value;
+  const u=uUnidades.find(x=>x.dni===dni);
+  if(!u){showToast('Selecciona un supervisor',true);return;}
+  const numero=document.getElementById('uLNum').value.trim();
+  const tipo=document.getElementById('uLTipo').value;
+  const reval=document.getElementById('uLFReval').value;
+  if(!numero||!tipo||!reval){showToast('Completa los campos obligatorios (*)',true);return;}
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const dias=Math.round((new Date(reval+'T12:00:00')-hoy)/(1000*60*60*24));
+  let estado='vigente';
+  if(dias<=0)estado='vencido';
+  else if(dias<=7)estado='critico';
+  else if(dias<=15)estado='riesgo';
+  else if(dias<=30)estado='por_vencer';
+  const reg={
+    dni,usuario:u.usuario,cod_interno:u.cod_interno,cargo:u.cargo,
+    numero_licencia:numero,tipo_licencia:tipo,
+    fecha_expedicion:document.getElementById('uLFExp').value||'',
+    fecha_revalidacion:reval,dias_restantes:dias,estado,
+    fecha_registro:new Date().toISOString()
+  };
+  try{
+    const ref=await addDoc(collection(db,COL_LIC),reg);
+    uLicencias.unshift({id:ref.id,...reg});
+    uRenderTablaLic(); uRenderDashboard(); uLimpiarLic();
+    showToast('✅ Licencia registrada',false,true);
+  }catch(e){showToast('Error al guardar',true);}
+}
+
+function uLimpiarLic(){
+  ['uLSup','uLTipo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['uLDni','uLCod','uLCargo','uLNum','uLFExp','uLFReval','uLDias','uLEstado'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+
+// ── FILTROS ───────────────────────────────────────────────────
+function uInitFiltros(){
+  ['uFiltDni','uFiltUser','uFiltEmp','uFiltEst'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('input',uRenderTablaUnid);
+    document.getElementById(id)?.addEventListener('change',uRenderTablaUnid);
+  });
+  ['uFiltMUser','uFiltMTipo'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('input',uRenderTablaMant);
+    document.getElementById(id)?.addEventListener('change',uRenderTablaMant);
+  });
+  ['uFiltLUser','uFiltLEst'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('input',uRenderTablaLic);
+    document.getElementById(id)?.addEventListener('change',uRenderTablaLic);
+  });
+}
+
+// ── BOTONES EXCEL ─────────────────────────────────────────────
+function uInitBotones(){
+  document.getElementById('uBtnExpUnid')?.addEventListener('click',()=>uExportExcel(uUnidades,'Unidades','unidades_verfrut.xlsx'));
+  document.getElementById('uBtnExpMant')?.addEventListener('click',()=>uExportExcel(uMantenimientos,'Mantenimientos','mantenimientos_verfrut.xlsx'));
+  document.getElementById('uBtnExpLic')?.addEventListener('click',()=>uExportExcel(uLicencias,'Licencias','licencias_verfrut.xlsx'));
+}
+
+function uExportExcel(data,sheet,filename){
+  if(!data.length){showToast('Sin datos para exportar',true);return;}
+  const ws=XLSX.utils.json_to_sheet(data.map(r=>{const{id,...rest}=r;return rest;}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheet);
+  XLSX.writeFile(wb,filename);
+  showToast('📥 Excel exportado');
+}
+
+// ── RENDER UNIDADES ───────────────────────────────────────────
+function uRenderTablaUnid(){
+  const fD=(document.getElementById('uFiltDni')?.value||'').toLowerCase();
+  const fU=(document.getElementById('uFiltUser')?.value||'').toLowerCase();
+  const fE=(document.getElementById('uFiltEmp')?.value||'').toLowerCase();
+  const fS=(document.getElementById('uFiltEst')?.value||'').toLowerCase();
+  let data=[...uUnidades];
+  if(fD) data=data.filter(r=>r.dni.toLowerCase().includes(fD));
+  if(fU) data=data.filter(r=>r.usuario.toLowerCase().includes(fU));
+  if(fE) data=data.filter(r=>(r.empresa||'').toLowerCase()===fE);
+  if(fS) data=data.filter(r=>(r.estatus||'').toLowerCase()===fS);
+  const tbody=document.getElementById('uTbodyUnid');
+  if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="14" class="unid-empty">Sin resultados.</td></tr>';return;}
+  tbody.innerHTML=data.map(r=>`<tr>
+    <td>${esc(r.dni)}</td>
+    <td><strong>${esc(r.usuario)}</strong></td>
+    <td style="font-size:10px;max-width:140px;">${esc(r.cargo)}</td>
+    <td>${esc(r.modelo)}</td><td>${esc(r.marca)}</td>
+    <td><span class="unid-badge unid-badge-azul">${esc(r.cod_interno)}</span></td>
+    <td>${esc(r.cod_sist||'')}</td>
+    <td style="font-size:10px;">${esc(r.numero_motor||'')}</td>
+    <td style="font-size:10px;">${esc(r.numero_chasis||'')}</td>
+    <td>${r.anio||''}</td>
+    <td>
+      <select class="unid-edit-input" onchange="uGuardarCampo('${r.id}','estatus',this.value)" style="width:120px;">
+        <option ${r.estatus==='Operativo'?'selected':''}>Operativo</option>
+        <option ${r.estatus==='Inoperativo'?'selected':''}>Inoperativo</option>
+      </select>
+    </td>
+    <td>${esc(r.zona_recorrido||'')}</td>
+    <td>${esc(r.empresa||'')}</td>
+    <td>
+      <input class="unid-edit-input" type="text" value="${esc(r.zona_abastecimiento_actual||'')}"
+        onblur="uGuardarCampo('${r.id}','zona_abastecimiento_actual',this.value)"
+        style="width:130px;" placeholder="Zona..."/>
+    </td>
+  </tr>`).join('');
+}
+
+window.uGuardarCampo=async function(id,campo,valor){
+  try{
+    await updateDoc(doc(db,COL_UNID,id),{[campo]:valor});
+    const idx=uUnidades.findIndex(u=>u.id===id);
+    if(idx!==-1)uUnidades[idx][campo]=valor;
+    uRenderDashboard();
+    showToast('✅ Campo actualizado');
+  }catch(e){showToast('Error al actualizar',true);}
+};
+
+// ── RENDER MANTENIMIENTO ──────────────────────────────────────
+function uRenderTablaMant(){
+  const fU=(document.getElementById('uFiltMUser')?.value||'').toLowerCase();
+  const fT=(document.getElementById('uFiltMTipo')?.value||'').toLowerCase();
+  let data=[...uMantenimientos];
+  if(fU) data=data.filter(r=>(r.usuario||'').toLowerCase().includes(fU)||(r.cod_interno||'').toLowerCase().includes(fU));
+  if(fT) data=data.filter(r=>(r.tipo_mantenimiento||'').toLowerCase()===fT);
+  const tbody=document.getElementById('uTbodyMant');
+  if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="12" class="unid-empty">Sin registros de mantenimiento.</td></tr>';return;}
+  tbody.innerHTML=data.map((r,i)=>{
+    const tBadge=r.tipo_mantenimiento==='Preventivo'?'<span class="unid-badge unid-badge-azul">🔵 Prev.</span>':'<span class="unid-badge unid-badge-naranja">🟠 Gral.</span>';
+    const diff=r.proximo_km&&r.km_actual?r.proximo_km-r.km_actual:null;
+    let kmEst='<span class="unid-badge unid-badge-gris">–</span>';
+    if(diff!==null){
+      if(diff>300)kmEst=`<span class="unid-badge unid-badge-verde">🟢 ${Number(diff).toLocaleString()} km</span>`;
+      else if(diff>0)kmEst=`<span class="unid-badge unid-badge-amarillo">🟡 ${Number(diff).toLocaleString()} km</span>`;
+      else kmEst='<span class="unid-badge unid-badge-rojo">🔴 Límite superado</span>';
+    }
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(r.usuario||'')}</strong></td>
+      <td><span class="unid-badge unid-badge-azul">${esc(r.cod_interno||'')}</span></td>
+      <td>${uFmtFecha(r.fecha_mantenimiento)}</td>
+      <td>${tBadge}</td>
+      <td>${Number(r.km_anterior||0).toLocaleString()}</td>
+      <td>${Number(r.km_actual||0).toLocaleString()}</td>
+      <td>${Number(r.km_recorrido||0).toLocaleString()}</td>
+      <td>${Number(r.proximo_km||0).toLocaleString()}</td>
+      <td>${kmEst}</td>
+      <td style="max-width:160px;font-size:10px;">${esc(r.observaciones||'–')}</td>
+      <td><button class="unid-btn unid-btn-danger" style="padding:4px 8px;font-size:10px;" onclick="uEliminarMant('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+window.uEliminarMant=async function(id){
+  if(!confirm('¿Eliminar este registro de mantenimiento?'))return;
+  try{
+    await deleteDoc(doc(db,COL_MANT,id));
+    uMantenimientos=uMantenimientos.filter(m=>m.id!==id);
+    uRenderTablaMant(); uRenderDashboard();
+    showToast('🗑 Eliminado');
+  }catch(e){showToast('Error al eliminar',true);}
+};
+
+// ── RENDER LICENCIAS ──────────────────────────────────────────
+function uRenderTablaLic(){
+  const fU=(document.getElementById('uFiltLUser')?.value||'').toLowerCase();
+  const fE=(document.getElementById('uFiltLEst')?.value||'');
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  let data=[...uLicencias].map(l=>{
+    const dias=l.fecha_revalidacion?Math.round((new Date(l.fecha_revalidacion+'T12:00:00')-hoy)/(1000*60*60*24)):null;
+    return{...l,_dias:dias};
+  });
+  if(fU) data=data.filter(r=>(r.usuario||'').toLowerCase().includes(fU)||(r.dni||'').includes(fU));
+  if(fE) data=data.filter(r=>r.estado===fE);
+  const tbody=document.getElementById('uTbodyLic');
+  if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="11" class="unid-empty">Sin registros de licencias.</td></tr>';return;}
+  tbody.innerHTML=data.map((r,i)=>{
+    const d=r._dias;
+    const badge=d===null?'<span class="unid-badge unid-badge-gris">–</span>':
+      d>30?'<span class="unid-badge unid-badge-verde">✅ Vigente</span>':
+      d>15?'<span class="unid-badge unid-badge-amarillo">⚠️ Por Vencer</span>':
+      d>7?'<span class="unid-badge unid-badge-naranja">🟠 Riesgo</span>':
+      d>0?'<span class="unid-badge unid-badge-rojo">🔴 Crítico</span>':
+      '<span class="unid-badge unid-badge-rojo" style="background:#7a0000;color:#fff;">🚨 Vencida</span>';
+    const diasCell=d===null?'–':d<0?`<strong style="color:#cc0000">${d} días</strong>`:`<strong>${d} días</strong>`;
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(r.usuario||'')}</strong></td>
+      <td>${esc(r.dni||'')}</td>
+      <td><span class="unid-badge unid-badge-azul">${esc(r.cod_interno||'')}</span></td>
+      <td>${esc(r.numero_licencia||'')}</td>
+      <td><span class="unid-badge unid-badge-gris">${esc(r.tipo_licencia||'')}</span></td>
+      <td>${uFmtFecha(r.fecha_expedicion)}</td>
+      <td>${uFmtFecha(r.fecha_revalidacion)}</td>
+      <td>${diasCell}</td>
+      <td>${badge}</td>
+      <td><button class="unid-btn unid-btn-danger" style="padding:4px 8px;font-size:10px;" onclick="uEliminarLic('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+window.uEliminarLic=async function(id){
+  if(!confirm('¿Eliminar este registro de licencia?'))return;
+  try{
+    await deleteDoc(doc(db,COL_LIC,id));
+    uLicencias=uLicencias.filter(l=>l.id!==id);
+    uRenderTablaLic(); uRenderDashboard();
+    showToast('🗑 Eliminado');
+  }catch(e){showToast('Error al eliminar',true);}
+};
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function uRenderDashboard(){
+  const total=uUnidades.length;
+  const operativas=uUnidades.filter(u=>u.estatus==='Operativo').length;
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const licDias=uLicencias.map(l=>({
+    ...l,
+    _dias:l.fecha_revalidacion?Math.round((new Date(l.fecha_revalidacion+'T12:00:00')-hoy)/(1000*60*60*24)):null
+  }));
+  const vigentes=licDias.filter(l=>l._dias!==null&&l._dias>30).length;
+  const porVencer=licDias.filter(l=>l._dias!==null&&l._dias>=0&&l._dias<=30).length;
+  const vencidas=licDias.filter(l=>l._dias!==null&&l._dias<0).length;
+
+  document.getElementById('ukTotal').textContent=total;
+  document.getElementById('ukOperativas').textContent=operativas;
+  document.getElementById('ukInoperativas').textContent=total-operativas;
+  document.getElementById('ukVigentes').textContent=vigentes;
+  document.getElementById('ukPorVencer').textContent=porVencer;
+  document.getElementById('ukVencidas').textContent=vencidas;
+  document.getElementById('ukMant').textContent=uMantenimientos.length;
+
+  // Alertas
+  const alertas=licDias.filter(l=>l._dias!==null&&l._dias<=30).sort((a,b)=>a._dias-b._dias);
+  const aDiv=document.getElementById('uAlertas');
+  if(aDiv){
+    if(!alertas.length){aDiv.innerHTML='<p class="unid-empty">✅ Sin alertas. Todas las licencias vigentes.</p>';}
+    else{
+      aDiv.innerHTML=alertas.map(l=>{
+        const cls=l._dias<0?'unid-alert-rojo':l._dias<=7?'unid-alert-rojo':l._dias<=15?'unid-alert-naranja':'unid-alert-amarillo';
+        const icon=l._dias<0?'🚨':l._dias<=7?'🔴':l._dias<=15?'🟠':'⚠️';
+        return `<div class="unid-alert ${cls}">
+          <span class="unid-alert-icon">${icon}</span>
+          <div><strong>${esc(l.usuario||'')}</strong> – ${esc(l.cod_interno||'')} – Lic: ${esc(l.numero_licencia||'')}
+          <br>Vence: <strong>${uFmtFecha(l.fecha_revalidacion)}</strong> | 
+          <strong>${l._dias<0?Math.abs(l._dias)+' días vencida':l._dias+' días restantes'}</strong></div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Charts
+  uRenderCharts(operativas,total-operativas,vigentes,porVencer,vencidas);
+}
+
+function uRenderCharts(op,inop,vig,pv,venc){
+  const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  if(uChartU){uChartU.data.datasets[0].data=[op,inop];uChartU.update('none');}
+  else{uChartU=new Chart(document.getElementById('uChartUnid'),{type:'doughnut',data:{labels:['Operativas','Inoperativas'],datasets:[{data:[op,inop],backgroundColor:['#1a8040','#cc0000'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10}}}},cutout:'60%'}});}
+
+  if(uChartL){uChartL.data.datasets[0].data=[vig,pv,venc];uChartL.update('none');}
+  else{uChartL=new Chart(document.getElementById('uChartLic'),{type:'doughnut',data:{labels:['Vigentes','Por Vencer/Riesgo','Vencidas'],datasets:[{data:[vig,pv,venc],backgroundColor:['#1a8040','#e07a2a','#cc0000'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10}}}},cutout:'60%'}});}
+
+  const mm={};
+  uMantenimientos.forEach(m=>{const mo=new Date((m.fecha_mantenimiento||'2000-01-01')+'T12:00:00').getMonth();mm[mo]=(mm[mo]||0)+1;});
+  const mks=Object.keys(mm).sort((a,b)=>a-b);
+  if(uChartM){uChartM.data.labels=mks.map(k=>mn[k]);uChartM.data.datasets[0].data=mks.map(k=>mm[k]);uChartM.update('none');}
+  else{uChartM=new Chart(document.getElementById('uChartMant'),{type:'bar',data:{labels:mks.map(k=>mn[k]),datasets:[{label:'Mant.',data:mks.map(k=>mm[k]),backgroundColor:'#0050c8',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});}
+
+  const lm={};
+  uLicencias.forEach(l=>{if(l.fecha_revalidacion){const mo=new Date(l.fecha_revalidacion+'T12:00:00').getMonth();lm[mo]=(lm[mo]||0)+1;}});
+  const lks=Object.keys(lm).sort((a,b)=>a-b);
+  if(uChartLM){uChartLM.data.labels=lks.map(k=>mn[k]);uChartLM.data.datasets[0].data=lks.map(k=>lm[k]);uChartLM.update('none');}
+  else{uChartLM=new Chart(document.getElementById('uChartLicMes'),{type:'bar',data:{labels:lks.map(k=>mn[k]),datasets:[{label:'Licencias',data:lks.map(k=>lm[k]),backgroundColor:'#cc0000',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});}
+}
+
+// ── UTILS UNIDADES ────────────────────────────────────────────
+function uFmtFecha(str){if(!str)return'–';try{const[y,m,d]=str.split('-');const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${d}/${mn[parseInt(m)-1]}/${y}`;}catch{return str;}}
+
