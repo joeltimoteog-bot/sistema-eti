@@ -541,7 +541,7 @@
               <th>DNI</th><th>Usuario</th><th>Cargo</th><th>Modelo</th><th>Marca</th>
               <th>Cód. Interno</th><th>Cód. Sist.</th><th>Nº Motor</th><th>Nº Chasis</th>
               <th>Año</th><th>Estatus ✏️</th><th>Zona Recorrido</th><th>Empresa</th>
-              <th>Zona Abastec. ✏️</th>
+              <th>Zona Abastec. ✏️</th><th>Reasignar</th>
             </tr></thead>
             <tbody id="uTbodyUnid"></tbody>
           </table>
@@ -657,6 +657,49 @@
     </div>
 
   </div>
+
+
+  <!-- MODAL EDICIÓN UNIDAD -->
+  <div id="uModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,48,135,.4);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:16px;padding:26px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3);border-top:5px solid var(--azul-mid);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-size:15px;font-weight:700;color:var(--azul-deep);">✏️ Editar / Reasignar Unidad</h3>
+        <button onclick="document.getElementById('uModalOverlay').style.display='none'" style="background:#f0f4f8;border:none;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;">✕</button>
+      </div>
+      <div style="background:#fff8dd;border:1.5px solid #c89010;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#7a5500;">
+        ⚠️ <strong>Reasignación:</strong> Puedes cambiar la unidad (moto/cuatrimoto) asignada a este usuario editando los campos técnicos. Los datos del usuario (DNI, nombre, cargo) NO cambian.
+      </div>
+      <input type="hidden" id="uModalId"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="unid-fg"><label>DNI</label><input id="uMoDni" class="unid-readonly" readonly/></div>
+        <div class="unid-fg"><label>Usuario</label><input id="uMoUser" class="unid-readonly" readonly style="font-weight:700;"/></div>
+        <div class="unid-fg" style="grid-column:1/-1"><label>Cargo</label><input id="uMoCargo" class="unid-readonly" readonly/></div>
+        <div class="unid-fg">
+          <label>🔑 Cód. Interno (N° Unidad) ✏️</label>
+          <input id="uMoCodInt" placeholder="Ej: ML-122, CM-49" style="font-weight:700;font-size:14px;border-color:var(--azul-mid);"/>
+        </div>
+        <div class="unid-fg"><label>Cód. Sistema ✏️</label><input id="uMoCodSist" placeholder="Ej: VMT1053"/></div>
+        <div class="unid-fg"><label>Modelo ✏️</label><input id="uMoModelo" placeholder="Ej: XR-150L, TRX-420"/></div>
+        <div class="unid-fg"><label>Marca ✏️</label><input id="uMoMarca" placeholder="Ej: HONDA"/></div>
+        <div class="unid-fg"><label>Nº Motor ✏️</label><input id="uMoMotor"/></div>
+        <div class="unid-fg"><label>Nº Chasis ✏️</label><input id="uMoChasis"/></div>
+        <div class="unid-fg"><label>Año ✏️</label><input type="number" id="uMoAnio" placeholder="Ej: 2021"/></div>
+        <div class="unid-fg"><label>Estatus ✏️</label>
+          <select id="uMoEstatus"><option>Operativo</option><option>Inoperativo</option></select>
+        </div>
+        <div class="unid-fg"><label>Zona de Recorrido ✏️</label><input id="uMoZonaRec"/></div>
+        <div class="unid-fg"><label>Empresa ✏️</label>
+          <select id="uMoEmpresa"><option>RAPEL</option><option>VERFRUT</option></select>
+        </div>
+        <div class="unid-fg" style="grid-column:1/-1"><label>Zona de Abastecimiento ✏️</label><input id="uMoZonaAbast"/></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap;">
+        <button onclick="document.getElementById('uModalOverlay').style.display='none'" class="unid-btn unid-btn-danger">✕ Cancelar</button>
+        <button onclick="uGuardarModal()" class="unid-btn unid-btn-primary" style="background:var(--verde);">💾 Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
 </section>
 
 
@@ -674,6 +717,92 @@
 </div><!-- /appPage -->
 
 <script type="module" src="script.js"></script>
+
+<!-- MODAL EDITAR UNIDAD -->
+<div id="uModalEditar" style="display:none;position:fixed;inset:0;background:rgba(0,48,135,.45);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);border-top:5px solid var(--azul-mid);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 style="font-size:16px;font-weight:700;color:var(--azul-deep);">✏️ Editar Unidad Asignada</h3>
+      <button onclick="uCerrarModal()" style="background:#fce8e8;border:none;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;color:#cc0000;font-weight:700;">✕</button>
+    </div>
+    <div style="background:var(--azul-light);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+      <p style="font-size:12px;color:var(--azul-deep);font-weight:600;">💡 Puedes editar todos los datos de la unidad asignada a este responsable. Útil cuando se hace un cambio de unidad (reasignación).</p>
+    </div>
+
+    <input type="hidden" id="uEditId"/>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="unid-fg" style="grid-column:1/-1;">
+        <label>👤 Usuario / Responsable</label>
+        <input type="text" id="uEditUsuario" placeholder="Nombre completo"/>
+      </div>
+      <div class="unid-fg">
+        <label>🪪 DNI</label>
+        <input type="text" id="uEditDni" placeholder="Nº DNI"/>
+      </div>
+      <div class="unid-fg">
+        <label>💼 Cargo</label>
+        <input type="text" id="uEditCargo" placeholder="Cargo"/>
+      </div>
+      <div class="unid-fg">
+        <label>🚗 Código Interno (Unidad)</label>
+        <input type="text" id="uEditCodInterno" placeholder="Ej: ML-122, CM-49"/>
+      </div>
+      <div class="unid-fg">
+        <label>🔢 Código Sistema</label>
+        <input type="text" id="uEditCodSist" placeholder="Ej: VMT1053"/>
+      </div>
+      <div class="unid-fg">
+        <label>🏍️ Modelo</label>
+        <input type="text" id="uEditModelo" placeholder="Ej: XR-150L"/>
+      </div>
+      <div class="unid-fg">
+        <label>🏷️ Marca</label>
+        <input type="text" id="uEditMarca" placeholder="Ej: HONDA"/>
+      </div>
+      <div class="unid-fg">
+        <label>⚙️ Nº Motor</label>
+        <input type="text" id="uEditMotor" placeholder="Nº de motor"/>
+      </div>
+      <div class="unid-fg">
+        <label>🔩 Nº Chasis</label>
+        <input type="text" id="uEditChasis" placeholder="Nº de chasis"/>
+      </div>
+      <div class="unid-fg">
+        <label>📅 Año</label>
+        <input type="number" id="uEditAnio" placeholder="Ej: 2023"/>
+      </div>
+      <div class="unid-fg">
+        <label>✅ Estatus</label>
+        <select id="uEditEstatus">
+          <option value="Operativo">✅ Operativo</option>
+          <option value="Inoperativo">⛔ Inoperativo</option>
+        </select>
+      </div>
+      <div class="unid-fg">
+        <label>🗺️ Zona de Recorrido</label>
+        <input type="text" id="uEditZonaRec" placeholder="Zona de recorrido"/>
+      </div>
+      <div class="unid-fg">
+        <label>🏢 Empresa</label>
+        <select id="uEditEmpresa">
+          <option value="RAPEL">RAPEL</option>
+          <option value="VERFRUT">VERFRUT</option>
+        </select>
+      </div>
+      <div class="unid-fg" style="grid-column:1/-1;">
+        <label>📍 Zona de Abastecimiento Actual</label>
+        <input type="text" id="uEditZonaAbast" placeholder="Zona de abastecimiento"/>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button onclick="uCerrarModal()" class="unid-btn unid-btn-danger">✕ Cancelar</button>
+      <button onclick="uGuardarEdicion()" class="unid-btn unid-btn-primary">💾 Guardar Cambios</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
+
 
