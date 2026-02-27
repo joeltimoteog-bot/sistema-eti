@@ -72,6 +72,7 @@ function intentarLogin() {
   initBuscador();
   initModal();
   initBotones();
+  initEstadisticas();
   // Escuchar cambios en tiempo real desde Firebase
   escucharFirebase();
 }
@@ -581,7 +582,7 @@ function initBotones(){
   if(bc) bc.addEventListener('click',limpiarTodo);
 }
 
-function renderAll(){renderDashboard();renderTabla();renderRanking();}
+function renderAll(){renderDashboard();renderTabla();renderRanking();renderEstadisticas();}
 
 // ─── UTILS ────────────────────────────────────────────────────
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -601,3 +602,257 @@ function showToast(msg,isError=false,isWarning=false){
 }
 window.abrirModal=abrirModal;
 window.eliminarRegistro=eliminarRegistro;
+
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO ESTADÍSTICO INDIVIDUAL
+// ═══════════════════════════════════════════════════════════════
+
+let chartGeneroStats=null, chartAvanceRetraso=null, chartMesStats=null;
+
+function initEstadisticas() {
+  const selSup = document.getElementById('statSupervisor');
+  const selTipo = document.getElementById('statTipo');
+  if(!selSup||!selTipo) return;
+  selSup.addEventListener('change', () => { actualizarSectorDisplay(); renderEstadisticas(); });
+  selTipo.addEventListener('change', renderEstadisticas);
+  renderEstadisticas();
+}
+
+function actualizarSectorDisplay() {
+  const val = document.getElementById('statSupervisor').value;
+  const display = document.getElementById('statSectorDisplay');
+  if(!val) {
+    display.textContent = '— Se completa al elegir supervisor —';
+    display.style.color = 'var(--gris-muted)';
+    return;
+  }
+  const sector = val.split('|')[1] || '';
+  display.textContent = sector;
+  display.style.color = 'var(--azul-deep)';
+}
+
+function filtrarRegistrosStats() {
+  const supVal = document.getElementById('statSupervisor').value;
+  const tipoVal = document.getElementById('statTipo').value;
+  let data = [...registros];
+  if(supVal) {
+    const [sup, sector] = supVal.split('|');
+    data = data.filter(r => r.supervisor === sup && r.sector === sector);
+  }
+  if(tipoVal) {
+    data = data.filter(r => r.tema === tipoVal);
+  }
+  return data;
+}
+
+function renderEstadisticas() {
+  const data = filtrarRegistrosStats();
+  const tipoVal = document.getElementById('statTipo').value;
+
+  // ── KPIs ──
+  const totalAct = data.length;
+  const totalTrab = data.reduce((s,r) => s+r.total, 0);
+  let enPlazo=0, enRetraso=0, sumDiasRet=0;
+  data.forEach(r => {
+    const est = calcularEstado(r);
+    if(est.estado==='cumplido'||est.estado==='proceso') enPlazo++;
+    else { enRetraso++; sumDiasRet+=est.diasRetraso; }
+  });
+  const pctAvance = totalAct>0 ? Math.round((enPlazo/totalAct)*100) : 0;
+  const pctRetraso = totalAct>0 ? Math.round((enRetraso/totalAct)*100) : 0;
+  const promDias = enRetraso>0 ? (sumDiasRet/enRetraso).toFixed(1) : 0;
+
+  document.getElementById('skpiActividades').textContent = totalAct;
+  document.getElementById('skpiTrabajadores').textContent = totalTrab;
+  document.getElementById('skpiPlazo').textContent = enPlazo;
+  document.getElementById('skpiRetraso').textContent = enRetraso;
+  document.getElementById('skpiPctAvance').textContent = pctAvance+'%';
+  document.getElementById('skpiPctRetraso').textContent = pctRetraso+'%';
+  document.getElementById('skpiPromDias').textContent = promDias;
+
+  // ── GÉNERO ──
+  const totalV = data.reduce((s,r)=>s+r.varones,0);
+  const totalM = data.reduce((s,r)=>s+r.mujeres,0);
+  const totalG = totalV+totalM;
+  const pctV = totalG>0 ? Math.round((totalV/totalG)*100) : 0;
+  const pctM = totalG>0 ? Math.round((totalM/totalG)*100) : 0;
+
+  // Labels según tipo
+  const labMap = {
+    'CAPACITACIONES ETI': ['Varones Capacitados','Mujeres Capacitadas'],
+    'EVALUACIONES DE CHECKLIST': ['Varones Evaluados','Mujeres Evaluadas'],
+    'REFORZAMIENTO': ['Varones Reforzados','Mujeres Reforzadas'],
+    '': ['Varones','Mujeres']
+  };
+  const [lV,lM] = labMap[tipoVal]||labMap[''];
+  document.getElementById('sgVaronesLabel').textContent = lV;
+  document.getElementById('sgMujeresLabel').textContent = lM;
+  document.getElementById('sgVaronesCount').textContent = totalV;
+  document.getElementById('sgMujeresCount').textContent = totalM;
+  document.getElementById('sgVaronesPct').textContent = pctV+'%';
+  document.getElementById('sgMujeresPct').textContent = pctM+'%';
+  document.getElementById('sgBarVarones').style.width = pctV+'%';
+  document.getElementById('sgBarMujeres').style.width = pctM+'%';
+
+  // Título género
+  const tituloG = tipoVal ? `👥 Género – ${tipoVal}` : '👥 Distribución General por Género';
+  document.getElementById('statsGeneroTitle').textContent = tituloG;
+
+  // Chart género
+  if(chartGeneroStats) chartGeneroStats.destroy();
+  chartGeneroStats = new Chart(document.getElementById('chartGeneroStats'),{
+    type:'doughnut',
+    data:{
+      labels:[lV,lM],
+      datasets:[{data:[totalV,totalM],backgroundColor:['#0050c8','#cc0000'],borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)`}}
+      },
+      cutout:'60%'
+    }
+  });
+
+  // ── SECTOR ──
+  renderSectorStats(data);
+
+  // ── GRÁFICOS ──
+  renderChartAvanceRetraso(data);
+  renderChartMesStats(data);
+
+  // ── RUTAS ──
+  renderRutasStats(data);
+}
+
+function renderSectorStats(data) {
+  const body = document.getElementById('statsSectorBody');
+  const supVal = document.getElementById('statSupervisor').value;
+  if(!supVal) {
+    body.innerHTML='<p class="stats-empty">Selecciona un supervisor para ver estadísticas del sector.</p>';
+    return;
+  }
+  const sector = supVal.split('|')[1]||'';
+  const caps = data.filter(r=>r.tema==='CAPACITACIONES ETI').length;
+  const checks = data.filter(r=>r.tema==='EVALUACIONES DE CHECKLIST').length;
+  const refs = data.filter(r=>r.tema==='REFORZAMIENTO').length;
+  const totalTrab = data.reduce((s,r)=>s+r.total,0);
+  let plazo=0,ret=0;
+  data.forEach(r=>{const e=calcularEstado(r).estado;if(e==='cumplido'||e==='proceso')plazo++;else ret++;});
+  const pctA=data.length>0?Math.round(plazo/data.length*100):0;
+  const pctR=data.length>0?Math.round(ret/data.length*100):0;
+
+  body.innerHTML=`
+    <div class="ssector-row"><div><div class="ssector-label">🏭 Sector</div><div class="ssector-sub">Ubicación</div></div><div class="ssector-value">${esc(sector)}</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">📚 Capacitaciones ETI</div><div class="ssector-sub">Total registradas</div></div><div class="ssector-value" style="color:#0050c8">${caps}</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">✅ Evaluaciones Checklist</div><div class="ssector-sub">Total registradas</div></div><div class="ssector-value" style="color:#1a8040">${checks}</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">🔄 Reforzamientos</div><div class="ssector-sub">Total registrados</div></div><div class="ssector-value" style="color:#e07a2a">${refs}</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">👥 Total Trabajadores</div><div class="ssector-sub">Intervenidos en el sector</div></div><div class="ssector-value">${totalTrab}</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">📈 % Avance</div><div class="ssector-sub">Actividades en plazo</div></div><div class="ssector-value" style="color:#1a8040">${pctA}%</div></div>
+    <div class="ssector-row"><div><div class="ssector-label">📉 % Retraso</div><div class="ssector-sub">Actividades con retraso</div></div><div class="ssector-value" style="color:#cc0000">${pctR}%</div></div>`;
+}
+
+function renderChartAvanceRetraso(data) {
+  if(chartAvanceRetraso) chartAvanceRetraso.destroy();
+  // Agrupar por tipo de actividad
+  const tipos = ['CAPACITACIONES ETI','EVALUACIONES DE CHECKLIST','REFORZAMIENTO'];
+  const labels = ['Cap. ETI','Checklist','Reforzamiento'];
+  const plazoData=[], retrasoData=[];
+  tipos.forEach(t=>{
+    const sub = data.filter(r=>r.tema===t);
+    let p=0,r=0;
+    sub.forEach(x=>{const e=calcularEstado(x).estado;if(e==='cumplido'||e==='proceso')p++;else r++;});
+    plazoData.push(p);
+    retrasoData.push(r);
+  });
+  chartAvanceRetraso = new Chart(document.getElementById('chartAvanceRetraso'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'En Plazo',data:plazoData,backgroundColor:'#1a8040',borderRadius:5},
+        {label:'En Retraso',data:retrasoData,backgroundColor:'#cc0000',borderRadius:5}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},
+      scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{stepSize:1}}}
+    }
+  });
+}
+
+function renderChartMesStats(data) {
+  if(chartMesStats) chartMesStats.destroy();
+  const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const mm={};
+  data.forEach(r=>{const m=new Date(r.fechaEjecucion+'T12:00:00').getMonth();mm[m]=(mm[m]||0)+1;});
+  const keys=Object.keys(mm).sort((a,b)=>a-b);
+  if(keys.length===0){
+    document.getElementById('chartMesStats').getContext('2d').clearRect(0,0,999,999);
+    return;
+  }
+  chartMesStats = new Chart(document.getElementById('chartMesStats'),{
+    type:'bar',
+    data:{
+      labels:keys.map(k=>mn[k]),
+      datasets:[{
+        label:'Actividades',data:keys.map(k=>mm[k]),
+        backgroundColor:'#0050c8',borderRadius:6,
+        borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}
+    }
+  });
+}
+
+function renderRutasStats(data) {
+  const body = document.getElementById('statsRutasBody');
+  // Recopilar todas las rutas de los registros filtrados
+  const rutaMap = {};
+  let totalRutas=0, rutasVarias=0;
+  data.forEach(r=>{
+    if(r.rutasTipo==='varias') { rutasVarias++; }
+    else if(r.rutasTipo==='detalle'&&r.rutas&&r.rutas.length>0){
+      r.rutas.forEach(rt=>{
+        const key = rt.codigo||rt.nombre||'Sin código';
+        if(!rutaMap[key]) rutaMap[key]={codigo:rt.codigo||'',nombre:rt.nombre||key,count:0};
+        rutaMap[key].count++;
+        totalRutas++;
+      });
+    }
+  });
+  const rutasList = Object.values(rutaMap).sort((a,b)=>b.count-a.count);
+  if(rutasList.length===0&&rutasVarias===0){
+    body.innerHTML='<p class="stats-empty">No hay datos de rutas para esta selección.</p>';
+    return;
+  }
+  let html=`<div class="stats-rutas-summary">
+    <div class="sruta-summary-item">🗺 Rutas con detalle: <strong>${rutasList.length}</strong></div>
+    <div class="sruta-summary-item">📦 Actividades "Rutas Varias": <strong>${rutasVarias}</strong></div>
+    <div class="sruta-summary-item">📋 Total intervenciones: <strong>${totalRutas}</strong></div>
+  </div>`;
+  if(rutasList.length>0){
+    html+=`<div class="stats-rutas-grid">`;
+    rutasList.forEach(rt=>{
+      html+=`<div class="sruta-card">
+        <div>
+          <div class="sruta-name">${esc(rt.nombre)}</div>
+          ${rt.codigo?`<div class="sruta-code">${esc(rt.codigo)}</div>`:''}
+        </div>
+        <div class="sruta-count">${rt.count}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  body.innerHTML=html;
+}
+
+// Hook al cambio de tab para inicializar estadísticas
+const _origInitTabs = initTabs;
