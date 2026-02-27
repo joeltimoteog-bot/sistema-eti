@@ -358,9 +358,11 @@ tbody td{padding:10px 12px;vertical-align:middle}
 
 /* Gráficos */
 .stats-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
-.stats-chart-card{background:white;border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-md)}
-.stats-chart-card canvas{max-height:200px !important;}
-.stats-panel canvas{max-height:160px !important;}
+.stats-chart-card{background:white;border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-md);position:relative}
+.stats-chart-card canvas{max-height:180px !important;height:180px !important;width:100% !important;}
+.stats-panel canvas{max-height:150px !important;height:150px !important;}
+.stats-genero-body .stats-chart-wrap{width:150px;height:150px;flex-shrink:0}
+.stats-chart-wrap canvas{width:150px !important;height:150px !important;}
 
 /* Rutas */
 .stats-rutas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
