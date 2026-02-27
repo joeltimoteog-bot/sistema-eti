@@ -1318,7 +1318,7 @@ function uRenderTablaUnid(){
     <td><strong>${esc(r.usuario)}</strong></td>
     <td style="font-size:10px;max-width:140px;">${esc(r.cargo)}</td>
     <td>${esc(r.modelo)}</td><td>${esc(r.marca)}</td>
-    <td><span class="unid-badge unid-badge-azul">${esc(r.cod_interno)}</span></td>
+    <td><span class="unid-badge unid-badge-azul" style="font-size:12px;font-weight:700;">${esc(r.cod_interno)}</span></td>
     <td>${esc(r.cod_sist||'')}</td>
     <td style="font-size:10px;">${esc(r.numero_motor||'')}</td>
     <td style="font-size:10px;">${esc(r.numero_chasis||'')}</td>
@@ -1334,10 +1334,67 @@ function uRenderTablaUnid(){
     <td>
       <input class="unid-edit-input" type="text" value="${esc(r.zona_abastecimiento_actual||'')}"
         onblur="uGuardarCampo('${r.id}','zona_abastecimiento_actual',this.value)"
-        style="width:130px;" placeholder="Zona..."/>
+        style="width:120px;" placeholder="Zona..."/>
+    </td>
+    <td>
+      <button class="unid-btn unid-btn-primary" onclick="uAbrirEditar('${r.id}')"
+        style="padding:5px 12px;font-size:10px;">
+        ✏️ Editar
+      </button>
     </td>
   </tr>`).join('');
 }
+
+window.uAbrirModal=function(id){
+  const r=uUnidades.find(u=>u.id===id);
+  if(!r)return;
+  document.getElementById('uModalId').value=id;
+  document.getElementById('uMoDni').value=r.dni||'';
+  document.getElementById('uMoUser').value=r.usuario||'';
+  document.getElementById('uMoCargo').value=r.cargo||'';
+  document.getElementById('uMoCodInt').value=r.cod_interno||'';
+  document.getElementById('uMoCodSist').value=r.cod_sist||'';
+  document.getElementById('uMoModelo').value=r.modelo||'';
+  document.getElementById('uMoMarca').value=r.marca||'';
+  document.getElementById('uMoMotor').value=r.numero_motor||'';
+  document.getElementById('uMoChasis').value=r.numero_chasis||'';
+  document.getElementById('uMoAnio').value=r.anio||'';
+  document.getElementById('uMoEstatus').value=r.estatus||'Operativo';
+  document.getElementById('uMoZonaRec').value=r.zona_recorrido||'';
+  document.getElementById('uMoEmpresa').value=r.empresa||'RAPEL';
+  document.getElementById('uMoZonaAbast').value=r.zona_abastecimiento_actual||'';
+  const overlay=document.getElementById('uModalOverlay');
+  overlay.style.display='flex';
+};
+
+window.uGuardarModal=async function(){
+  const id=document.getElementById('uModalId').value;
+  if(!id)return;
+  const cambios={
+    cod_interno:document.getElementById('uMoCodInt').value.trim(),
+    cod_sist:document.getElementById('uMoCodSist').value.trim(),
+    modelo:document.getElementById('uMoModelo').value.trim(),
+    marca:document.getElementById('uMoMarca').value.trim(),
+    numero_motor:document.getElementById('uMoMotor').value.trim(),
+    numero_chasis:document.getElementById('uMoChasis').value.trim(),
+    anio:parseInt(document.getElementById('uMoAnio').value)||0,
+    estatus:document.getElementById('uMoEstatus').value,
+    zona_recorrido:document.getElementById('uMoZonaRec').value.trim(),
+    empresa:document.getElementById('uMoEmpresa').value,
+    zona_abastecimiento_actual:document.getElementById('uMoZonaAbast').value.trim()
+  };
+  if(!cambios.cod_interno){showToast('El Código Interno es obligatorio',true);return;}
+  try{
+    await updateDoc(doc(db,COL_UNID,id),cambios);
+    const idx=uUnidades.findIndex(u=>u.id===id);
+    if(idx!==-1) uUnidades[idx]={...uUnidades[idx],...cambios};
+    document.getElementById('uModalOverlay').style.display='none';
+    uRenderTablaUnid();
+    uRenderDashboard();
+    uPoblarSelectores();
+    showToast('✅ Unidad actualizada correctamente',false,true);
+  }catch(e){showToast('Error al guardar cambios',true);}
+};
 
 window.uGuardarCampo=async function(id,campo,valor){
   try{
@@ -1513,3 +1570,73 @@ function uRenderCharts(op,inop,vig,pv,venc){
 // ── UTILS UNIDADES ────────────────────────────────────────────
 function uFmtFecha(str){if(!str)return'–';try{const[y,m,d]=str.split('-');const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${d}/${mn[parseInt(m)-1]}/${y}`;}catch{return str;}}
 
+
+// ── MODAL EDITAR UNIDAD ───────────────────────────────────────
+window.uAbrirEditar = function(id) {
+  const u = uUnidades.find(x => x.id === id);
+  if(!u) return;
+  document.getElementById('uEditId').value = id;
+  document.getElementById('uEditUsuario').value = u.usuario || '';
+  document.getElementById('uEditDni').value = u.dni || '';
+  document.getElementById('uEditCargo').value = u.cargo || '';
+  document.getElementById('uEditCodInterno').value = u.cod_interno || '';
+  document.getElementById('uEditCodSist').value = u.cod_sist || '';
+  document.getElementById('uEditModelo').value = u.modelo || '';
+  document.getElementById('uEditMarca').value = u.marca || '';
+  document.getElementById('uEditMotor').value = u.numero_motor || '';
+  document.getElementById('uEditChasis').value = u.numero_chasis || '';
+  document.getElementById('uEditAnio').value = u.anio || '';
+  document.getElementById('uEditEstatus').value = u.estatus || 'Operativo';
+  document.getElementById('uEditZonaRec').value = u.zona_recorrido || '';
+  document.getElementById('uEditEmpresa').value = u.empresa || 'RAPEL';
+  document.getElementById('uEditZonaAbast').value = u.zona_abastecimiento_actual || '';
+  const modal = document.getElementById('uModalEditar');
+  modal.style.display = 'flex';
+};
+
+window.uCerrarModal = function() {
+  document.getElementById('uModalEditar').style.display = 'none';
+};
+
+window.uGuardarEdicion = async function() {
+  const id = document.getElementById('uEditId').value;
+  if(!id) return;
+  const datos = {
+    usuario: document.getElementById('uEditUsuario').value.trim().toUpperCase(),
+    dni: document.getElementById('uEditDni').value.trim(),
+    cargo: document.getElementById('uEditCargo').value.trim().toUpperCase(),
+    cod_interno: document.getElementById('uEditCodInterno').value.trim().toUpperCase(),
+    cod_sist: document.getElementById('uEditCodSist').value.trim().toUpperCase(),
+    modelo: document.getElementById('uEditModelo').value.trim().toUpperCase(),
+    marca: document.getElementById('uEditMarca').value.trim().toUpperCase(),
+    numero_motor: document.getElementById('uEditMotor').value.trim(),
+    numero_chasis: document.getElementById('uEditChasis').value.trim(),
+    anio: parseInt(document.getElementById('uEditAnio').value) || 0,
+    estatus: document.getElementById('uEditEstatus').value,
+    zona_recorrido: document.getElementById('uEditZonaRec').value.trim().toUpperCase(),
+    empresa: document.getElementById('uEditEmpresa').value,
+    zona_abastecimiento_actual: document.getElementById('uEditZonaAbast').value.trim().toUpperCase()
+  };
+  if(!datos.usuario || !datos.dni || !datos.cod_interno) {
+    showToast('⚠️ Usuario, DNI y Código Interno son obligatorios', true);
+    return;
+  }
+  try {
+    await updateDoc(doc(db, COL_UNID, id), datos);
+    const idx = uUnidades.findIndex(u => u.id === id);
+    if(idx !== -1) uUnidades[idx] = { ...uUnidades[idx], ...datos };
+    // Actualizar selectores en formularios de mantenimiento y licencias
+    uPoblarSelectores();
+    uRenderTablaUnid();
+    uRenderDashboard();
+    uCerrarModal();
+    showToast('✅ Unidad actualizada correctamente', false, true);
+  } catch(e) {
+    showToast('❌ Error al guardar cambios', true);
+  }
+};
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('uModalEditar')?.addEventListener('click', function(e) {
+  if(e.target === this) uCerrarModal();
+});
