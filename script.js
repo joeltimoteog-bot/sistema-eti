@@ -589,7 +589,17 @@ function initBotones(){
   if(bc) bc.addEventListener('click',limpiarTodo);
 }
 
-function renderAll(){renderDashboard();renderTabla();renderRanking();}
+function renderAll(){
+  // Solo renderizar la pestaña activa para evitar parpadeo
+  const activeTab = document.querySelector('.tab-content.active');
+  if(!activeTab) return;
+  const tabId = activeTab.id;
+  // Siempre actualizar tabla (datos en memoria)
+  renderTabla();
+  if(tabId==='tab-dashboard') renderDashboard();
+  else if(tabId==='tab-ranking') renderRanking();
+  // Estadísticas NO se llaman desde aquí, solo al hacer clic en la pestaña
+}
 
 // ─── UTILS ────────────────────────────────────────────────────
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -802,8 +812,8 @@ function renderChartAvanceRetraso(data) {
         ]
       },
       options:{
-        responsive:true,maintainAspectRatio:true,
-        animation:{duration:400},
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:300},
         plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},
         scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{stepSize:1}}}
       }
@@ -834,8 +844,8 @@ function renderChartMesStats(data) {
         }]
       },
       options:{
-        responsive:true,maintainAspectRatio:true,
-        animation:{duration:400},
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:300},
         plugins:{legend:{display:false}},
         scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}
       }
