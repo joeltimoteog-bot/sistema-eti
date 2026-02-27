@@ -312,7 +312,7 @@ tbody td{padding:10px 12px;vertical-align:middle}
 .stats-main-sub{font-size:12px;opacity:.85}
 
 /* Filtros */
-.stats-filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:22px;background:white;padding:20px 24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-md)}
+.stats-filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:22px;background:white;padding:20px 24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-md)}
 .stats-filter-group{display:flex;flex-direction:column;gap:7px}
 .stats-filter-label{font-size:11px;font-weight:700;color:var(--azul-deep);text-transform:uppercase;letter-spacing:.8px}
 .stats-select{padding:10px 14px;border:2px solid var(--gris-border);border-radius:9px;font-family:Tahoma,sans-serif;font-size:13px;color:#1a2a3a;outline:none;cursor:pointer;transition:border-color .2s;background:white}
@@ -386,5 +386,13 @@ tbody td{padding:10px 12px;vertical-align:middle}
   .stats-chart-wrap{width:140px;height:140px;margin:0 auto}
 }
 @media(max-width:600px){.stats-kpi-row{grid-template-columns:repeat(2,1fr)}}
+
+/* Tipo personal badges */
+.badge-obrero{background:#e8f5e9;color:#1a6030;border:1px solid #a5d6a7;}
+.badge-empleado{background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;}
+.tp-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+@media(max-width:900px){.stats-filters{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.stats-filters{grid-template-columns:1fr}}
+
 
 
