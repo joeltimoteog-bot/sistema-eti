@@ -245,6 +245,46 @@ function initForm() {
     document.getElementById('fSector').value=this.value?this.value.split('|')[1]||'':'';
     verificarRetrasoForm();
   });
+  // Mostrar bloque tipo personal cuando se selecciona un tema
+  document.getElementById('fTema').addEventListener('change',function(){
+    const bloquePersonal=document.getElementById('bloquePersonal');
+    const bloqueRutas=document.getElementById('bloqueRutas');
+    const bloqueAreas=document.getElementById('bloqueAreas');
+    if(this.value){
+      bloquePersonal.style.display='block';
+    } else {
+      bloquePersonal.style.display='none';
+      bloqueRutas.style.display='block';
+      bloqueAreas.style.display='none';
+      document.querySelectorAll('input[name="tipoPersonal"]').forEach(r=>r.checked=false);
+    }
+    verificarRetrasoForm();
+  });
+  // Mostrar rutas u áreas según tipo de personal
+  document.querySelectorAll('input[name="tipoPersonal"]').forEach(r=>{
+    r.addEventListener('change',function(){
+      const bloqueRutas=document.getElementById('bloqueRutas');
+      const bloqueAreas=document.getElementById('bloqueAreas');
+      if(this.value==='OBREROS'){
+        bloqueRutas.style.display='block';
+        bloqueAreas.style.display='none';
+        document.getElementById('areasItemsCont').innerHTML='';
+        document.getElementById('fCantAreas').value='';
+      } else {
+        bloqueRutas.style.display='none';
+        bloqueAreas.style.display='block';
+        // Limpiar rutas
+        document.querySelectorAll('input[name="tipoRutas"]').forEach(x=>x.checked=false);
+        document.getElementById('rutasNumeroCont').style.display='none';
+        document.getElementById('rutasVariasCont').style.display='none';
+        document.getElementById('rutasItemsCont').innerHTML='';
+      }
+    });
+  });
+  // Generar filas de áreas dinámicamente
+  document.getElementById('fCantAreas').addEventListener('input',function(){
+    generarFilasAreas(parseInt(this.value)||0);
+  });
   ['fVarones','fMujeres'].forEach(id=>document.getElementById(id).addEventListener('input',calcularTotal));
   document.getElementById('fFechaEjecucion').addEventListener('change',verificarRetrasoForm);
   document.getElementById('fFechaEnvio').addEventListener('change',verificarRetrasoForm);
@@ -310,6 +350,30 @@ function obtenerRutas(){
   return {tipo:'detalle',rutas};
 }
 
+function generarFilasAreas(cant){
+  const cont=document.getElementById('areasItemsCont');
+  if(cant<1||cant>50){cont.innerHTML='';return;}
+  let html=`<div class="ruta-header"><span>#</span><span>Nombre del Área</span><span>N° Empleados</span></div>`;
+  for(let i=1;i<=cant;i++){
+    html+=`<div class="ruta-item-row">
+      <div class="ruta-num">${i}</div>
+      <input type="text" class="area-nombre" placeholder="Ej: Recursos Humanos" maxlength="80"/>
+      <input type="number" class="area-cant" placeholder="Cant." min="0" style="max-width:80px"/>
+    </div>`;
+  }
+  cont.innerHTML=html;
+}
+
+function obtenerAreas(){
+  const areas=[];
+  const nombres=document.querySelectorAll('.area-nombre');
+  const cants=document.querySelectorAll('.area-cant');
+  nombres.forEach((n,i)=>{
+    if(n.value.trim()) areas.push({nombre:n.value.trim(),cantidad:parseInt(cants[i].value)||0});
+  });
+  return areas;
+}
+
 function mostrarPreview(){
   const fechaE=document.getElementById('fFechaEjecucion').value;
   if(!fechaE){showToast('Ingresa la fecha de ejecución primero.',true);return;}
@@ -336,6 +400,9 @@ async function guardarRegistro(){
   const fechaEnv=document.getElementById('fFechaEnvio').value;
   const obs=document.getElementById('fObservaciones').value.trim();
   if(!supVal||varones===''||mujeres===''||!tema||!fechaE){showToast('Completa todos los campos obligatorios (*).', true);return;}
+  // Tipo de personal (opcional para registros nuevos, requerido si se seleccionó tema)
+  const tpEl=document.querySelector('input[name="tipoPersonal"]:checked');
+  const tipoPersonal=tpEl?tpEl.value:'';
   const {fechaLimite,temporada}=calcularFechaLimite(fechaE);
   const fLimite=new Date(fechaLimite+'T12:00:00');
   const hoy=new Date();hoy.setHours(0,0,0,0);
@@ -349,12 +416,15 @@ async function guardarRegistro(){
   }
   const [supervisor,sector]=supVal.split('|');
   const v=parseInt(varones)||0,m=parseInt(mujeres)||0;
-  const rutasData=obtenerRutas();
+  const rutasData=tipoPersonal==='EMPLEADOS'?{tipo:'ninguna',rutas:[]}:obtenerRutas();
+  const areasData=tipoPersonal==='EMPLEADOS'?obtenerAreas():[];
   const reg={
     supervisor,sector,varones:v,mujeres:m,total:v+m,
     tema,fechaEjecucion:fechaE,fechaLimite,temporada,
     fechaEnvio:fechaEnv||null,observaciones:obs,
+    tipoPersonal:tipoPersonal||'',
     rutasTipo:rutasData.tipo,rutas:rutasData.rutas,
+    areas:areasData,
     registradoPor:usuarioActual?usuarioActual.nombre:'',
     creadoEn:new Date().toISOString()
   };
@@ -369,6 +439,10 @@ async function guardarRegistro(){
     document.getElementById('rutasNumeroCont').style.display='none';
     document.getElementById('rutasVariasCont').style.display='none';
     document.getElementById('rutasItemsCont').innerHTML='';
+    document.getElementById('bloquePersonal').style.display='none';
+    document.getElementById('bloqueRutas').style.display='block';
+    document.getElementById('bloqueAreas').style.display='none';
+    document.getElementById('areasItemsCont').innerHTML='';
     document.getElementById('obsAlert').style.display='none';
     document.getElementById('fObservaciones').style.borderColor='';
     // Ir a tabla
@@ -397,8 +471,12 @@ function renderTabla(){
     if(r.rutasTipo==='varias') rutasCell='<span class="badge badge-baja">Rutas Varias</span>';
     else if(r.rutasTipo==='detalle'&&r.rutas&&r.rutas.length>0) rutasCell=`<span title="${r.rutas.map(x=>x.codigo+' '+x.nombre).join(', ')}">${r.rutas.length} ruta(s)</span>`;
     const cr=est.retraso>50?'fill-red':'fill-orange';
+    const tpLabel = r.tipoPersonal==='OBREROS'?'<span class="badge badge-obrero tp-badge">👷 Obreros</span>':
+                     r.tipoPersonal==='EMPLEADOS'?'<span class="badge badge-empleado tp-badge">💼 Empleados</span>':
+                     '<span style="color:var(--gris-muted);font-size:10px;">–</span>';
     return `<tr>
       <td>${i+1}</td><td><strong>${esc(r.supervisor)}</strong></td><td>${esc(r.sector)}</td>
+      <td>${tpLabel}</td>
       <td class="text-right" style="color:#0050c8;font-weight:700">${r.varones}</td>
       <td class="text-right" style="color:#cc0000;font-weight:700">${r.mujeres}</td>
       <td class="text-right"><strong>${r.total}</strong></td>
@@ -630,9 +708,11 @@ let statsInitialized=false;
 function initEstadisticas() {
   const selSup = document.getElementById('statSupervisor');
   const selTipo = document.getElementById('statTipo');
+  const selPersonal = document.getElementById('statPersonal');
   if(!selSup||!selTipo) return;
   selSup.addEventListener('change', () => { actualizarSectorDisplay(); renderEstadisticas(); });
   selTipo.addEventListener('change', renderEstadisticas);
+  if(selPersonal) selPersonal.addEventListener('change', renderEstadisticas);
   statsInitialized=true;
 }
 
@@ -660,6 +740,8 @@ function actualizarSectorDisplay() {
 function filtrarRegistrosStats() {
   const supVal = document.getElementById('statSupervisor').value;
   const tipoVal = document.getElementById('statTipo').value;
+  const personalEl = document.getElementById('statPersonal');
+  const personalVal = personalEl ? personalEl.value : '';
   let data = [...registros];
   if(supVal) {
     const [sup, sector] = supVal.split('|');
@@ -667,6 +749,10 @@ function filtrarRegistrosStats() {
   }
   if(tipoVal) {
     data = data.filter(r => r.tema === tipoVal);
+  }
+  if(personalVal) {
+    // Registros antiguos sin tipoPersonal se incluyen solo si no se filtra
+    data = data.filter(r => r.tipoPersonal === personalVal);
   }
   return data;
 }
@@ -755,8 +841,27 @@ function renderEstadisticas() {
   renderChartAvanceRetraso(data);
   renderChartMesStats(data);
 
-  // ── RUTAS ──
-  renderRutasStats(data);
+  // ── RUTAS / ÁREAS según filtro de personal ──
+  const personalEl = document.getElementById('statPersonal');
+  const personalVal = personalEl ? personalEl.value : '';
+  const rutasPanel = document.getElementById('statsRutasPanel');
+  const areasPanel = document.getElementById('statsAreasPanel');
+
+  if(personalVal === 'EMPLEADOS') {
+    if(rutasPanel) rutasPanel.style.display='none';
+    if(areasPanel) areasPanel.style.display='block';
+    renderAreasStats(data);
+  } else if(personalVal === 'OBREROS') {
+    if(rutasPanel) rutasPanel.style.display='block';
+    if(areasPanel) areasPanel.style.display='none';
+    renderRutasStats(data);
+  } else {
+    // Mostrar ambos
+    if(rutasPanel) rutasPanel.style.display='block';
+    if(areasPanel) areasPanel.style.display='block';
+    renderRutasStats(data);
+    renderAreasStats(data);
+  }
 }
 
 function renderSectorStats(data) {
@@ -892,6 +997,54 @@ function renderRutasStats(data) {
     });
     html+=`</div>`;
   }
+  body.innerHTML=html;
+}
+
+function renderAreasStats(data) {
+  const body = document.getElementById('statsAreasBody');
+  if(!body) return;
+
+  // Solo registros con tipo EMPLEADOS y con áreas registradas
+  const conAreas = data.filter(r => r.tipoPersonal==='EMPLEADOS' && r.areas && r.areas.length>0);
+
+  if(conAreas.length===0) {
+    body.innerHTML='<p class="stats-empty">No hay datos de áreas para esta selección. Los registros de empleados aparecerán aquí.</p>';
+    return;
+  }
+
+  // Consolidar áreas
+  const areaMap = {};
+  let totalEmpleados=0, totalAreas=0;
+  conAreas.forEach(r => {
+    r.areas.forEach(a => {
+      const key = a.nombre.toUpperCase();
+      if(!areaMap[key]) areaMap[key]={nombre:a.nombre,empleados:0,actividades:0};
+      areaMap[key].empleados += a.cantidad||0;
+      areaMap[key].actividades++;
+      totalEmpleados += a.cantidad||0;
+      totalAreas++;
+    });
+  });
+
+  const areasList = Object.values(areaMap).sort((a,b)=>b.empleados-a.empleados);
+
+  let html=`<div class="stats-rutas-summary">
+    <div class="sruta-summary-item">🏢 Áreas distintas: <strong>${areasList.length}</strong></div>
+    <div class="sruta-summary-item">👥 Total empleados intervenidos: <strong>${totalEmpleados}</strong></div>
+    <div class="sruta-summary-item">📋 Total intervenciones: <strong>${conAreas.length}</strong></div>
+  </div>
+  <div class="stats-rutas-grid">`;
+
+  areasList.forEach(a => {
+    html+=`<div class="sruta-card" style="border-left-color:#0050c8;">
+      <div>
+        <div class="sruta-name">🏢 ${esc(a.nombre)}</div>
+        <div class="sruta-code">${a.actividades} actividad${a.actividades>1?'es':''}</div>
+      </div>
+      <div class="sruta-count" style="background:#e8f0ff;color:#0050c8;">${a.empleados}</div>
+    </div>`;
+  });
+  html+=`</div>`;
   body.innerHTML=html;
 }
 
