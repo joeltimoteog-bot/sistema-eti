@@ -1096,6 +1096,7 @@ async function initUnidades() {
   uInitFormLic();
   uInitFiltros();
   uInitBotones();
+  document.getElementById('uModalEditar')?.addEventListener('click',function(e){if(e.target===this)uCerrarModal();});
   uRenderDashboard();
   uRenderTablaUnid();
   uRenderTablaMant();
@@ -1639,9 +1640,6 @@ window.uGuardarEdicion = async function() {
 };
 
 // Cerrar modal al hacer clic fuera
-document.getElementById('uModalEditar')?.addEventListener('click', function(e) {
-  if(e.target === this) uCerrarModal();
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  MÓDULO GERENCIAL – ANALÍTICA DE DESEMPEÑO GH
@@ -1826,6 +1824,9 @@ function gInitBotones(){
   document.getElementById('gBtnRankPdf')?.addEventListener('click',gExpRankingPDF);
   document.getElementById('gBtnExpInfExcel')?.addEventListener('click',()=>gExpExcel(gEvaluaciones,'Evaluaciones','informe_gh.xlsx'));
   document.getElementById('gBtnNuevoSup')?.addEventListener('click',()=>gAbrirModal(null));
+  // Modal overlay click handlers
+  document.getElementById('gModalSup')?.addEventListener('click',function(e){if(e.target===this)gCerrarModal();});
+  document.getElementById('gModalRapido')?.addEventListener('click',function(e){if(e.target===this)gCerrarModalRapido();});
 }
 
 // ── GUARDAR EVALUACIÓN ────────────────────────────────────────
@@ -2253,7 +2254,6 @@ window.gAbrirModal=function(id){
   document.getElementById('gModalSup').classList.add('open');
 };
 window.gCerrarModal=function(){document.getElementById('gModalSup').classList.remove('open');};
-document.getElementById('gModalSup')?.addEventListener('click',function(e){if(e.target===this)gCerrarModal();});
 
 window.gGuardarSupervisor=async function(){
   const id=document.getElementById('gMsId').value;
@@ -2339,9 +2339,7 @@ window.gCerrarModalRapido = function() {
   document.getElementById('gModalRapido').classList.remove('open');
 };
 
-document.getElementById('gModalRapido')?.addEventListener('click', function(e) {
-  if (e.target === this) gCerrarModalRapido();
-});
+// listener moved to initGerencial
 
 window.gGuardarRapido = async function() {
   const nombre = document.getElementById('gMrNombre').value.trim().toUpperCase();
@@ -2399,58 +2397,3 @@ window.gGuardarRapido = async function() {
   }
 };
 
-  document.getElementById('uEditAnio').value = u.anio || '';
-  document.getElementById('uEditEstatus').value = u.estatus || 'Operativo';
-  document.getElementById('uEditZonaRec').value = u.zona_recorrido || '';
-  document.getElementById('uEditEmpresa').value = u.empresa || 'RAPEL';
-  document.getElementById('uEditZonaAbast').value = u.zona_abastecimiento_actual || '';
-  const modal = document.getElementById('uModalEditar');
-  modal.style.display = 'flex';
-};
-
-window.uCerrarModal = function() {
-  document.getElementById('uModalEditar').style.display = 'none';
-};
-
-window.uGuardarEdicion = async function() {
-  const id = document.getElementById('uEditId').value;
-  if(!id) return;
-  const datos = {
-    usuario: document.getElementById('uEditUsuario').value.trim().toUpperCase(),
-    dni: document.getElementById('uEditDni').value.trim(),
-    cargo: document.getElementById('uEditCargo').value.trim().toUpperCase(),
-    cod_interno: document.getElementById('uEditCodInterno').value.trim().toUpperCase(),
-    cod_sist: document.getElementById('uEditCodSist').value.trim().toUpperCase(),
-    modelo: document.getElementById('uEditModelo').value.trim().toUpperCase(),
-    marca: document.getElementById('uEditMarca').value.trim().toUpperCase(),
-    numero_motor: document.getElementById('uEditMotor').value.trim(),
-    numero_chasis: document.getElementById('uEditChasis').value.trim(),
-    anio: parseInt(document.getElementById('uEditAnio').value) || 0,
-    estatus: document.getElementById('uEditEstatus').value,
-    zona_recorrido: document.getElementById('uEditZonaRec').value.trim().toUpperCase(),
-    empresa: document.getElementById('uEditEmpresa').value,
-    zona_abastecimiento_actual: document.getElementById('uEditZonaAbast').value.trim().toUpperCase()
-  };
-  if(!datos.usuario || !datos.dni || !datos.cod_interno) {
-    showToast('⚠️ Usuario, DNI y Código Interno son obligatorios', true);
-    return;
-  }
-  try {
-    await updateDoc(doc(db, COL_UNID, id), datos);
-    const idx = uUnidades.findIndex(u => u.id === id);
-    if(idx !== -1) uUnidades[idx] = { ...uUnidades[idx], ...datos };
-    // Actualizar selectores en formularios de mantenimiento y licencias
-    uPoblarSelectores();
-    uRenderTablaUnid();
-    uRenderDashboard();
-    uCerrarModal();
-    showToast('✅ Unidad actualizada correctamente', false, true);
-  } catch(e) {
-    showToast('❌ Error al guardar cambios', true);
-  }
-};
-
-// Cerrar modal al hacer clic fuera
-document.getElementById('uModalEditar')?.addEventListener('click', function(e) {
-  if(e.target === this) uCerrarModal();
-});
