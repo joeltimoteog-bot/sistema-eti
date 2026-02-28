@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -70,6 +71,7 @@
   <button class="tab-btn" data-tab="ranking">🏆 Ranking</button>
   <button class="tab-btn" data-tab="estadisticas">📈 Estadísticas</button>
   <button class="tab-btn" data-tab="unidades">🚗 Unidades</button>
+  <button class="tab-btn" data-tab="gerencial">🧠 Gerencial</button>
 </nav>
 
 <!-- DASHBOARD -->
@@ -703,6 +705,308 @@
 </section>
 
 
+<!-- ══════════════════════════════════════
+     MÓDULO GERENCIAL
+══════════════════════════════════════ -->
+<section class="tab-content" id="tab-gerencial">
+  <div class="ger-wrapper">
+
+    <!-- SUB-TABS -->
+    <div class="ger-subnav">
+      <button class="ger-tab active" data-gtab="g-dashboard">🧭 Dashboard</button>
+      <button class="ger-tab" data-gtab="g-evaluacion">📝 Evaluación 360°</button>
+      <button class="ger-tab" data-gtab="g-seguimiento">📅 Seguimiento</button>
+      <button class="ger-tab" data-gtab="g-ranking">🏆 Ranking</button>
+      <button class="ger-tab" data-gtab="g-informes">📑 Informes</button>
+      <button class="ger-tab" data-gtab="g-supervisores">⚙️ Supervisores</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="ger-content active" id="g-dashboard">
+      <div class="ger-kpi-row">
+        <div class="ger-kpi"><div class="ger-kpi-icon">👥</div><div class="ger-kpi-val" id="gkSups">0</div><div class="ger-kpi-lab">Supervisores</div></div>
+        <div class="ger-kpi gverde"><div class="ger-kpi-icon">🏆</div><div class="ger-kpi-val" id="gkExc">0</div><div class="ger-kpi-lab">Excelente</div></div>
+        <div class="ger-kpi"><div class="ger-kpi-icon">👍</div><div class="ger-kpi-val" id="gkBue">0</div><div class="ger-kpi-lab">Bueno</div></div>
+        <div class="ger-kpi gamarillo"><div class="ger-kpi-icon">⚠️</div><div class="ger-kpi-val" id="gkReg">0</div><div class="ger-kpi-lab">Regular</div></div>
+        <div class="ger-kpi grojo"><div class="ger-kpi-icon">🚨</div><div class="ger-kpi-val" id="gkCrit">0</div><div class="ger-kpi-lab">Críticos</div></div>
+        <div class="ger-kpi gmorado"><div class="ger-kpi-icon">📝</div><div class="ger-kpi-val" id="gkEvals">0</div><div class="ger-kpi-lab">Evaluaciones</div></div>
+        <div class="ger-kpi gnaranja"><div class="ger-kpi-icon">📅</div><div class="ger-kpi-val" id="gkSegs">0</div><div class="ger-kpi-lab">Seguimientos</div></div>
+      </div>
+      <div class="ger-panel-grid">
+        <div class="ger-panel"><div class="ger-panel-title">🚨 Supervisores Críticos</div><div id="gDashCriticos"><p class="ger-empty">Sin datos aún.</p></div></div>
+        <div class="ger-panel"><div class="ger-panel-title">🏆 Mejores Supervisores</div><div id="gDashMejores"><p class="ger-empty">Sin datos aún.</p></div></div>
+      </div>
+      <div class="ger-charts-row">
+        <div class="ger-chart-card"><div class="ger-chart-title">📊 Distribución de Desempeño</div><canvas id="gChartDistrib" height="180"></canvas></div>
+        <div class="ger-chart-card"><div class="ger-chart-title">🏢 RAPEL vs VERFRUT</div><canvas id="gChartEmpresas" height="180"></canvas></div>
+        <div class="ger-chart-card"><div class="ger-chart-title">📈 Tendencia Mensual</div><canvas id="gChartTend" height="180"></canvas></div>
+        <div class="ger-chart-card"><div class="ger-chart-title">🗺️ Desempeño por Sector</div><canvas id="gChartSec" height="180"></canvas></div>
+      </div>
+    </div>
+
+    <!-- EVALUACIÓN 360° -->
+    <div class="ger-content" id="g-evaluacion">
+      <div class="ger-panel">
+        <div class="ger-panel-title">📝 Nueva Evaluación 360°</div>
+        <div class="ger-section">
+          <div class="ger-section-title">👤 Seleccionar Supervisor</div>
+          <div class="ger-form-grid">
+            <div class="ger-fg">
+              <label>Supervisor *</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <select id="gEvSup" style="flex:1;"></select>
+                <button type="button" class="ger-btn ger-btn-morado" style="padding:8px 10px;font-size:11px;white-space:nowrap;" onclick="gAbrirModalRapido('evaluacion')" title="Agregar nuevo supervisor">➕ Nuevo</button>
+              </div>
+            </div>
+            <div class="ger-fg"><label>Empresa</label><input id="gEvEmpresa" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Sector(es)</label><input id="gEvSector" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Administrador</label><input id="gEvAdmin" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Tipo de Evaluación *</label>
+              <select id="gEvTipo">
+                <option value="">— Seleccionar —</option>
+                <option value="diaria">📅 Diaria – Seguimiento Operativo</option>
+                <option value="quincenal">📊 Quincenal – Control Táctico</option>
+                <option value="mensual">🎯 Mensual – Evaluación 360°</option>
+              </select>
+            </div>
+            <div class="ger-fg"><label>Periodo</label><input type="month" id="gEvPeriodo"/></div>
+            <div class="ger-fg"><label>Fecha *</label><input type="date" id="gEvFecha"/></div>
+            <div class="ger-fg"><label>Evaluador</label><input type="text" id="gEvEvaluador" placeholder="Nombre"/></div>
+          </div>
+        </div>
+        <div class="ger-section">
+          <div class="ger-section-title">⭐ Criterios <span style="font-size:10px;color:var(--gris-muted);">(1=Deficiente · 5=Excelente)</span></div>
+          <div id="gRatingGroup"></div>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:14px;padding:12px 16px;background:#f3e5f5;border-radius:8px;">
+            <div style="font-size:12px;font-weight:700;color:#6a1b9a;">Puntaje Total:</div>
+            <div style="font-size:26px;font-weight:700;color:#6a1b9a;" id="gEvPuntaje">0%</div>
+            <div style="font-size:13px;font-weight:700;" id="gEvNivel">–</div>
+          </div>
+        </div>
+        <div class="ger-section">
+          <div class="ger-section-title">💬 Feedback</div>
+          <div class="ger-form-grid">
+            <div class="ger-fg gfull"><label>Fortalezas</label><textarea id="gEvFortalezas" rows="2" placeholder="Fortalezas identificadas..."></textarea></div>
+            <div class="ger-fg gfull"><label>Oportunidades de Mejora</label><textarea id="gEvMejoras" rows="2" placeholder="Áreas de mejora..."></textarea></div>
+            <div class="ger-fg gfull"><label>Recomendaciones</label><textarea id="gEvRecomendaciones" rows="2" placeholder="Plan de acción..."></textarea></div>
+          </div>
+        </div>
+        <div class="ger-actions">
+          <button class="ger-btn ger-btn-primary" id="gBtnSaveEval">💾 Guardar Evaluación</button>
+          <button class="ger-btn ger-btn-pdf" id="gBtnPdfEval">📄 Generar Informe PDF</button>
+          <button class="ger-btn ger-btn-danger ger-btn-sm" id="gBtnClearEval">🗑 Limpiar</button>
+        </div>
+      </div>
+      <div class="ger-panel">
+        <div class="ger-toolbar">
+          <div class="ger-panel-title" style="margin:0">📋 Historial de Evaluaciones</div>
+          <div class="ger-actions">
+            <select class="ger-filter" id="gFiltEvSup"><option value="">Todos los supervisores</option></select>
+            <select class="ger-filter" id="gFiltEvTipo"><option value="">Todos los tipos</option><option value="diaria">Diaria</option><option value="quincenal">Quincenal</option><option value="mensual">Mensual</option></select>
+            <button class="ger-btn ger-btn-excel ger-btn-sm" id="gBtnExpEvals">📥 Excel</button>
+          </div>
+        </div>
+        <div class="ger-scroll">
+          <table class="ger-table">
+            <thead><tr><th>#</th><th>Supervisor</th><th>Empresa</th><th>Sector</th><th>Tipo</th><th>Periodo</th><th>Fecha</th><th>Puntaje</th><th>Nivel</th><th>Evaluador</th><th>Acc.</th></tr></thead>
+            <tbody id="gTbodyEvals"><tr><td colspan="11" class="ger-empty">Sin evaluaciones.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEGUIMIENTO -->
+    <div class="ger-content" id="g-seguimiento">
+      <div class="ger-panel">
+        <div class="ger-panel-title">📅 Registro de Seguimiento</div>
+        <div class="ger-section">
+          <div class="ger-form-grid-3">
+            <div class="ger-fg">
+              <label>Supervisor *</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <select id="gSegSup" style="flex:1;"></select>
+                <button type="button" class="ger-btn ger-btn-morado" style="padding:8px 10px;font-size:11px;white-space:nowrap;" onclick="gAbrirModalRapido('seguimiento')" title="Agregar nuevo supervisor">➕ Nuevo</button>
+              </div>
+            </div>
+            <div class="ger-fg"><label>Empresa</label><input id="gSegEmpresa" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Sector</label><input id="gSegSector" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Fecha *</label><input type="date" id="gSegFecha"/></div>
+            <div class="ger-fg"><label>Frecuencia</label>
+              <select id="gSegTipo"><option value="diario">📅 Diario</option><option value="quincenal">📊 Quincenal</option></select></div>
+            <div class="ger-fg"><label>Presencia en Campo</label>
+              <select id="gSegPresencia"><option value="completa">✅ Completa</option><option value="parcial">⚠️ Parcial</option><option value="ausente">❌ Ausente</option></select></div>
+            <div class="ger-fg"><label>Meta (%)</label><input type="number" id="gSegMeta" placeholder="%" min="0" max="100"/></div>
+            <div class="ger-fg"><label>Avance Logrado (%)</label><input type="number" id="gSegAvance" placeholder="%" min="0" max="100"/></div>
+          </div>
+          <div class="ger-form-grid" style="margin-top:10px;">
+            <div class="ger-fg"><label>Actividades Realizadas</label><textarea id="gSegActividades" rows="3" placeholder="Actividades del periodo..."></textarea></div>
+            <div class="ger-fg"><label>Incidencias / Observaciones</label><textarea id="gSegIncidencias" rows="3" placeholder="Incidencias o alertas..."></textarea></div>
+          </div>
+        </div>
+        <div class="ger-actions">
+          <button class="ger-btn ger-btn-primary" id="gBtnSaveSeg">💾 Guardar Seguimiento</button>
+          <button class="ger-btn ger-btn-danger ger-btn-sm" id="gBtnClearSeg">🗑 Limpiar</button>
+        </div>
+      </div>
+      <div class="ger-panel">
+        <div class="ger-toolbar">
+          <div class="ger-panel-title" style="margin:0">📋 Historial de Seguimientos</div>
+          <div class="ger-actions">
+            <select class="ger-filter" id="gFiltSegSup"><option value="">Todos</option></select>
+            <button class="ger-btn ger-btn-excel ger-btn-sm" id="gBtnExpSegs">📥 Excel</button>
+          </div>
+        </div>
+        <div class="ger-scroll">
+          <table class="ger-table">
+            <thead><tr><th>#</th><th>Supervisor</th><th>Empresa</th><th>Sector</th><th>Fecha</th><th>Tipo</th><th>Presencia</th><th>Meta</th><th>Avance</th><th>Actividades</th><th>Acc.</th></tr></thead>
+            <tbody id="gTbodySegs"><tr><td colspan="11" class="ger-empty">Sin seguimientos.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RANKING -->
+    <div class="ger-content" id="g-ranking">
+      <div class="ger-panel-grid">
+        <div class="ger-panel"><div class="ger-panel-title">🏆 Ranking General</div><div id="gRankGeneral"><p class="ger-empty">Sin evaluaciones.</p></div></div>
+        <div>
+          <div class="ger-panel" style="margin-bottom:16px;"><div class="ger-panel-title">🔵 RAPEL</div><div id="gRankRapel"><p class="ger-empty">Sin datos.</p></div></div>
+          <div class="ger-panel"><div class="ger-panel-title">🟢 VERFRUT</div><div id="gRankVerfrut"><p class="ger-empty">Sin datos.</p></div></div>
+        </div>
+      </div>
+      <div class="ger-panel">
+        <div class="ger-toolbar">
+          <div class="ger-panel-title" style="margin:0">📊 Comparativo Detallado</div>
+          <div class="ger-actions">
+            <button class="ger-btn ger-btn-pdf ger-btn-sm" id="gBtnRankPdf">📄 PDF</button>
+            <button class="ger-btn ger-btn-excel ger-btn-sm" id="gBtnRankExcel">📥 Excel</button>
+          </div>
+        </div>
+        <div class="ger-scroll">
+          <table class="ger-table">
+            <thead><tr><th>Pos.</th><th>Supervisor</th><th>Empresa</th><th>Sector</th><th>Evals.</th><th>Promedio</th><th>Campo</th><th>Admin.</th><th>Comunic.</th><th>Nivel</th><th>Tendencia</th></tr></thead>
+            <tbody id="gTbodyRanking"><tr><td colspan="11" class="ger-empty">Sin evaluaciones.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFORMES -->
+    <div class="ger-content" id="g-informes">
+      <div class="ger-panel">
+        <div class="ger-panel-title">📑 Generador de Informes Gerenciales</div>
+        <div class="ger-section">
+          <div class="ger-form-grid">
+            <div class="ger-fg">
+              <label>Supervisor *</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <select id="gInfSup" style="flex:1;"></select>
+                <button type="button" class="ger-btn ger-btn-morado" style="padding:8px 10px;font-size:11px;white-space:nowrap;" onclick="gAbrirModalRapido('informes')" title="Agregar nuevo supervisor">➕ Nuevo</button>
+              </div>
+            </div>
+            <div class="ger-fg"><label>Periodo</label><input type="month" id="gInfPeriodo"/></div>
+            <div class="ger-fg"><label>Empresa</label><input id="gInfEmpresa" readonly class="ger-readonly"/></div>
+            <div class="ger-fg"><label>Sector</label><input id="gInfSector" readonly class="ger-readonly"/></div>
+          </div>
+          <div class="ger-actions" style="margin-top:14px;">
+            <button class="ger-btn ger-btn-morado" id="gBtnGenInf">🧠 Generar Informe</button>
+            <button class="ger-btn ger-btn-pdf" id="gBtnDlInf">📄 Descargar PDF</button>
+            <button class="ger-btn ger-btn-excel ger-btn-sm" id="gBtnExpInfExcel">📥 Excel</button>
+          </div>
+        </div>
+      </div>
+      <div class="ger-panel" id="gInformePanel" style="display:none;">
+        <div class="ger-panel-title">👁️ Previsualización del Informe</div>
+        <div class="ger-informe" id="gInformeContent"></div>
+      </div>
+    </div>
+
+    <!-- SUPERVISORES CONFIG -->
+    <div class="ger-content" id="g-supervisores">
+      <div class="ger-panel">
+        <div class="ger-toolbar">
+          <div class="ger-panel-title" style="margin:0">⚙️ Gestión de Supervisores GH</div>
+          <button class="ger-btn ger-btn-morado" id="gBtnNuevoSup">➕ Nuevo Supervisor</button>
+        </div>
+        <p style="font-size:11px;color:var(--gris-text);margin-bottom:14px;">
+          💡 Agrega, edita o reasigna supervisores a nuevos sectores y administradores. El historial de evaluaciones se conserva siempre.
+        </p>
+        <div id="gListaSups"><p class="ger-empty">Cargando...</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- MODAL RÁPIDO NUEVO SUPERVISOR -->
+<div class="ger-modal" id="gModalRapido">
+  <div class="ger-modal-box" style="max-width:480px;">
+    <div class="ger-modal-header">
+      <h3>➕ Agregar Nuevo Supervisor</h3>
+      <button class="ger-modal-close" onclick="gCerrarModalRapido()">✕</button>
+    </div>
+    <div style="background:#f3e5f5;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#6a1b9a;font-weight:600;">
+      💡 El supervisor se agregará al sistema y quedará disponible de inmediato en el desplegable.
+    </div>
+    <input type="hidden" id="gMrOrigen"/>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="ger-fg">
+        <label>Nombre Completo *</label>
+        <input id="gMrNombre" placeholder="Ej: JUAN PEREZ GARCIA" style="text-transform:uppercase;"/>
+      </div>
+      <div class="ger-fg">
+        <label>Empresa *</label>
+        <select id="gMrEmpresa">
+          <option value="">— Seleccionar —</option>
+          <option value="RAPEL">🔵 RAPEL</option>
+          <option value="VERFRUT">🟢 VERFRUT</option>
+        </select>
+      </div>
+      <div class="ger-fg">
+        <label>Sector(es) *</label>
+        <input id="gMrSector" placeholder="Ej: El Papayo, Limones"/>
+      </div>
+      <div class="ger-fg">
+        <label>Administrador del Sector *</label>
+        <input id="gMrAdmin" placeholder="Ej: Junior Galindo"/>
+      </div>
+      <div class="ger-fg">
+        <label>Cargo</label>
+        <input id="gMrCargo" value="SUPERVISOR(A) DE GESTION HUMANA"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+      <button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gCerrarModalRapido()">✕ Cancelar</button>
+      <button class="ger-btn ger-btn-morado" onclick="gGuardarRapido()">💾 Guardar y Seleccionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUPERVISOR GH -->
+<div class="ger-modal" id="gModalSup">
+  <div class="ger-modal-box">
+    <div class="ger-modal-header">
+      <h3 id="gModalSupTitulo">➕ Nuevo Supervisor</h3>
+      <button class="ger-modal-close" onclick="gCerrarModal()">✕</button>
+    </div>
+    <div class="ger-form-grid">
+      <input type="hidden" id="gMsId"/>
+      <div class="ger-fg gfull"><label>Nombre completo *</label><input id="gMsNombre" placeholder="Nombre del supervisor"/></div>
+      <div class="ger-fg"><label>Empresa *</label>
+        <select id="gMsEmpresa"><option value="RAPEL">🔵 RAPEL</option><option value="VERFRUT">🟢 VERFRUT</option></select></div>
+      <div class="ger-fg"><label>Sector(es) *</label><input id="gMsSector" placeholder="Ej: El Papayo, Limones"/></div>
+      <div class="ger-fg"><label>Administrador *</label><input id="gMsAdmin" placeholder="Nombre del administrador"/></div>
+      <div class="ger-fg"><label>Cargo</label><input id="gMsCargo" value="SUPERVISOR(A) DE GESTION HUMANA"/></div>
+      <div class="ger-fg"><label>Estado</label>
+        <select id="gMsEstado"><option value="activo">✅ Activo</option><option value="inactivo">⛔ Inactivo</option></select></div>
+    </div>
+    <div class="ger-actions" style="margin-top:16px;justify-content:flex-end;">
+      <button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gCerrarModal()">✕ Cancelar</button>
+      <button class="ger-btn ger-btn-morado" onclick="gGuardarSupervisor()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-logo-wrap"><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACwAMMDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAcBAgUGCAMECf/EAEYQAAEDAwIDBQYCBgcGBwAAAAEAAgMEBREGIQcSMQgTQVFhFCIycYGRFaEjQlJykrEWJTNDU2KiFxgmNnOClLLBwsPS4f/EABsBAQABBQEAAAAAAAAAAAAAAAADAQIEBQYH/8QANhEAAQMCAwUGBAYCAwAAAAAAAQACAwQRBSExBhJBUWETMnGBkaEUIrHBBxVC0fDxI1IzcuH/2gAMAwEAAhEDEQA/AOy0REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREVHHBWu6h1xpDTrXG96mtdC5v6klS3n/hBJP2VzWuebNF1QkDVbGih+9do3hnb3ubBcK+4kDb2Wjdg/V/KFqFb2rrG1zhQ6TuE/l31XHHn7cxWYzDat+jD55fVQuqoW6uXR6Ll53alvEpPsug2OHhmse7+Uas/wB53VIOToCLH/WmH/xqX8nq/wDX3H7qz4yLn7LqRFy8ztU3GJwFZoRjQOuK5zT+caylD2rtPPe0VulrnACdzFUxSY+/KqHCKwfo9x+6CshP6l0aiiCz9ozhlXvDJ7hX27I61VE8NH1ZzBb7p3W+kNQhv4LqW11zndI46lvP/CTn8liSUs0ffYR5KZszHaELYkVGkEKqgUiIiIiIiIiIiIiIiIiIiIiKhVVrGsarVsk8Vr0rRUsL5W5mulc7MNMDke7GDzSybdPdaNsk9Fc1u8bKjjYXX36o1JYtM291xv8AdqW20rf7yeQN5j5NHVx9BkqOKriXrXUpMXDbQVXUU5+G63oGlpz6tYcPcPt8ls+nOG1ioLk2+Xh8+o7/AONyuZEj2ekbPgiHo0D5lbuAPJTh8Meg3j109NfU+Sjs9/G31/n8uoOq+FnEzVwLtc8TpqaB+C6hs8JjjHoXe7n6gr77J2cOGdA4SVdJcbpL1c6rrHe98wzlCmNFea+otZrrDpl9FT4ePiL+Oa0u1cLOHVsdzUejLK1w/WkpWyH7uytipbDY6XHs1mt0GOnd0rG4+wWSRY7pZHd5xPmpAxrdArI444xhkbWj0bhXoijVy8pqeCYcs0McgPg5gP8ANY2q0zpyqBFVYLVOD1ElHG7+YWXRXBxGhVCAVolz4RcNLg5zqnRlpa49XQw90fuwhajeOzXw3rXGSibdbZJnIdT1fMAflIHKaUU7K2oZ3Xn1UboI3atCgmm4U8T9IgHQ3FCWogZkiiu8JkjPpnLgPoAsnScSuIOmT3XETh3VGmb8d0sR9qhaPN0Y95o+v0Ux4HkqYHkrzWGT/laHddD6j73Vog3e4SFgNH6x01q6jNVp69Ute1n9oyN+JIj5PYcOafmFn2nIWpao4e6Wvte25y0LqC7R7x3O3yGnqoz587fi+TsjzBVltn1dYKqKhu+dRW57wxlxp4gyphycDvohs8b7vZj1b4qJzI3ZxnyP76H28FeHOHeW4oqNzjcKqgUiIiIiIiIiK15IVy8K2My08kbX8hcwtDvIkdUQKD+IHaEo7Hf5rVYbSLqKeQxS1MtR3cZeOrWYBJwds9FvHCTibauIVFP7PTyUNwpMe00kjg4tB6OafFuds4C43v8AaLhYr1WWi6QuirKZ5ZK1wOTj9YftB3xZ8cqYuyFaLjPq64X5rXNtsNGaYvxhr5HOaeUfINyfmFoaaunkqA12h4cl6zjmyuE0uDunhyc0Ah1yd7TrbPhb6LqRu4yqqjNghW+Xkyqitzv1TKIrkVpKZ26oiuVriQdimVD/AGnddVumNO0lns9QYLldXODpWn34oGj3iPIkkAH5+OFFNM2Fhe7QLOw3D5cRqmU0WrvYak+QzUg3zWukrHM6G7aktdHM34opapoePm3OQvhpuJWgal36LWVk/wC6tY3H3IXD1voqm63Sno6WF1TV1UzY42h2XSSO23+Z8fRTnp7s53sXW31F8u1rkoRMx9ZTwh5dyjctaSMHPT5ErVxV9RKf8bLhd5X7IYRhjB8XVEOIvoM7chn7ldM00sc8DJoZGyxvAcx7TkOBGxBXovKMMjY1kYa1rRgNaMADyVwdt1C3K81Nr5K9FbkoCcIiuwEwPJUyrXE52RFc7bxwvF9RFHMyF8zGySZ5GlwDnY3OB44C5i4l8fdTPu1fadNMo7fS0874RV/2kzw1xbzDI5W5xkbZX3dlWG5ah1redVXmsq6+WkphTsmqZC8iSR2XYz091o2Hn6rXjEGPlEUYuuul2PqqWgfXVbgwAXA1JJ0HIa9fBdKs6dVVUZ0VVsFyKIiIihPtJVnErTVE3VGjr9UMtcbQ2vpBTRv9nx0maS3PL4OHhsemVHfA7j5fX6vZate3RtVb68tihqnxMiNLKTsXcoA5DnBz0OOm66rqYYp4XwTxskikaWPY9uWuadiCOhBC4k7RHCuXQN9FwtkT36cr5D7M7r7K/wAYXHy/ZJ6jbqFvsNdT1LDTytAdwNs/7/njr6lskbu0YcuS7C1FpTTeonRvvlit9wfH8DqiBrnN9MlR/wAeOItv4X6RitWnoaSG81cZZQU8cbQymZ0MpaNsDoBjBPoCo84McfaK0cPay26tklmuFpg/q85y6uZ0bET4OacDP7O/UHMFXm46j4i66fVytkr7xdZwyKJnQE7NjaPBoH5Ak+KpRYLaoc6YfK33/wDOfopKjE5HwNja4kcBc2HlzUjaE4ncZdX6hitFv1Z3LA0y1NVLSwCOkgbu+WQ8mwA+5wPFZriV2ibyWCyaIqnCmgaIpLzUxNM9U4bF7GY5WAnJzjPkAvHi/YYOE3CK26Po5GPu+ope9vFWw4MkcQB7pvkzmc0AeOHeagRrXPkDGNc57jgADck+i28FNT1J7UMG7wy16n7X+6175JIhuXN1v9isvFfiTJNW291+vDA7lkqJa1zIQ7ry5c4N28h0yFh9Q0muNDXttBdprzZq1rRKwCseAW5wHNc1xDhsRt4qR9L8edcabsFFYrVoy1Q0dFC2KNpo6jJAG7jh3UnJJ8SSVp/FfXOqeJFwoK28WFlJJRROij9kpZQHBxBOebPkpYjP2u65jQz3VrhHu3BO8vjvfFHX15ttDQV+pbg5tEXmOWKV0Ur+bHxuZjnxjbOeq8tJ8QtSWPUVHdqm73W4CkJkbTT3CUxvfynl5wXbtDiCR4gFajjHukYxtjCmDssaApdZa2mr7vTiotNnY2V8T25ZNM4+4x3mBhziPHA8CVLUNgghc5zRYdFbGZJHgA5rS9QXjX+qq78autRfarvpAWStZK2Fmc7MDfdaBvjHl9Uray41hYLnV1tTJE0xj2qVz3MHi0c24GfBfoDWTQW+3S1MuGQU0TpHYGA1rQT+QC4AvVxmu16rbvOS6Wuq31BJ/wA7ifyzj6LzXaWv+KEbQN0C+Q8s17R+GFIIzUvtc/L8x88h73z5Lzo/bI6lk1AKls0Tg9r6cOD2nzDm7g+qyL9Q6nY8sk1Bfo3AYLXV0zT9i7K6A7HtlFPp286gkbvVVLaaJ7uvJGMuP1c4/wAKgfiLenai15e7xzZZUVj+69I2+6z/AEtC558BihbJvd7gu7pcUbXYlPSdmC2K3za5nha3jx4L69La91BYb3HdZLpcq91NHI6OGorZXxd4WkMLwXYLQTnHiR4DKx2ob/qe8VpuN6ul2fLOS5rpXvY1w/yDZoAyNgFI3Zi0RS6m1NU3y607ai3Wnl7uKQZbLO7cZHiGgZwfEtX29ru7Cp1tarLE/wBygoTI4A7NfI44H8LB91eYpPhu1c7LgOaxhiFL+dfBQwgv3fmdyAFwLW6i+mo5KIIr5fWACK73WM7BrGV0p5iT0GD49Pqu6tCW2e0aMtFtqp5p6iCkjbNLK8ue9+AXEk7nfK4w4SWb8f4k2C2FmY31TJZmjwZH+kd/5cLs7Xd7i05o663uV3L7JSPlYPEvx7rR6l2As7CRutfI7Qf2uX/EF4lmp6KIfMc/U7o+65I4ta1vVx4k32e33y5QUcdU6np2QVkkbOWP3MgA43LSfqtXGotUuY54v97cxowXCvmIaT0yc4H/AKrDlznyOfK4Oe4l73Z6nILj9SVJ1biwdnShp8clRqe7OqHDzgh2b9CWt/iWs3nSuc8nmV3LooKCKCBkYNy1g05ZnTgAT1UYlztiHOcD0PQOz1Ofmf5rJ2qp1FRwFtnqLvBHNhwFIZWNkd4H3NjnzWOpqeSrqoqWDJnqJGRM26uLuVv5lfoFpq2QWbT9BaYGtEdHTshaAP2WgKaiozUE2NrLXbUbQswZkYMe+X3yvbS2eh59F5aOoJbXpW2W6eaaaanpY2SySvLnveGjmJJ3JzlZZOiLqGiwAXhEkhkeXu1JuiIiqrEWJ1bYbZqaw1djvFMKiiq4+SRvQjycD4EHBB8CAssiq1xabjVUIBFivz24saCumgNWzWStD56d/v0NTyECpjzgH94dHDwPzC6Z7MvCb+h1sGpr/TgagrY/0cbxvRxH9X0e7q7y+HzzLd9sFmvU9BNdLbT1cluqBVUjpG5MMgBAcPv09B5BZQBbaqxeSeARac+qw4qNschf6LnntoaUr7nYLVqihhdNHajJHWBu5ZG8tIfjyDm7+WfLK5bsNynst8oLvStY+ehqY6mNrvhLmODhn0JA8uq/SmVjHscx7Wua4YIcMgjyUZ37gTwxu9S+ql06KSZ55nGinfACf3QeXx8lPh+LMhi7GUZdFZUUZkfvsKj6btUWcWvmi0pcTX8u8bp4xEHfv9SM/wCUFaC7tM8QyZmmmsXLKHcg9meDGD5EP3I9eqmyHs5cL43AuoLlKPAPuEmPyIWwxcHuG0NnqLRFpWjZTVHJ3xDnd6/lOQDJnnxkeB3VG1OGR92Mnx/tDFVO1dZcEEkuLnkkk5J8SV2h2QLB+E8J2XGWPlmu9VJUkkYJYMMZ9PdJ/wC5ZYcBuFOP+Vmf+Mn/APupEsVsobLaKW02ynFPRUkTYYIgSQxgGAMnf7piWKx1MXZxg68UpaR0T95xWj9oy8my8Jbu5j+Sasa2ijPrI4B3+nmXFoIYST+oCdugA/8AzBXfOstJ2HVtJDR6gofbaeGTvWRmV7AHYIz7pGdj/NaqOCnDIHbTEW3nUSn/ANy4yuoZaiTeaRZeo7LbU0GD0ZhlY4uJJNgLaAAZkLFUAPD7s0NlLRHVx2kyHfB7+fcfXmePsuRIhgN3B2GN8ZHn+Y+y7+1Ppqzaksxs15o/aaAua4w945gJbu34SDsVqX+xPhlg/wDDMX0qZvL99Uq6CSUtDCLAWV+z211Hh7Zn1DXGSR5cbAWtwGZHElfN2Z7L+E8JbdM9oE1xe+tecftHDf8AS1q577RArBxgvzq5hb78RhJH9yI2gEenXp45XZdso6agt8FDSRCKnp42xRMByGtaAAPsFr+udBaV1n3X49a2VE0QxHOxxjlYPLmaQcenRTVFEZKdsTTmFrMH2mjpMXlrp2ktkvpqATcfSy4p0lqC56V1JSX2zmNlZT83L3jedrg5pBaRtkEHwOfstq4hcQNc68sJnu0Laex087GObSwuZA+Yg8rXFxJc7bOM7fMAroW28CuG1FOJjZ56rlOzKirkez6tzg/VbPqHQek79aaO0XGzQSW+hfz09NE50TIzjGwYQsOPDqgRlhdYcs10lXtrhD6qOdsBc4fqIFwOmevmLX9eE4opJ52QRRu76V4Y1oyeZxOAPuQFLXaZoTZK/SunWMLaa3WRscYaQA53Nh5+eWgqe7fwf4dW+vp66k05HHUU8rZY3d/KeVzSC04LsHBA6rO6z0bpvWNGyn1BbY6tsWe6fzFj489eVzSCFWPC5GxuaSLm3tmo6rbuklroJmsduM3r3te5FgRmdM+PFcOaeujrJqS3XZlPHPJRVTKhsT88ryxwIBP08F1vwO4jXTiJ+L1FXbaS309E6KOMQyue5znBxOSQB4BfM3gBw3DyTQXAjPwmvkx/NbvovR+ntH0MtHp63ikimf3kv6Rz3PdjGSXEnopaGjngdmRbj6eCwdqNo8IxWmtFG4yjIEi1he50d5aLYGnIVVQDAVVt154iIiIiIiIiIiIrX5yoe4i8TL5YNUXW30s9kpI6B1I2GmrWPNRWiZwD5IyHAcrMkdDuD02zMeAfBeM9JSzvD5qaGVwGA57ASBnON/VWSNLhYGyz8OqYKaUvnj3xbTzHQ8Bbzvqo14mcQrjpS+19uYyja59oZPaGzRvc6rqzKWGIYPvbcpwMHfPRavqrihqaK03GqkpKCK3zur6WjbDJJHUxS0uMue4OwQ7Dtm4I23O6nV8MT3Nc+Njiw5aSAcHzC83UlK4YdTQkZJwWDqep+qjdG8k2cs+kxOhhazfpg4jU318MsswDx48CoQ0TqPU9NVGChdRVdVebpdKt8tV3sjxDSuawRABwHMSWhuMAAbgndeNx4laj1DFYaawV1FSzudbDWSsjk5IqyWVzZKaQZyW4Aywe96qd2U1OwtLII2lueUhgGM9funs1P/gx/Hz/AAj4vP5+qp2LrW3lOcbpTKZXU4J4Z9TqLZ5WFstL8VDlq1BquK6u9vukFTRya0/DWMaZGyR4aS9oIfgx7e6wg43znwzVx11douJNVYRU2WlgpZ4YYqGpZIayvD4ucyQlpxgH3fhIyDlwUldxB/gx/Hz/AAj4vP5+qOp4HTtndDGZWjDXlo5gPIFXCNwGTljPxSmkeXPgHdI4DPLPTkCOed73UER8X9TG0V1WxtiqphbfbRFDHJ/V0ntDIxT1OXbuIcf2TkHbCzM2u9bW681dNcP6Pz09svNHbqruYJWOmbU8hDm5eQwt5x1zn0Ut+x0mJR7LDiU5k/Rj3z5nzVJaWnLi4wR5c4PceQbkdCfUK0RSf7KZ+LUBJ3aUAHr/ANenABw876hQhS8XNStmkeI7JdXAXEfhtGyQVUHs/OY5JPfI5XcoGw8Rg5yFWHitqd8dVFTV+mLpKxltMc9JFJ3TX1M5jexw7wnLRjofn4gS3pLTdt05bTRUDXvb3sshll5TIe8kdI4EgDbLjssk2goWjDaOnA22ETfA5Hh57qnZSW7ymlxbDA8hlMCLixvrY30tllll5kqI67iXqWx0FRcLtS0FZT2271VprnUcDwXyCIPp3saXktDnEMcCT1BClTTLrpJYKGS+Ngbc3wNdVNgaRG2Qj3mtBJOAduvgvk1Jpu3Xv2KOr7xkNLWx1xijw1s0jN295t7wBwceYCzUeOXbzUrGOBzK1lfV0s8TBDGGuub/AG+pv03RwVyYCIpFqkRERERERERERERERERERERERERERERERERERETA8kREQbdERERMDyRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERF//2Q==" alt="Verfrut" class="footer-logo" /></div>
@@ -804,5 +1108,4 @@
 </div>
 </body>
 </html>
-
 
