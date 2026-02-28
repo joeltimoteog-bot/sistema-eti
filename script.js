@@ -1175,9 +1175,43 @@ function uCalcKm(){
   const act=parseInt(document.getElementById('uMKmAct').value)||0;
   const tipo=document.getElementById('uMTipo').value;
   const rec=act-ant;
-  const prox=tipo==='Preventivo'?act+2500:tipo==='General'?act+5000:0;
+  const prox=tipo?act+1000:0;
   document.getElementById('uMKmRec').value=rec>0?rec:'';
   document.getElementById('uMProxKm').value=prox>0?prox:'';
+  // Alerta anticipada en tiempo real al ingresar km
+  uAlertaKmInline(act, prox, tipo);
+}
+
+function uAlertaKmInline(kmAct, proxKm, tipo){
+  let alertDiv = document.getElementById('uAlertaKmInline');
+  if(!alertDiv){
+    alertDiv = document.createElement('div');
+    alertDiv.id = 'uAlertaKmInline';
+    alertDiv.style.cssText='margin-top:10px;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;display:none;';
+    const obsRow = document.getElementById('uMObs')?.closest('.unid-fg') || document.getElementById('uMObs')?.parentElement;
+    if(obsRow) obsRow.parentElement.insertBefore(alertDiv, obsRow);
+  }
+  if(!tipo || !proxKm){alertDiv.style.display='none';return;}
+  const diff = proxKm - kmAct;
+  if(diff<=0){
+    alertDiv.style.display='block';
+    alertDiv.style.background='#fce8e8';
+    alertDiv.style.borderLeft='4px solid #cc0000';
+    alertDiv.style.color='#cc0000';
+    alertDiv.innerHTML='🚨 <strong>¡MANTENIMIENTO VENCIDO!</strong> Este vehículo ya superó el límite de 1,000 km. Programa el mantenimiento de inmediato.';
+  } else if(diff<=200){
+    alertDiv.style.display='block';
+    alertDiv.style.background='#fff8dd';
+    alertDiv.style.borderLeft='4px solid #c89010';
+    alertDiv.style.color='#7a5800';
+    alertDiv.innerHTML=`⚠️ <strong>PRÓXIMO MANTENIMIENTO en ${diff} km</strong> — Tipo: ${tipo}. Próximo a las <strong>${Number(proxKm).toLocaleString()} km</strong>. Se recomienda programar con anticipación.`;
+  } else {
+    alertDiv.style.display='block';
+    alertDiv.style.background='#d4f5e3';
+    alertDiv.style.borderLeft='4px solid #1a8040';
+    alertDiv.style.color='#1a5030';
+    alertDiv.innerHTML=`✅ <strong>Kilómetros OK</strong> — Próximo mantenimiento (${tipo}) a las <strong>${Number(proxKm).toLocaleString()} km</strong>. Faltan <strong>${diff} km</strong>.`;
+  }
 }
 
 async function uGuardarMant(){
@@ -1193,7 +1227,7 @@ async function uGuardarMant(){
     dni,usuario:u.usuario,cod_interno:u.cod_interno,
     fecha_mantenimiento:fecha,tipo_mantenimiento:tipo,
     km_anterior:kmAnt,km_actual:kmAct,km_recorrido:kmAct-kmAnt,
-    proximo_km:tipo==='Preventivo'?kmAct+2500:kmAct+5000,
+    proximo_km:kmAct+1000,
     observaciones:document.getElementById('uMObs').value.trim(),
     fecha_registro:new Date().toISOString()
   };
@@ -1427,9 +1461,9 @@ function uRenderTablaMant(){
     const diff=r.proximo_km&&r.km_actual?r.proximo_km-r.km_actual:null;
     let kmEst='<span class="unid-badge unid-badge-gris">–</span>';
     if(diff!==null){
-      if(diff>300)kmEst=`<span class="unid-badge unid-badge-verde">🟢 ${Number(diff).toLocaleString()} km</span>`;
-      else if(diff>0)kmEst=`<span class="unid-badge unid-badge-amarillo">🟡 ${Number(diff).toLocaleString()} km</span>`;
-      else kmEst='<span class="unid-badge unid-badge-rojo">🔴 Límite superado</span>';
+      if(diff>200)kmEst=`<span class="unid-badge unid-badge-verde">🟢 ${Number(diff).toLocaleString()} km</span>`;
+      else if(diff>0)kmEst=`<span class="unid-badge unid-badge-amarillo">⚠️ ${Number(diff).toLocaleString()} km — ¡Pronto!</span>`;
+      else kmEst='<span class="unid-badge unid-badge-rojo">🚨 ¡Mantenimiento vencido!</span>';
     }
     return `<tr>
       <td>${i+1}</td>
@@ -1528,6 +1562,23 @@ function uRenderDashboard(){
   document.getElementById('ukVencidas').textContent=vencidas;
   document.getElementById('ukMant').textContent=uMantenimientos.length;
 
+  // Contar alertas KM (<=200km o vencidos)
+  const procesadosKpi = new Set();
+  let cntAlertaKm = 0;
+  uMantenimientos.forEach(m=>{
+    if(procesadosKpi.has(m.cod_interno)) return;
+    procesadosKpi.add(m.cod_interno);
+    const grupo = uMantenimientos.filter(x=>x.cod_interno===m.cod_interno).sort((a,b)=>(b.proximo_km||0)-(a.proximo_km||0));
+    const diff = (grupo[0].proximo_km||0)-(grupo[0].km_actual||0);
+    if(diff<=200) cntAlertaKm++;
+  });
+  const elKmKpi = document.getElementById('ukAlertaKm');
+  if(elKmKpi){
+    elKmKpi.textContent=cntAlertaKm;
+    elKmKpi.closest('.unid-kpi')?.classList.toggle('rojo', cntAlertaKm>0);
+    elKmKpi.closest('.unid-kpi')?.classList.toggle('naranja', cntAlertaKm===0);
+  }
+
   // Alertas
   const alertas=licDias.filter(l=>l._dias!==null&&l._dias<=30).sort((a,b)=>a._dias-b._dias);
   const aDiv=document.getElementById('uAlertas');
@@ -1542,6 +1593,73 @@ function uRenderDashboard(){
           <div><strong>${esc(l.usuario||'')}</strong> – ${esc(l.cod_interno||'')} – Lic: ${esc(l.numero_licencia||'')}
           <br>Vence: <strong>${uFmtFecha(l.fecha_revalidacion)}</strong> | 
           <strong>${l._dias<0?Math.abs(l._dias)+' días vencida':l._dias+' días restantes'}</strong></div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Alertas de Kilometraje
+  const kmAlertDiv = document.getElementById('uAlertasKm');
+  if(kmAlertDiv){
+    // Para cada unidad, buscar su último mantenimiento y calcular km restantes
+    const kmAlertas = [];
+    uUnidades.forEach(u => {
+      const mantsDeEstaUnidad = uMantenimientos
+        .filter(m => m.cod_interno === u.cod_interno)
+        .sort((a,b) => (b.proximo_km||0) - (a.proximo_km||0));
+      if(!mantsDeEstaUnidad.length) return;
+      const ultimo = mantsDeEstaUnidad[0];
+      const proxKm = ultimo.proximo_km || 0;
+      const kmAct  = ultimo.km_actual  || 0;
+      const diff   = proxKm - kmAct;
+      // Solo mostrar si está en zona de alerta (<=200km) o vencido
+      if(diff <= 200){
+        kmAlertas.push({
+          usuario: u.usuario || ultimo.usuario,
+          cod: u.cod_interno,
+          tipo: ultimo.tipo_mantenimiento,
+          kmAct, proxKm, diff
+        });
+      }
+    });
+
+    // También verificar mantenimientos sin unidad asociada
+    const unidCods = uUnidades.map(u=>u.cod_interno);
+    const mantsSinUnid = [];
+    const procesados = new Set();
+    uMantenimientos.forEach(m => {
+      if(procesados.has(m.cod_interno)) return;
+      procesados.add(m.cod_interno);
+      const mantsGrupo = uMantenimientos
+        .filter(x=>x.cod_interno===m.cod_interno)
+        .sort((a,b)=>(b.proximo_km||0)-(a.proximo_km||0));
+      const ult = mantsGrupo[0];
+      const diff = (ult.proximo_km||0) - (ult.km_actual||0);
+      if(diff<=200 && !kmAlertas.find(a=>a.cod===m.cod_interno)){
+        kmAlertas.push({
+          usuario: ult.usuario, cod: ult.cod_interno,
+          tipo: ult.tipo_mantenimiento,
+          kmAct: ult.km_actual||0, proxKm: ult.proximo_km||0, diff
+        });
+      }
+    });
+
+    if(!kmAlertas.length){
+      kmAlertDiv.innerHTML='<p class="unid-empty">✅ Todos los vehículos tienen kilometraje OK.</p>';
+    } else {
+      kmAlertas.sort((a,b)=>a.diff-b.diff);
+      kmAlertDiv.innerHTML = kmAlertas.map(a=>{
+        const cls  = a.diff<=0?'unid-alert-rojo':a.diff<=100?'unid-alert-rojo':'unid-alert-amarillo';
+        const icon = a.diff<=0?'🚨':a.diff<=100?'🔴':'⚠️';
+        const msg  = a.diff<=0
+          ? `<strong>¡MANTENIMIENTO VENCIDO!</strong> Superó el límite por <strong>${Math.abs(a.diff)} km</strong>`
+          : `<strong>Próximo mantenimiento en ${a.diff} km</strong> — llega a las <strong>${Number(a.proxKm).toLocaleString()} km</strong>`;
+        return `<div class="unid-alert ${cls}" style="margin-bottom:7px;">
+          <span class="unid-alert-icon">${icon}</span>
+          <div>
+            <strong>${esc(a.usuario||'')}</strong> — Unidad: <span style="font-weight:700;color:#0050c8;">${esc(a.cod||'')}</span>
+            <br>${msg} | Tipo: ${esc(a.tipo||'')} | KM Actual: <strong>${Number(a.kmAct).toLocaleString()}</strong>
+          </div>
         </div>`;
       }).join('');
     }
