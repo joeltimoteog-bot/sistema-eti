@@ -511,10 +511,17 @@
         <div class="unid-kpi amarillo"><div class="unid-kpi-icon">⚠️</div><div class="unid-kpi-val" id="ukPorVencer">0</div><div class="unid-kpi-lab">Por Vencer</div></div>
         <div class="unid-kpi rojo"><div class="unid-kpi-icon">🚨</div><div class="unid-kpi-val" id="ukVencidas">0</div><div class="unid-kpi-lab">Vencidas</div></div>
         <div class="unid-kpi azul"><div class="unid-kpi-icon">🔧</div><div class="unid-kpi-val" id="ukMant">0</div><div class="unid-kpi-lab">Mantenimientos</div></div>
+        <div class="unid-kpi naranja"><div class="unid-kpi-icon">🛵</div><div class="unid-kpi-val" id="ukAlertaKm">0</div><div class="unid-kpi-lab">Alertas KM</div></div>
       </div>
-      <div class="unid-panel">
-        <div class="unid-panel-title">🚨 Alertas Activas – Licencias</div>
-        <div id="uAlertas"><p class="unid-empty">Sin alertas activas.</p></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="unid-panel" style="margin-bottom:0;">
+          <div class="unid-panel-title">🚨 Alertas Activas – Licencias</div>
+          <div id="uAlertas"><p class="unid-empty">Sin alertas activas.</p></div>
+        </div>
+        <div class="unid-panel" style="margin-bottom:0;">
+          <div class="unid-panel-title">🔧 Alertas de Kilometraje – Mantenimiento</div>
+          <div id="uAlertasKm"><p class="unid-empty">Sin alertas de kilometraje.</p></div>
+        </div>
       </div>
       <div class="unid-charts-row">
         <div class="unid-chart-card"><div class="unid-chart-title">Estado de Unidades</div><canvas id="uChartUnid" height="180"></canvas></div>
@@ -568,8 +575,8 @@
             <label>Tipo *</label>
             <select id="uMTipo">
               <option value="">— Seleccionar —</option>
-              <option value="Preventivo">🔵 Preventivo (+2,500 km)</option>
-              <option value="General">🟠 General (+5,000 km)</option>
+              <option value="Preventivo">🔵 Preventivo (+1,000 km)</option>
+              <option value="General">🟠 General (+1,000 km)</option>
             </select>
           </div>
           <div class="unid-fg"><label>KM Anterior</label><input type="number" id="uMKmAnt" placeholder="0"/></div>
