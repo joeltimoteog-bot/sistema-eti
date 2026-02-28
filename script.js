@@ -74,6 +74,7 @@ function intentarLogin() {
   initBotones();
   initEstadisticas();
   initUnidades();
+  initGerencial();
   // Escuchar cambios en tiempo real desde Firebase
   escucharFirebase();
 }
@@ -121,6 +122,7 @@ function initTabs() {
       if(target==='ranking') renderRanking();
       if(target==='estadisticas') renderEstadisticas();
       if(target==='unidades') uRenderDashboard();
+      if(target==='gerencial') gRenderDashboard();
     });
   });
 }
@@ -1585,6 +1587,818 @@ window.uAbrirEditar = function(id) {
   document.getElementById('uEditMarca').value = u.marca || '';
   document.getElementById('uEditMotor').value = u.numero_motor || '';
   document.getElementById('uEditChasis').value = u.numero_chasis || '';
+  document.getElementById('uEditAnio').value = u.anio || '';
+  document.getElementById('uEditEstatus').value = u.estatus || 'Operativo';
+  document.getElementById('uEditZonaRec').value = u.zona_recorrido || '';
+  document.getElementById('uEditEmpresa').value = u.empresa || 'RAPEL';
+  document.getElementById('uEditZonaAbast').value = u.zona_abastecimiento_actual || '';
+  const modal = document.getElementById('uModalEditar');
+  modal.style.display = 'flex';
+};
+
+window.uCerrarModal = function() {
+  document.getElementById('uModalEditar').style.display = 'none';
+};
+
+window.uGuardarEdicion = async function() {
+  const id = document.getElementById('uEditId').value;
+  if(!id) return;
+  const datos = {
+    usuario: document.getElementById('uEditUsuario').value.trim().toUpperCase(),
+    dni: document.getElementById('uEditDni').value.trim(),
+    cargo: document.getElementById('uEditCargo').value.trim().toUpperCase(),
+    cod_interno: document.getElementById('uEditCodInterno').value.trim().toUpperCase(),
+    cod_sist: document.getElementById('uEditCodSist').value.trim().toUpperCase(),
+    modelo: document.getElementById('uEditModelo').value.trim().toUpperCase(),
+    marca: document.getElementById('uEditMarca').value.trim().toUpperCase(),
+    numero_motor: document.getElementById('uEditMotor').value.trim(),
+    numero_chasis: document.getElementById('uEditChasis').value.trim(),
+    anio: parseInt(document.getElementById('uEditAnio').value) || 0,
+    estatus: document.getElementById('uEditEstatus').value,
+    zona_recorrido: document.getElementById('uEditZonaRec').value.trim().toUpperCase(),
+    empresa: document.getElementById('uEditEmpresa').value,
+    zona_abastecimiento_actual: document.getElementById('uEditZonaAbast').value.trim().toUpperCase()
+  };
+  if(!datos.usuario || !datos.dni || !datos.cod_interno) {
+    showToast('⚠️ Usuario, DNI y Código Interno son obligatorios', true);
+    return;
+  }
+  try {
+    await updateDoc(doc(db, COL_UNID, id), datos);
+    const idx = uUnidades.findIndex(u => u.id === id);
+    if(idx !== -1) uUnidades[idx] = { ...uUnidades[idx], ...datos };
+    // Actualizar selectores en formularios de mantenimiento y licencias
+    uPoblarSelectores();
+    uRenderTablaUnid();
+    uRenderDashboard();
+    uCerrarModal();
+    showToast('✅ Unidad actualizada correctamente', false, true);
+  } catch(e) {
+    showToast('❌ Error al guardar cambios', true);
+  }
+};
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('uModalEditar')?.addEventListener('click', function(e) {
+  if(e.target === this) uCerrarModal();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO GERENCIAL – ANALÍTICA DE DESEMPEÑO GH
+// ═══════════════════════════════════════════════════════════════
+
+const GCOL_SUPS = 'gerencial_supervisores';
+const GCOL_EVALS = 'gerencial_evaluaciones';
+const GCOL_SEGS = 'gerencial_seguimientos';
+
+let gSupervisores=[], gEvaluaciones=[], gSeguimientos=[];
+let gCalif={};
+let gChartD=null, gChartE=null, gChartT=null, gChartS=null;
+
+const G_SUPS_BASE=[
+  {nombre:'PAUL TAMAYO RODRIGUEZ',empresa:'RAPEL',sector:'El Papayo, Limones',administrador:'Junior Galindo',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'SERGIO VIERA GIRON',empresa:'RAPEL',sector:'Algarrobos',administrador:'Wilder Villavicencio',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'ELBER CASTRO BAYONA',empresa:'RAPEL',sector:'San Vicente',administrador:'César Navarro',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'FLOR PULACHE VIERA',empresa:'RAPEL',sector:'Los Olivares',administrador:'Nelson Pinto',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'ROBERTO MOLERO ABAD',empresa:'RAPEL',sector:'Planta Packing',administrador:'Marcelo',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'ALEX TINEO RAMOS',empresa:'VERFRUT',sector:'Olivares Bajo',administrador:'Marco Torres',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'ALEXANDER MARTINEZ JUAREZ',empresa:'VERFRUT',sector:'Punta Arenas',administrador:'Manuel Correa Estrada',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
+  {nombre:'YHANELLY LUZON VENEGAS',empresa:'VERFRUT',sector:'Santa Rosa',administrador:'Gerardo Alarcón',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'}
+];
+
+const G_CRITERIOS=[
+  {id:'metas',label:'Cumplimiento de Metas'},
+  {id:'responsabilidad',label:'Responsabilidad y Organización'},
+  {id:'capacitaciones',label:'Calidad de Capacitaciones'},
+  {id:'actitud',label:'Actitud y Compromiso'},
+  {id:'campo',label:'Trabajo en Campo'},
+  {id:'conflictos',label:'Manejo de Conflictos'},
+  {id:'comunicacion',label:'Comunicación y Reportes'},
+  {id:'admin_gh',label:'Gestión Administrativa'},
+];
+
+// ── INIT ──────────────────────────────────────────────────────
+async function initGerencial(){
+  if(!document.getElementById('g-dashboard')) return;
+  gInitSubTabs();
+  await gCargarSupervisores();
+  await gCargarEvaluaciones();
+  await gCargarSeguimientos();
+  gPoblarSelectores();
+  gGenerarRatingUI();
+  gInitForms();
+  gInitBotones();
+  gRenderDashboard();
+  gRenderHistEvals();
+  gRenderHistSegs();
+  gRenderRanking();
+  gRenderListaSups();
+  document.getElementById('gEvFecha').value = gHoy();
+  document.getElementById('gSegFecha').value = gHoy();
+}
+
+function gInitSubTabs(){
+  document.querySelectorAll('.ger-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.ger-tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.ger-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.gtab).classList.add('active');
+    });
+  });
+}
+
+// ── CARGAR ────────────────────────────────────────────────────
+async function gCargarSupervisores(){
+  try{
+    const snap=await getDocs(collection(db,GCOL_SUPS));
+    if(snap.empty){
+      for(const s of G_SUPS_BASE) await addDoc(collection(db,GCOL_SUPS),{...s,creadoEn:new Date().toISOString()});
+      const s2=await getDocs(collection(db,GCOL_SUPS));
+      gSupervisores=s2.docs.map(d=>({id:d.id,...d.data()}));
+    } else gSupervisores=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){gSupervisores=G_SUPS_BASE.map((s,i)=>({id:'g'+i,...s}));}
+}
+
+async function gCargarEvaluaciones(){
+  try{
+    const snap=await getDocs(query(collection(db,GCOL_EVALS),orderBy('fecha_registro','desc')));
+    gEvaluaciones=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){gEvaluaciones=[];}
+}
+
+async function gCargarSeguimientos(){
+  try{
+    const snap=await getDocs(query(collection(db,GCOL_SEGS),orderBy('fecha','desc')));
+    gSeguimientos=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){gSeguimientos=[];}
+}
+
+// ── SELECTORES ────────────────────────────────────────────────
+function gPoblarSelectores(){
+  const activos=gSupervisores.filter(s=>s.estado==='activo');
+  const opts=activos.map(s=>`<option value="${s.id}">${esc(s.nombre)} – ${esc(s.empresa)}</option>`).join('');
+  ['gEvSup','gSegSup','gInfSup','gFiltEvSup','gFiltSegSup'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const first=id.startsWith('gFilt')?'<option value="">Todos</option>':'<option value="">— Seleccionar —</option>';
+    el.innerHTML=first+opts;
+  });
+}
+
+// ── RATING UI ─────────────────────────────────────────────────
+function gGenerarRatingUI(){
+  const cont=document.getElementById('gRatingGroup');
+  if(!cont) return;
+  gCalif={};
+  cont.innerHTML='';
+  G_CRITERIOS.forEach(c=>{
+    gCalif[c.id]=0;
+    const row=document.createElement('div');
+    row.className='ger-rating-row';
+    row.innerHTML=`<span class="ger-rating-label">${c.label}</span>
+      <div class="ger-stars" id="gStars-${c.id}">
+        ${[1,2,3,4,5].map(n=>`<button class="ger-star" onclick="gSetRating('${c.id}',${n})">★</button>`).join('')}
+      </div>
+      <span class="ger-rating-score" id="gScore-${c.id}">0/5</span>`;
+    cont.appendChild(row);
+  });
+}
+
+window.gSetRating=function(critId,val){
+  gCalif[critId]=val;
+  document.querySelectorAll(`#gStars-${critId} .ger-star`).forEach((s,i)=>s.classList.toggle('active',i<val));
+  document.getElementById('gScore-'+critId).textContent=val+'/5';
+  gActualizarPuntaje();
+};
+
+function gActualizarPuntaje(){
+  const vals=Object.values(gCalif);
+  const pct=Math.round((vals.reduce((a,b)=>a+b,0)/(G_CRITERIOS.length*5))*100);
+  document.getElementById('gEvPuntaje').textContent=pct+'%';
+  const {nivel,color}=gCalcNivel(pct);
+  const el=document.getElementById('gEvNivel');
+  el.textContent=nivel;el.style.color=color;
+}
+
+function gCalcNivel(pct){
+  if(pct>=85)return{nivel:'🏆 EXCELENTE',color:'#1a8040'};
+  if(pct>=70)return{nivel:'👍 BUENO',color:'#0050c8'};
+  if(pct>=50)return{nivel:'⚠️ REGULAR',color:'#c89010'};
+  return{nivel:'🚨 REQUIERE MEJORA',color:'#cc0000'};
+}
+
+// ── INIT FORMS ────────────────────────────────────────────────
+function gInitForms(){
+  document.getElementById('gEvSup')?.addEventListener('change',function(){
+    const s=gSupervisores.find(x=>x.id===this.value);
+    document.getElementById('gEvEmpresa').value=s?s.empresa:'';
+    document.getElementById('gEvSector').value=s?s.sector:'';
+    document.getElementById('gEvAdmin').value=s?s.administrador:'';
+  });
+  document.getElementById('gSegSup')?.addEventListener('change',function(){
+    const s=gSupervisores.find(x=>x.id===this.value);
+    document.getElementById('gSegEmpresa').value=s?s.empresa:'';
+    document.getElementById('gSegSector').value=s?s.sector:'';
+  });
+  document.getElementById('gInfSup')?.addEventListener('change',function(){
+    const s=gSupervisores.find(x=>x.id===this.value);
+    document.getElementById('gInfEmpresa').value=s?s.empresa:'';
+    document.getElementById('gInfSector').value=s?s.sector:'';
+  });
+  document.getElementById('gFiltEvSup')?.addEventListener('change',gRenderHistEvals);
+  document.getElementById('gFiltEvTipo')?.addEventListener('change',gRenderHistEvals);
+  document.getElementById('gFiltSegSup')?.addEventListener('change',gRenderHistSegs);
+}
+
+// ── INIT BOTONES ──────────────────────────────────────────────
+function gInitBotones(){
+  document.getElementById('gBtnSaveEval')?.addEventListener('click',gGuardarEval);
+  document.getElementById('gBtnClearEval')?.addEventListener('click',gLimpiarEval);
+  document.getElementById('gBtnPdfEval')?.addEventListener('click',gGenerarInforme);
+  document.getElementById('gBtnSaveSeg')?.addEventListener('click',gGuardarSeg);
+  document.getElementById('gBtnClearSeg')?.addEventListener('click',gLimpiarSeg);
+  document.getElementById('gBtnGenInf')?.addEventListener('click',gGenerarInforme);
+  document.getElementById('gBtnDlInf')?.addEventListener('click',gDescargarPDF);
+  document.getElementById('gBtnExpEvals')?.addEventListener('click',()=>gExpExcel(gEvaluaciones,'Evaluaciones','evaluaciones_gh.xlsx'));
+  document.getElementById('gBtnExpSegs')?.addEventListener('click',()=>gExpExcel(gSeguimientos,'Seguimientos','seguimientos_gh.xlsx'));
+  document.getElementById('gBtnRankExcel')?.addEventListener('click',gExpRankingExcel);
+  document.getElementById('gBtnRankPdf')?.addEventListener('click',gExpRankingPDF);
+  document.getElementById('gBtnExpInfExcel')?.addEventListener('click',()=>gExpExcel(gEvaluaciones,'Evaluaciones','informe_gh.xlsx'));
+  document.getElementById('gBtnNuevoSup')?.addEventListener('click',()=>gAbrirModal(null));
+}
+
+// ── GUARDAR EVALUACIÓN ────────────────────────────────────────
+async function gGuardarEval(){
+  const supId=document.getElementById('gEvSup').value;
+  const s=gSupervisores.find(x=>x.id===supId);
+  if(!s){showToast('Selecciona un supervisor',true);return;}
+  const tipo=document.getElementById('gEvTipo').value;
+  const fecha=document.getElementById('gEvFecha').value;
+  if(!tipo||!fecha){showToast('Completa los campos obligatorios',true);return;}
+
+  const vals=Object.values(gCalif);
+  const pct=Math.round((vals.reduce((a,b)=>a+b,0)/(G_CRITERIOS.length*5))*100);
+  const calcIdx=(crits)=>{
+    const v=crits.map(c=>gCalif[c]||0);
+    return Math.round((v.reduce((a,b)=>a+b,0)/(crits.length*5))*100);
+  };
+  const reg={
+    supervisor_id:supId,supervisor:s.nombre,empresa:s.empresa,
+    sector:s.sector,administrador:s.administrador,
+    tipo,periodo:document.getElementById('gEvPeriodo').value,
+    fecha,evaluador:document.getElementById('gEvEvaluador').value,
+    calificaciones:{...gCalif},
+    puntaje_total:pct,
+    indice_operativo:calcIdx(['metas','responsabilidad','capacitaciones','actitud']),
+    indice_campo:calcIdx(['campo','conflictos']),
+    indice_comunicacion:calcIdx(['comunicacion']),
+    indice_admin:calcIdx(['admin_gh']),
+    nivel:gCalcNivel(pct).nivel.replace(/^[^\s]+\s/,''),
+    fortalezas:document.getElementById('gEvFortalezas').value.trim(),
+    mejoras:document.getElementById('gEvMejoras').value.trim(),
+    recomendaciones:document.getElementById('gEvRecomendaciones').value.trim(),
+    fecha_registro:new Date().toISOString()
+  };
+  try{
+    const ref=await addDoc(collection(db,GCOL_EVALS),reg);
+    gEvaluaciones.unshift({id:ref.id,...reg});
+    gRenderHistEvals();gRenderDashboard();gRenderRanking();
+    gLimpiarEval();
+    showToast('✅ Evaluación guardada',false,true);
+  }catch(e){showToast('❌ Error al guardar',true);}
+}
+
+function gLimpiarEval(){
+  ['gEvSup','gEvTipo','gEvPeriodo'].forEach(id=>document.getElementById(id).value='');
+  ['gEvEmpresa','gEvSector','gEvAdmin','gEvFortalezas','gEvMejoras','gEvRecomendaciones'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gEvFecha').value=gHoy();
+  G_CRITERIOS.forEach(c=>window.gSetRating(c.id,0));
+  gCalif={};G_CRITERIOS.forEach(c=>gCalif[c.id]=0);
+  gActualizarPuntaje();
+}
+
+// ── GUARDAR SEGUIMIENTO ───────────────────────────────────────
+async function gGuardarSeg(){
+  const supId=document.getElementById('gSegSup').value;
+  const s=gSupervisores.find(x=>x.id===supId);
+  if(!s){showToast('Selecciona un supervisor',true);return;}
+  const fecha=document.getElementById('gSegFecha').value;
+  if(!fecha){showToast('Ingresa la fecha',true);return;}
+  const reg={
+    supervisor_id:supId,supervisor:s.nombre,empresa:s.empresa,sector:s.sector,
+    fecha,tipo:document.getElementById('gSegTipo').value,
+    presencia:document.getElementById('gSegPresencia').value,
+    meta:parseInt(document.getElementById('gSegMeta').value)||0,
+    avance:parseInt(document.getElementById('gSegAvance').value)||0,
+    actividades:document.getElementById('gSegActividades').value.trim(),
+    incidencias:document.getElementById('gSegIncidencias').value.trim(),
+    fecha_registro:new Date().toISOString()
+  };
+  try{
+    const ref=await addDoc(collection(db,GCOL_SEGS),reg);
+    gSeguimientos.unshift({id:ref.id,...reg});
+    gRenderHistSegs();gRenderDashboard();gLimpiarSeg();
+    showToast('✅ Seguimiento guardado',false,true);
+  }catch(e){showToast('❌ Error al guardar',true);}
+}
+
+function gLimpiarSeg(){
+  ['gSegSup'].forEach(id=>document.getElementById(id).value='');
+  ['gSegEmpresa','gSegSector','gSegMeta','gSegAvance','gSegActividades','gSegIncidencias'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gSegFecha').value=gHoy();
+  document.getElementById('gSegPresencia').selectedIndex=0;
+  document.getElementById('gSegTipo').selectedIndex=0;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function gRenderDashboard(){
+  const st=gCalcStats();
+  document.getElementById('gkSups').textContent=gSupervisores.filter(s=>s.estado==='activo').length;
+  document.getElementById('gkExc').textContent=st.excelentes;
+  document.getElementById('gkBue').textContent=st.buenos;
+  document.getElementById('gkReg').textContent=st.regulares;
+  document.getElementById('gkCrit').textContent=st.criticos;
+  document.getElementById('gkEvals').textContent=gEvaluaciones.length;
+  document.getElementById('gkSegs').textContent=gSeguimientos.length;
+
+  const crits=st.ranking.filter(r=>r.promedio<50).slice(0,5);
+  document.getElementById('gDashCriticos').innerHTML=crits.length?
+    crits.map(r=>`<div class="ger-alert ger-alert-rojo"><span>🚨</span><div><strong>${esc(r.nombre)}</strong> – ${esc(r.empresa)}<br>Sector: ${esc(r.sector)} | Promedio: <strong>${r.promedio}%</strong></div></div>`).join('')
+    :'<p class="ger-empty">✅ Sin supervisores críticos.</p>';
+
+  const mejores=st.ranking.filter(r=>r.promedio>=70).slice(0,5);
+  document.getElementById('gDashMejores').innerHTML=mejores.length?
+    mejores.map((r,i)=>`<div class="ger-alert ger-alert-verde"><span>${i===0?'🥇':i===1?'🥈':'🥉'}</span><div><strong>${esc(r.nombre)}</strong> – ${esc(r.empresa)}<br>Sector: ${esc(r.sector)} | <strong>${r.promedio}%</strong></div></div>`).join('')
+    :'<p class="ger-empty">Sin datos suficientes.</p>';
+
+  gRenderCharts(st);
+}
+
+function gCalcStats(){
+  const map={};
+  gEvaluaciones.forEach(e=>{
+    if(!map[e.supervisor_id])map[e.supervisor_id]={id:e.supervisor_id,nombre:e.supervisor,empresa:e.empresa,sector:e.sector,p:[],pc:[],pa:[],pcom:[],count:0};
+    map[e.supervisor_id].p.push(e.puntaje_total||0);
+    map[e.supervisor_id].pc.push(e.indice_campo||0);
+    map[e.supervisor_id].pa.push(e.indice_admin||0);
+    map[e.supervisor_id].pcom.push(e.indice_comunicacion||0);
+    map[e.supervisor_id].count++;
+  });
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const ranking=Object.values(map).map(s=>({...s,promedio:avg(s.p),pCampo:avg(s.pc),pAdmin:avg(s.pa),pComunic:avg(s.pcom)})).sort((a,b)=>b.promedio-a.promedio);
+  return{
+    ranking,
+    excelentes:ranking.filter(r=>r.promedio>=85).length,
+    buenos:ranking.filter(r=>r.promedio>=70&&r.promedio<85).length,
+    regulares:ranking.filter(r=>r.promedio>=50&&r.promedio<70).length,
+    criticos:ranking.filter(r=>r.promedio<50).length
+  };
+}
+
+function gRenderCharts(st){
+  const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  if(gChartD){gChartD.data.datasets[0].data=[st.excelentes,st.buenos,st.regulares,st.criticos];gChartD.update('none');}
+  else{gChartD=new Chart(document.getElementById('gChartDistrib'),{type:'doughnut',data:{labels:['Excelente','Bueno','Regular','Crítico'],datasets:[{data:[st.excelentes,st.buenos,st.regulares,st.criticos],backgroundColor:['#1a8040','#0050c8','#c89010','#cc0000'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:10}}}},cutout:'55%'}});}
+
+  const avgEmp=(emp)=>{const r=st.ranking.filter(x=>x.empresa===emp);return r.length?Math.round(r.reduce((a,b)=>a+b.promedio,0)/r.length):0;};
+  if(gChartE){gChartE.data.datasets[0].data=[avgEmp('RAPEL'),avgEmp('VERFRUT')];gChartE.update('none');}
+  else{gChartE=new Chart(document.getElementById('gChartEmpresas'),{type:'bar',data:{labels:['RAPEL','VERFRUT'],datasets:[{data:[avgEmp('RAPEL'),avgEmp('VERFRUT')],backgroundColor:['#0050c8','#1a8040'],borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});}
+
+  const byM={};gEvaluaciones.forEach(e=>{const m=new Date((e.fecha||'2000-01-01')+'T12:00:00').getMonth();if(!byM[m])byM[m]=[];byM[m].push(e.puntaje_total||0);});
+  const mks=Object.keys(byM).sort((a,b)=>a-b);
+  const tData=mks.map(k=>Math.round(byM[k].reduce((a,b)=>a+b,0)/byM[k].length));
+  if(gChartT){gChartT.data.labels=mks.map(k=>mn[k]);gChartT.data.datasets[0].data=tData;gChartT.update('none');}
+  else{gChartT=new Chart(document.getElementById('gChartTend'),{type:'line',data:{labels:mks.map(k=>mn[k]),datasets:[{data:tData,borderColor:'#6a1b9a',backgroundColor:'rgba(106,27,154,.1)',tension:.4,fill:true,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});}
+
+  const byS={};st.ranking.forEach(r=>{r.sector.split(',').forEach(sec=>{const s=sec.trim();if(!byS[s])byS[s]=[];byS[s].push(r.promedio);});});
+  const skeys=Object.keys(byS);
+  const sdata=skeys.map(k=>Math.round(byS[k].reduce((a,b)=>a+b,0)/byS[k].length));
+  if(gChartS){gChartS.data.labels=skeys;gChartS.data.datasets[0].data=sdata;gChartS.update('none');}
+  else{gChartS=new Chart(document.getElementById('gChartSec'),{type:'bar',data:{labels:skeys,datasets:[{data:sdata,backgroundColor:sdata.map(v=>v>=85?'#1a8040':v>=70?'#0050c8':v>=50?'#c89010':'#cc0000'),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100}}}});}
+}
+
+// ── HISTORIAL EVALUACIONES ────────────────────────────────────
+function gRenderHistEvals(){
+  const fS=document.getElementById('gFiltEvSup')?.value||'';
+  const fT=document.getElementById('gFiltEvTipo')?.value||'';
+  let data=[...gEvaluaciones];
+  if(fS)data=data.filter(e=>e.supervisor_id===fS);
+  if(fT)data=data.filter(e=>e.tipo===fT);
+  const tbody=document.getElementById('gTbodyEvals');
+  if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="11" class="ger-empty">Sin evaluaciones.</td></tr>';return;}
+  tbody.innerHTML=data.map((e,i)=>{
+    const{nivel,color}=gCalcNivel(e.puntaje_total||0);
+    const tipoBadge=e.tipo==='mensual'?'<span class="ger-badge ger-badge-morado">🎯 Mensual</span>':e.tipo==='quincenal'?'<span class="ger-badge ger-badge-azul">📊 Quincenal</span>':'<span class="ger-badge ger-badge-gris">📅 Diaria</span>';
+    return`<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(e.supervisor||'')}</strong></td>
+      <td><span class="ger-badge ${e.empresa==='RAPEL'?'ger-badge-azul':'ger-badge-verde'}">${esc(e.empresa||'')}</span></td>
+      <td>${esc(e.sector||'')}</td>
+      <td>${tipoBadge}</td>
+      <td>${e.periodo||'–'}</td>
+      <td>${gFmtFecha(e.fecha)}</td>
+      <td><strong style="color:#6a1b9a;font-size:14px;">${e.puntaje_total||0}%</strong></td>
+      <td><span style="font-weight:700;color:${color}">${nivel.replace(/^[^\s]+\s/,'')}</span></td>
+      <td>${esc(e.evaluador||'')}</td>
+      <td>
+        <button class="ger-btn ger-btn-pdf ger-btn-sm" onclick="gGenInformeId('${e.id}')">📄</button>
+        <button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gEliminarEval('${e.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── HISTORIAL SEGUIMIENTOS ────────────────────────────────────
+function gRenderHistSegs(){
+  const fS=document.getElementById('gFiltSegSup')?.value||'';
+  let data=[...gSeguimientos];
+  if(fS)data=data.filter(s=>s.supervisor_id===fS);
+  const tbody=document.getElementById('gTbodySegs');
+  if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="11" class="ger-empty">Sin seguimientos.</td></tr>';return;}
+  tbody.innerHTML=data.map((s,i)=>{
+    const pClass=s.presencia==='completa'?'ger-badge-verde':s.presencia==='parcial'?'ger-badge-amarillo':'ger-badge-rojo';
+    const pLabel=s.presencia==='completa'?'✅ Completa':s.presencia==='parcial'?'⚠️ Parcial':'❌ Ausente';
+    return`<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(s.supervisor||'')}</strong></td>
+      <td><span class="ger-badge ${s.empresa==='RAPEL'?'ger-badge-azul':'ger-badge-verde'}">${esc(s.empresa||'')}</span></td>
+      <td>${esc(s.sector||'')}</td>
+      <td>${gFmtFecha(s.fecha)}</td>
+      <td><span class="ger-badge ger-badge-gris">${s.tipo}</span></td>
+      <td><span class="ger-badge ${pClass}">${pLabel}</span></td>
+      <td>${s.meta||0}%</td>
+      <td><strong style="color:${(s.avance||0)>=(s.meta||0)?'#1a8040':'#cc0000'}">${s.avance||0}%</strong></td>
+      <td style="max-width:160px;font-size:10px;">${esc((s.actividades||'').substring(0,60))}${(s.actividades||'').length>60?'...':''}</td>
+      <td><button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gEliminarSeg('${s.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── RANKING ───────────────────────────────────────────────────
+function gRenderRanking(){
+  const{ranking}=gCalcStats();
+  gRenderRankDiv('gRankGeneral',ranking);
+  gRenderRankDiv('gRankRapel',ranking.filter(r=>r.empresa==='RAPEL'));
+  gRenderRankDiv('gRankVerfrut',ranking.filter(r=>r.empresa==='VERFRUT'));
+  const tbody=document.getElementById('gTbodyRanking');
+  if(!tbody)return;
+  if(!ranking.length){tbody.innerHTML='<tr><td colspan="11" class="ger-empty">Sin evaluaciones.</td></tr>';return;}
+  tbody.innerHTML=ranking.map((r,i)=>{
+    const{nivel,color}=gCalcNivel(r.promedio);
+    const pos=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+    const tend=gTendencia(r.nombre);
+    return`<tr>
+      <td><strong>${pos}</strong></td>
+      <td><strong>${esc(r.nombre)}</strong></td>
+      <td><span class="ger-badge ${r.empresa==='RAPEL'?'ger-badge-azul':'ger-badge-verde'}">${esc(r.empresa)}</span></td>
+      <td>${esc(r.sector)}</td>
+      <td>${r.count}</td>
+      <td><strong style="color:#6a1b9a;font-size:14px;">${r.promedio}%</strong></td>
+      <td>${r.pCampo}%</td>
+      <td>${r.pAdmin}%</td>
+      <td>${r.pComunic}%</td>
+      <td><span style="font-weight:700;color:${color}">${nivel.replace(/^[^\s]+\s/,'')}</span></td>
+      <td>${tend}</td>
+    </tr>`;
+  }).join('');
+}
+
+function gRenderRankDiv(divId,ranking){
+  const div=document.getElementById(divId);
+  if(!div)return;
+  if(!ranking.length){div.innerHTML='<p class="ger-empty">Sin datos.</p>';return;}
+  div.innerHTML=ranking.slice(0,5).map((r,i)=>{
+    const{nivel,color}=gCalcNivel(r.promedio);
+    const pc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const pl=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+    return`<div class="ger-rank-item">
+      <div class="ger-rank-pos ${pc}">${pl}</div>
+      <div class="ger-rank-info">
+        <div class="ger-rank-name">${esc(r.nombre)}</div>
+        <div class="ger-rank-sub">${esc(r.empresa)} · ${esc(r.sector)}</div>
+      </div>
+      <div><div class="ger-rank-pct" style="color:${color}">${r.promedio}%</div><div style="font-size:9px;color:var(--gris-muted);">${nivel.replace(/^[^\s]+\s/,'')}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function gTendencia(nombre){
+  const ev=gEvaluaciones.filter(e=>e.supervisor===nombre);
+  if(ev.length<2)return'<span class="ger-badge ger-badge-gris">–</span>';
+  const ult=ev[0].puntaje_total||0, ant=ev[1].puntaje_total||0;
+  if(ult>ant)return'<span class="ger-badge ger-badge-verde">📈 Mejora</span>';
+  if(ult<ant)return'<span class="ger-badge ger-badge-rojo">📉 Baja</span>';
+  return'<span class="ger-badge ger-badge-gris">➡️ Estable</span>';
+}
+
+// ── INFORME ───────────────────────────────────────────────────
+function gGenerarInforme(){
+  const supId=document.getElementById('gInfSup').value||document.getElementById('gEvSup').value;
+  const s=gSupervisores.find(x=>x.id===supId);
+  if(!s){showToast('Selecciona un supervisor',true);return;}
+  const evs=gEvaluaciones.filter(e=>e.supervisor_id===supId);
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const promTotal=avg(evs.map(e=>e.puntaje_total||0));
+  const{nivel}=gCalcNivel(promTotal);
+  const{ranking}=gCalcStats();
+  const pos=(ranking.findIndex(r=>r.id===supId)+1)||'–';
+  const ultima=evs[0];
+  const critsHTML=G_CRITERIOS.map(c=>{
+    const prom=evs.length?avg(evs.map(e=>e.calificaciones?e.calificaciones[c.id]||0:0))*20:0;
+    const nC=prom>=85?'EXCELENTE':prom>=70?'BUENO':prom>=50?'REGULAR':'REQUIERE MEJORA';
+    return`<tr><td>${c.label}</td><td><strong>${prom}%</strong></td><td>${nC}</td></tr>`;
+  }).join('');
+
+  const html=`
+<div style="text-align:center;margin-bottom:14px;border-bottom:2px solid #003087;padding-bottom:10px;">
+  <p style="font-size:10px;color:#666;margin-bottom:4px;">SISTEMA DE GESTIÓN HUMANA · RAPEL / VERFRUT</p>
+  <h2 style="font-size:16px;font-weight:bold;color:#003087;margin-bottom:2px;">INFORME DE FEEDBACK DE DESEMPEÑO</h2>
+  <p style="font-size:11px;font-weight:bold;color:#333;">SUPERVISOR DE GESTIÓN HUMANA</p>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:14px;background:#f0f5ff;padding:10px;border-radius:6px;">
+  <div><strong>Empresa:</strong> ${esc(s.empresa)}</div>
+  <div><strong>Supervisor:</strong> ${esc(s.nombre)}</div>
+  <div><strong>Sector(es):</strong> ${esc(s.sector)}</div>
+  <div><strong>Administrador:</strong> ${esc(s.administrador)}</div>
+  <div><strong>Periodo:</strong> ${document.getElementById('gInfPeriodo').value||'–'}</div>
+  <div><strong>Evaluaciones:</strong> ${evs.length} | <strong>Ranking:</strong> #${pos}/${ranking.length}</div>
+</div>
+<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">🎯 1. RESUMEN EJECUTIVO</h3>
+<p style="font-size:11px;">El presente informe consolida la evaluación integral del desempeño del supervisor durante el periodo indicado.</p>
+<p style="margin-top:6px;font-size:12px;"><strong>Nivel de desempeño: <span style="color:${gCalcNivel(promTotal).color}">${nivel} – ${promTotal}%</span></strong></p>
+<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">📊 2. RESULTADOS POR CATEGORÍA</h3>
+<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;">
+  <thead><tr style="background:#003087;color:#fff;"><th style="padding:6px;text-align:left;">Categoría</th><th style="padding:6px;text-align:left;">Puntaje (%)</th><th style="padding:6px;text-align:left;">Nivel</th></tr></thead>
+  <tbody>${critsHTML}</tbody>
+</table>
+<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">⚖️ 3. ANÁLISIS DE COHERENCIA</h3>
+<div style="font-size:11px;">
+  <p>Desempeño en campo: <strong>${avg(evs.map(e=>e.indice_campo||0))}%</strong></p>
+  <p>Desempeño administrativo: <strong>${avg(evs.map(e=>e.indice_admin||0))}%</strong></p>
+  <p>Comunicación y reportes: <strong>${avg(evs.map(e=>e.indice_comunicacion||0))}%</strong></p>
+</div>
+${ultima?.fortalezas?`<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">🟢 4. FORTALEZAS</h3><p style="font-size:11px;">${esc(ultima.fortalezas)}</p>`:''}
+${ultima?.mejoras?`<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">🔴 5. OPORTUNIDADES DE MEJORA</h3><p style="font-size:11px;">${esc(ultima.mejoras)}</p>`:''}
+${ultima?.recomendaciones?`<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">🚀 6. RECOMENDACIONES</h3><p style="font-size:11px;">${esc(ultima.recomendaciones)}</p>`:''}
+<h3 style="font-size:13px;font-weight:bold;color:#003087;border-bottom:1px solid #003087;padding-bottom:3px;margin:12px 0 6px;">🏁 7. CONCLUSIÓN FINAL</h3>
+<p style="font-size:11px;"><strong>${esc(s.nombre)}</strong> presenta nivel <strong style="color:${gCalcNivel(promTotal).color}">${promTotal>=70?'ALTO':promTotal>=50?'MEDIO':'BAJO'} (${promTotal}%)</strong>.<br>
+Se recomienda ${promTotal>=85?'mantener el nivel de excelencia como referente.':promTotal>=70?'continuar y fortalecer áreas de oportunidad.':promTotal>=50?'plan de mejora con seguimiento quincenal.':'intervención inmediata con plan urgente y seguimiento semanal.'}</p>
+<div style="margin-top:24px;border-top:1px solid #ccc;padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;text-align:center;">
+  <div><div style="border-top:1px solid #999;padding-top:6px;margin-top:28px;">Firma del Evaluador</div></div>
+  <div><div style="border-top:1px solid #999;padding-top:6px;margin-top:28px;">Firma del Supervisor</div></div>
+</div>`;
+
+  document.getElementById('gInformeContent').innerHTML=html;
+  document.getElementById('gInformePanel').style.display='block';
+  document.getElementById('gInformePanel').scrollIntoView({behavior:'smooth'});
+  showToast('📄 Informe generado');
+}
+
+window.gGenInformeId=function(evalId){
+  const e=gEvaluaciones.find(x=>x.id===evalId);
+  if(!e)return;
+  document.getElementById('gInfSup').value=e.supervisor_id;
+  document.getElementById('gInfEmpresa').value=e.empresa;
+  document.getElementById('gInfSector').value=e.sector;
+  document.getElementById('gInfPeriodo').value=e.periodo||'';
+  document.querySelector('[data-gtab="g-informes"]').click();
+  setTimeout(gGenerarInforme,200);
+};
+
+function gDescargarPDF(){
+  const content=document.getElementById('gInformeContent');
+  if(!content?.innerHTML.trim()){showToast('Primero genera un informe',true);return;}
+  try{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const texto=content.innerText;
+    const lines=pdf.splitTextToSize(texto,180);
+    let y=15;
+    pdf.setFontSize(13);pdf.setTextColor(0,26,94);
+    pdf.text('INFORME DE FEEDBACK – GESTIÓN HUMANA · VERFRUT',15,y);y+=8;
+    pdf.setFontSize(8.5);pdf.setTextColor(40,40,40);
+    lines.forEach(line=>{if(y>282){pdf.addPage();y=15;}pdf.text(line,15,y);y+=4.5;});
+    const supEl=document.getElementById('gInfSup');
+    const sName=supEl?.options[supEl.selectedIndex]?.text||'supervisor';
+    pdf.save(`Informe_GH_${sName.replace(/[^a-z0-9]/gi,'_')}.pdf`);
+    showToast('📄 PDF descargado');
+  }catch(e){showToast('Error al generar PDF',true);}
+}
+
+function gExpRankingPDF(){
+  const{ranking}=gCalcStats();
+  try{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF('l','mm','a4');
+    pdf.setFontSize(13);pdf.setTextColor(0,26,94);
+    pdf.text('RANKING CORPORATIVO – SUPERVISORES GH · RAPEL / VERFRUT',15,15);
+    pdf.setFontSize(8.5);pdf.setTextColor(40,40,40);
+    pdf.text(`Generado: ${gFmtFecha(gHoy())}  |  Total: ${ranking.length}`,15,22);
+    let y=30;
+    ranking.forEach((r,i)=>{
+      if(y>195){pdf.addPage();y=15;}
+      pdf.text(`${i+1}. ${r.nombre} (${r.empresa}) – ${r.sector} – ${r.promedio}%`,15,y);y+=7;
+    });
+    pdf.save('Ranking_GH_Verfrut.pdf');
+    showToast('📄 Ranking PDF descargado');
+  }catch(e){showToast('Error',true);}
+}
+
+function gExpRankingExcel(){
+  const{ranking}=gCalcStats();
+  const data=ranking.map((r,i)=>({'Posición':i+1,'Supervisor':r.nombre,'Empresa':r.empresa,'Sector':r.sector,'Evaluaciones':r.count,'Promedio %':r.promedio,'Campo %':r.pCampo,'Admin %':r.pAdmin,'Comunic %':r.pComunic,'Nivel':r.promedio>=85?'EXCELENTE':r.promedio>=70?'BUENO':r.promedio>=50?'REGULAR':'CRÍTICO'}));
+  gExpExcel(data,'Ranking','ranking_gh.xlsx');
+}
+
+// ── SUPERVISORES CONFIG ───────────────────────────────────────
+function gRenderListaSups(){
+  const div=document.getElementById('gListaSups');
+  if(!div)return;
+  const activos=gSupervisores.filter(s=>s.estado==='activo').length;
+  let html=`<div style="font-size:11px;color:var(--gris-text);margin-bottom:12px;font-weight:700;">✅ Activos: ${activos} | ⛔ Inactivos: ${gSupervisores.length-activos} | Total: ${gSupervisores.length}</div>`;
+  gSupervisores.forEach(s=>{
+    const eB=s.empresa==='RAPEL'?'ger-badge-azul':'ger-badge-verde';
+    const sB=s.estado==='activo'?'ger-badge-verde':'ger-badge-rojo';
+    html+=`<div class="ger-sup-card">
+      <div>
+        <div class="ger-sup-name">${esc(s.nombre)}</div>
+        <div class="ger-sup-sub">
+          <span class="ger-badge ${eB}" style="font-size:9px;">${esc(s.empresa)}</span>
+          <span class="ger-badge ${sB}" style="font-size:9px;">${s.estado==='activo'?'Activo':'Inactivo'}</span>
+          · Sector: <strong>${esc(s.sector)}</strong> · Admin: <strong>${esc(s.administrador)}</strong>
+        </div>
+      </div>
+      <div class="ger-actions">
+        <button class="ger-btn ger-btn-primary ger-btn-sm" onclick="gAbrirModal('${s.id}')">✏️ Editar</button>
+        <button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gEliminarSup('${s.id}')">🗑</button>
+      </div>
+    </div>`;
+  });
+  div.innerHTML=html;
+}
+
+window.gAbrirModal=function(id){
+  const s=id?gSupervisores.find(x=>x.id===id):null;
+  document.getElementById('gMsId').value=id||'';
+  document.getElementById('gModalSupTitulo').textContent=id?'✏️ Editar Supervisor':'➕ Nuevo Supervisor';
+  document.getElementById('gMsNombre').value=s?s.nombre:'';
+  document.getElementById('gMsEmpresa').value=s?s.empresa:'RAPEL';
+  document.getElementById('gMsSector').value=s?s.sector:'';
+  document.getElementById('gMsAdmin').value=s?s.administrador:'';
+  document.getElementById('gMsCargo').value=s?s.cargo:'SUPERVISOR(A) DE GESTION HUMANA';
+  document.getElementById('gMsEstado').value=s?s.estado:'activo';
+  document.getElementById('gModalSup').classList.add('open');
+};
+window.gCerrarModal=function(){document.getElementById('gModalSup').classList.remove('open');};
+document.getElementById('gModalSup')?.addEventListener('click',function(e){if(e.target===this)gCerrarModal();});
+
+window.gGuardarSupervisor=async function(){
+  const id=document.getElementById('gMsId').value;
+  const datos={
+    nombre:document.getElementById('gMsNombre').value.trim().toUpperCase(),
+    empresa:document.getElementById('gMsEmpresa').value,
+    sector:document.getElementById('gMsSector').value.trim(),
+    administrador:document.getElementById('gMsAdmin').value.trim(),
+    cargo:document.getElementById('gMsCargo').value.trim(),
+    estado:document.getElementById('gMsEstado').value
+  };
+  if(!datos.nombre||!datos.sector||!datos.administrador){showToast('Completa los campos obligatorios',true);return;}
+  try{
+    if(id){
+      await updateDoc(doc(db,GCOL_SUPS,id),datos);
+      const idx=gSupervisores.findIndex(s=>s.id===id);
+      if(idx!==-1)gSupervisores[idx]={...gSupervisores[idx],...datos};
+    } else {
+      const ref=await addDoc(collection(db,GCOL_SUPS),{...datos,creadoEn:new Date().toISOString()});
+      gSupervisores.push({id:ref.id,...datos});
+    }
+    gCerrarModal();gPoblarSelectores();gRenderListaSups();gRenderDashboard();
+    showToast(id?'✅ Supervisor actualizado':'✅ Supervisor agregado',false,true);
+  }catch(e){showToast('❌ Error al guardar',true);}
+};
+
+window.gEliminarSup=async function(id){
+  if(!confirm('¿Eliminar este supervisor? El historial de evaluaciones se conserva.'))return;
+  try{
+    await deleteDoc(doc(db,GCOL_SUPS,id));
+    gSupervisores=gSupervisores.filter(s=>s.id!==id);
+    gPoblarSelectores();gRenderListaSups();gRenderDashboard();
+    showToast('🗑 Supervisor eliminado');
+  }catch(e){showToast('Error',true);}
+};
+
+window.gEliminarEval=async function(id){
+  if(!confirm('¿Eliminar esta evaluación?'))return;
+  try{
+    await deleteDoc(doc(db,GCOL_EVALS,id));
+    gEvaluaciones=gEvaluaciones.filter(e=>e.id!==id);
+    gRenderHistEvals();gRenderDashboard();gRenderRanking();
+    showToast('🗑 Eliminado');
+  }catch(e){showToast('Error',true);}
+};
+
+window.gEliminarSeg=async function(id){
+  if(!confirm('¿Eliminar este seguimiento?'))return;
+  try{
+    await deleteDoc(doc(db,GCOL_SEGS,id));
+    gSeguimientos=gSeguimientos.filter(s=>s.id!==id);
+    gRenderHistSegs();gRenderDashboard();
+    showToast('🗑 Eliminado');
+  }catch(e){showToast('Error',true);}
+};
+
+// ── UTILS GERENCIAL ───────────────────────────────────────────
+function gHoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function gFmtFecha(str){if(!str)return'–';try{const[y,m,d]=str.split('-');const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${d}/${mn[parseInt(m)-1]}/${y}`;}catch{return str;}}
+function gExpExcel(data,sheet,filename){
+  if(!data||!data.length){showToast('Sin datos para exportar',true);return;}
+  const clean=data.map(r=>{const{id,...rest}=r;return rest;});
+  const ws=XLSX.utils.json_to_sheet(clean);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheet);
+  XLSX.writeFile(wb,filename);
+  showToast('📥 Excel exportado');
+}
+
+// ── MODAL RÁPIDO NUEVO SUPERVISOR ─────────────────────────────
+window.gAbrirModalRapido = function(origen) {
+  document.getElementById('gMrOrigen').value = origen;
+  document.getElementById('gMrNombre').value = '';
+  document.getElementById('gMrEmpresa').value = '';
+  document.getElementById('gMrSector').value = '';
+  document.getElementById('gMrAdmin').value = '';
+  document.getElementById('gMrCargo').value = 'SUPERVISOR(A) DE GESTION HUMANA';
+  document.getElementById('gModalRapido').classList.add('open');
+  setTimeout(() => document.getElementById('gMrNombre').focus(), 200);
+};
+
+window.gCerrarModalRapido = function() {
+  document.getElementById('gModalRapido').classList.remove('open');
+};
+
+document.getElementById('gModalRapido')?.addEventListener('click', function(e) {
+  if (e.target === this) gCerrarModalRapido();
+});
+
+window.gGuardarRapido = async function() {
+  const nombre = document.getElementById('gMrNombre').value.trim().toUpperCase();
+  const empresa = document.getElementById('gMrEmpresa').value;
+  const sector = document.getElementById('gMrSector').value.trim();
+  const admin = document.getElementById('gMrAdmin').value.trim();
+  const cargo = document.getElementById('gMrCargo').value.trim();
+  const origen = document.getElementById('gMrOrigen').value;
+
+  if (!nombre) { showToast('⚠️ Ingresa el nombre del supervisor', true); return; }
+  if (!empresa) { showToast('⚠️ Selecciona la empresa', true); return; }
+  if (!sector) { showToast('⚠️ Ingresa el sector', true); return; }
+  if (!admin) { showToast('⚠️ Ingresa el administrador', true); return; }
+
+  const datos = {
+    nombre, empresa, sector,
+    administrador: admin,
+    cargo: cargo || 'SUPERVISOR(A) DE GESTION HUMANA',
+    estado: 'activo',
+    creadoEn: new Date().toISOString()
+  };
+
+  try {
+    const ref = await addDoc(collection(db, GCOL_SUPS), datos);
+    const nuevo = { id: ref.id, ...datos };
+    gSupervisores.push(nuevo);
+
+    // Actualizar todos los selectores
+    gPoblarSelectores();
+
+    // Seleccionar automáticamente el nuevo supervisor en el origen
+    const selectMap = {
+      'evaluacion': 'gEvSup',
+      'seguimiento': 'gSegSup',
+      'informes': 'gInfSup'
+    };
+    const selectId = selectMap[origen];
+    if (selectId) {
+      const sel = document.getElementById(selectId);
+      if (sel) {
+        sel.value = ref.id;
+        // Disparar change para autocompletar empresa/sector
+        sel.dispatchEvent(new Event('change'));
+      }
+    }
+
+    // Actualizar lista en pestaña Supervisores
+    gRenderListaSups();
+    gRenderDashboard();
+    gCerrarModalRapido();
+    showToast(`✅ Supervisor "${nombre}" agregado y seleccionado`, false, true);
+
+  } catch(e) {
+    showToast('❌ Error al guardar el supervisor', true);
+  }
+};
+
   document.getElementById('uEditAnio').value = u.anio || '';
   document.getElementById('uEditEstatus').value = u.estatus || 'Operativo';
   document.getElementById('uEditZonaRec').value = u.zona_recorrido || '';
