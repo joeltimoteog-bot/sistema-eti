@@ -121,8 +121,8 @@ function initTabs() {
       if(target==='tabla') renderTabla();
       if(target==='ranking') renderRanking();
       if(target==='estadisticas') renderEstadisticas();
-      if(target==='unidades') uRenderDashboard();
-      if(target==='gerencial') gRenderDashboard();
+      if(target==='unidades' && uIniciado) uRenderDashboard();
+      if(target==='gerencial' && gIniciado) gRenderDashboard();
     });
   });
 }
@@ -1065,6 +1065,7 @@ const COL_LIC  = 'licencias_rrhh';
 
 let uUnidades=[], uMantenimientos=[], uLicencias=[];
 let uChartU=null, uChartL=null, uChartM=null, uChartLM=null;
+let uIniciado=false;
 
 const UNIDADES_BASE=[
   {dni:'46793507',usuario:'PULACHE VIERA FLOR DE LOS MILAGROS',cargo:'SUPERVISOR(A) DE GESTION HUMANA',modelo:'TRX-420',marca:'HONDA',cod_interno:'CM-48',cod_sist:'VMT1056',numero_motor:'TE40E8702565',numero_chasis:'1HFTE40U4L4650073',anio:2020,estatus:'Operativo',zona_recorrido:'LOS OLIVARES',empresa:'RAPEL',zona_abastecimiento_actual:'LOS OLIVARES'},
@@ -1087,6 +1088,8 @@ const UNIDADES_BASE=[
 // ── INIT ──────────────────────────────────────────────────────
 async function initUnidades() {
   if(document.getElementById('u-dashboard')===null) return;
+  if(uIniciado){uRenderDashboard();return;}
+  uIniciado=true;
   initSubTabs();
   await uCargarUnidades();
   await uCargarMantenimientos();
@@ -1652,6 +1655,7 @@ const GCOL_SEGS = 'gerencial_seguimientos';
 let gSupervisores=[], gEvaluaciones=[], gSeguimientos=[];
 let gCalif={};
 let gChartD=null, gChartE=null, gChartT=null, gChartS=null;
+let gIniciado=false;
 
 const G_SUPS_BASE=[
   {nombre:'PAUL TAMAYO RODRIGUEZ',empresa:'RAPEL',sector:'El Papayo, Limones',administrador:'Junior Galindo',cargo:'SUPERVISOR(A) DE GESTION HUMANA',estado:'activo'},
@@ -1678,6 +1682,8 @@ const G_CRITERIOS=[
 // ── INIT ──────────────────────────────────────────────────────
 async function initGerencial(){
   if(!document.getElementById('g-dashboard')) return;
+  if(gIniciado){gRenderDashboard();return;}
+  gIniciado=true;
   gInitSubTabs();
   await gCargarSupervisores();
   await gCargarEvaluaciones();
