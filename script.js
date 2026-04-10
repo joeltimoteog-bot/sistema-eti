@@ -2520,4 +2520,3 @@ window.gGuardarRapido = async function() {
     showToast('❌ Error al guardar el supervisor', true);
   }
 };
-
