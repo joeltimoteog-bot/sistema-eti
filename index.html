@@ -301,41 +301,6 @@
   </div>
 </section>
 
-<!-- EVALUACIONES 360° -->
-<section class="tab-content" id="tab-gerencial">
-  <nav class="inner-sub-nav">
-    <button class="inner-sub-btn active" data-inner="g-dashboard">Dashboard</button>
-    <button class="inner-sub-btn" data-inner="g-evaluacion">Evaluación 360°</button>
-    <button class="inner-sub-btn" data-inner="g-seguimiento">Seguimiento</button>
-    <button class="inner-sub-btn" data-inner="g-ranking">Ranking</button>
-    <button class="inner-sub-btn" data-inner="g-informes">Informes</button>
-    <button class="inner-sub-btn" data-inner="g-supervisores">Supervisores</button>
-  </nav>
-  <div class="inner-sub-content active" id="g-dashboard">
-    <h2 class="form-heading">📊 Dashboard de Evaluaciones</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="g-evaluacion">
-    <h2 class="form-heading">🎯 Evaluación 360°</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="g-seguimiento">
-    <h2 class="form-heading">📌 Seguimiento</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="g-ranking">
-    <h2 class="form-heading">🏆 Ranking de Evaluaciones</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="g-informes">
-    <h2 class="form-heading">📄 Informes</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="g-supervisores">
-    <h2 class="form-heading">👥 Supervisores</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-</section>
 
 <!-- MODAL EDITAR -->
 <div class="modal-overlay" id="modalOverlay" style="display:none;">
@@ -784,18 +749,8 @@
 <section class="tab-content" id="tab-gerencial">
   <div class="ger-wrapper">
 
-    <!-- SUB-TABS -->
-    <div class="ger-subnav">
-      <button class="ger-tab active" data-gtab="g-dashboard">🧭 Dashboard</button>
-      <button class="ger-tab" data-gtab="g-evaluacion">📝 Evaluación 360°</button>
-      <button class="ger-tab" data-gtab="g-seguimiento">📅 Seguimiento</button>
-      <button class="ger-tab" data-gtab="g-ranking">🏆 Ranking</button>
-      <button class="ger-tab" data-gtab="g-informes">📑 Informes</button>
-      <button class="ger-tab" data-gtab="g-supervisores">⚙️ Supervisores</button>
-    </div>
-
     <!-- DASHBOARD -->
-    <div class="ger-content active" id="g-dashboard">
+    <div class="inner-sub-content active" id="g-dashboard">
       <div class="ger-kpi-row">
         <div class="ger-kpi"><div class="ger-kpi-icon">👥</div><div class="ger-kpi-val" id="gkSups">0</div><div class="ger-kpi-lab">Supervisores</div></div>
         <div class="ger-kpi gverde"><div class="ger-kpi-icon">🏆</div><div class="ger-kpi-val" id="gkExc">0</div><div class="ger-kpi-lab">Excelente</div></div>
@@ -818,7 +773,7 @@
     </div>
 
     <!-- EVALUACIÓN 360° -->
-    <div class="ger-content" id="g-evaluacion">
+    <div class="inner-sub-content" id="g-evaluacion">
       <div class="ger-panel">
         <div class="ger-panel-title">📝 Nueva Evaluación 360°</div>
         <div class="ger-section">
@@ -889,7 +844,7 @@
     </div>
 
     <!-- SEGUIMIENTO -->
-    <div class="ger-content" id="g-seguimiento">
+    <div class="inner-sub-content" id="g-seguimiento">
       <div class="ger-panel">
         <div class="ger-panel-title">📅 Registro de Seguimiento</div>
         <div class="ger-section">
@@ -939,7 +894,7 @@
     </div>
 
     <!-- RANKING -->
-    <div class="ger-content" id="g-ranking">
+    <div class="inner-sub-content" id="g-ranking">
       <div class="ger-panel-grid">
         <div class="ger-panel"><div class="ger-panel-title">🏆 Ranking General</div><div id="gRankGeneral"><p class="ger-empty">Sin evaluaciones.</p></div></div>
         <div>
@@ -965,7 +920,7 @@
     </div>
 
     <!-- INFORMES -->
-    <div class="ger-content" id="g-informes">
+    <div class="inner-sub-content" id="g-informes">
       <div class="ger-panel">
         <div class="ger-panel-title">📑 Generador de Informes Gerenciales</div>
         <div class="ger-section">
@@ -995,7 +950,7 @@
     </div>
 
     <!-- SUPERVISORES CONFIG -->
-    <div class="ger-content" id="g-supervisores">
+    <div class="inner-sub-content" id="g-supervisores">
       <div class="ger-panel">
         <div class="ger-toolbar">
           <div class="ger-panel-title" style="margin:0">⚙️ Gestión de Supervisores GH</div>
