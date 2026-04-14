@@ -275,31 +275,6 @@
   </div>
 </section>
 
-<!-- MANTENIMIENTO DE UNIDADES -->
-<section class="tab-content" id="tab-unidades">
-  <nav class="inner-sub-nav">
-    <button class="inner-sub-btn active" data-inner="u-dashboard">Dashboard</button>
-    <button class="inner-sub-btn" data-inner="u-unidades">Unidades</button>
-    <button class="inner-sub-btn" data-inner="u-mantenimiento">Mantenimiento</button>
-    <button class="inner-sub-btn" data-inner="u-licencias">Licencias</button>
-  </nav>
-  <div class="inner-sub-content active" id="u-dashboard">
-    <h2 class="form-heading">🚗 Dashboard de Unidades</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="u-unidades">
-    <h2 class="form-heading">🚗 Unidades</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="u-mantenimiento">
-    <h2 class="form-heading">🔧 Mantenimiento</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-  <div class="inner-sub-content" id="u-licencias">
-    <h2 class="form-heading">📋 Licencias</h2>
-    <p class="empty-msg">Módulo en desarrollo.</p>
-  </div>
-</section>
 
 
 <!-- MODAL EDITAR -->
@@ -524,16 +499,8 @@
 <section class="tab-content" id="tab-unidades">
   <div class="unid-wrapper">
 
-    <!-- SUB-TABS -->
-    <div class="unid-subnav">
-      <button class="unid-tab active" data-utab="u-dashboard">📊 Dashboard</button>
-      <button class="unid-tab" data-utab="u-unidades">🚗 Unidades</button>
-      <button class="unid-tab" data-utab="u-mantenimiento">🔧 Mantenimiento</button>
-      <button class="unid-tab" data-utab="u-licencias">📋 Licencias</button>
-    </div>
-
     <!-- ── DASHBOARD ── -->
-    <div class="unid-content active" id="u-dashboard">
+    <div class="inner-sub-content active" id="u-dashboard">
       <div class="unid-kpi-row">
         <div class="unid-kpi azul"><div class="unid-kpi-icon">🚗</div><div class="unid-kpi-val" id="ukTotal">0</div><div class="unid-kpi-lab">Total Unidades</div></div>
         <div class="unid-kpi verde"><div class="unid-kpi-icon">✅</div><div class="unid-kpi-val" id="ukOperativas">0</div><div class="unid-kpi-lab">Operativas</div></div>
@@ -563,7 +530,7 @@
     </div>
 
     <!-- ── UNIDADES ── -->
-    <div class="unid-content" id="u-unidades">
+    <div class="inner-sub-content" id="u-unidades">
       <div class="unid-panel">
         <div class="unid-toolbar">
           <div class="unid-panel-title" style="margin:0">🚗 Base General de Unidades</div>
@@ -590,7 +557,7 @@
     </div>
 
     <!-- ── MANTENIMIENTO ── -->
-    <div class="unid-content" id="u-mantenimiento">
+    <div class="inner-sub-content" id="u-mantenimiento">
       <div class="unid-panel">
         <div class="unid-panel-title">➕ Registrar Mantenimiento</div>
         <div class="unid-form-grid">
@@ -640,7 +607,7 @@
     </div>
 
     <!-- ── LICENCIAS ── -->
-    <div class="unid-content" id="u-licencias">
+    <div class="inner-sub-content" id="u-licencias">
       <div class="unid-panel">
         <div class="unid-panel-title">➕ Registrar Licencia</div>
         <div class="unid-form-grid">
@@ -967,7 +934,7 @@
 </section>
 
 <!-- MODAL RÁPIDO NUEVO SUPERVISOR -->
-<div class="ger-modal" id="gModalRapido">
+<div class="ger-modal" id="gModalRapido" style="display:none;">
   <div class="ger-modal-box" style="max-width:480px;">
     <div class="ger-modal-header">
       <h3>➕ Agregar Nuevo Supervisor</h3>
@@ -1011,7 +978,7 @@
 </div>
 
 <!-- MODAL SUPERVISOR GH -->
-<div class="ger-modal" id="gModalSup">
+<div class="ger-modal" id="gModalSup" style="display:none;">
   <div class="ger-modal-box">
     <div class="ger-modal-header">
       <h3 id="gModalSupTitulo">➕ Nuevo Supervisor</h3>
