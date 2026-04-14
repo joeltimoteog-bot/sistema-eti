@@ -478,7 +478,10 @@ function renderCharts(cumplido,proceso,leve,critico){
   new Chart(document.getElementById('chartMes'),{type:'line',data:{labels:mk.map(k=>mn[k]),datasets:[{label:'Registros',data:mk.map(k=>mm[k]),borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.10)',tension:.4,fill:true,pointRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}}}});
   const alta=registros.filter(r=>r.temporada==='alta').length;
   dc('chartTemporada');
-  new Chart(document.getElementById('chartTemporada'),{type:'pie',data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:[alta,registros.length-alta],backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}}});
+  new Chart(document.getElementById('chartTemporada'),{type:'pie',
+    data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:[alta,registros.length-alta],backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}
+  });
 }
 
 // ─── RANKING ──────────────────────────────────────────────────
