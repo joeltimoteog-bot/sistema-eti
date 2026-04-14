@@ -72,9 +72,12 @@ function intentarLogin() {
   initBuscador();
   initModal();
   initBotones();
+<<<<<<< HEAD
   initEstadisticas();
   initUnidades();
   initGerencial();
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   // Escuchar cambios en tiempo real desde Firebase
   escucharFirebase();
 }
@@ -110,6 +113,7 @@ function escucharFirebase() {
 
 // ─── TABS ─────────────────────────────────────────────────────
 function initTabs() {
+<<<<<<< HEAD
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const target=btn.dataset.tab;
@@ -123,11 +127,83 @@ function initTabs() {
       if(target==='estadisticas') renderEstadisticas();
       if(target==='unidades' && uIniciado) uRenderDashboard();
       if(target==='gerencial' && gIniciado) gRenderDashboard();
+=======
+  // Botones de módulo (nivel 1)
+  document.querySelectorAll('.mod-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mod = btn.dataset.mod;
+      document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sub-bar').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      const subBar = document.getElementById('sub-' + mod);
+      if (subBar) {
+        subBar.classList.add('active');
+        const activeSubBtn = subBar.querySelector('.sub-btn.active') || subBar.querySelector('.sub-btn');
+        if (activeSubBtn) activeSubBtn.click();
+      }
+    });
+  });
+
+  // Botones de sub-ítem (nivel 2)
+  document.querySelectorAll('.sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      const sub = btn.dataset.sub;
+      const subBar = btn.closest('.sub-bar');
+      if (subBar) subBar.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const tabEl = document.getElementById('tab-' + target);
+      if (tabEl) tabEl.classList.add('active');
+      // Activar sub-tab interno si corresponde
+      if (sub && tabEl) {
+        tabEl.querySelectorAll('.inner-sub-content').forEach(c => c.classList.remove('active'));
+        const subEl = document.getElementById(sub);
+        if (subEl) subEl.classList.add('active');
+        const innerNav = tabEl.querySelector('.inner-sub-nav');
+        if (innerNav) {
+          innerNav.querySelectorAll('.inner-sub-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.inner === sub);
+          });
+        }
+      }
+      // Llamar renders según corresponda
+      if (target === 'dashboard') renderDashboard();
+      if (target === 'tabla') renderTabla();
+      if (target === 'ranking') renderRanking();
+      if (target === 'estadisticas' && typeof renderEstadisticas === 'function') renderEstadisticas();
+      if (sub === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
+      if (sub === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
+    });
+  });
+
+  // Botones de inner sub-nav (navegación dentro de tab-unidades / tab-gerencial)
+  document.querySelectorAll('.inner-sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inner = btn.dataset.inner;
+      const tabContent = btn.closest('.tab-content');
+      const innerNav = btn.closest('.inner-sub-nav');
+      if (innerNav) innerNav.querySelectorAll('.inner-sub-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (tabContent) {
+        tabContent.querySelectorAll('.inner-sub-content').forEach(c => c.classList.remove('active'));
+        const innerEl = document.getElementById(inner);
+        if (innerEl) innerEl.classList.add('active');
+        // Sincronizar sub-btn del mod-nav superior
+        const modId = tabContent.id.replace('tab-', '');
+        document.querySelectorAll('.sub-btn[data-tab="' + modId + '"]').forEach(b => {
+          b.classList.toggle('active', b.dataset.sub === inner);
+        });
+      }
+      if (inner === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
+      if (inner === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
     });
   });
 }
 
 // ─── TEMPORADA ────────────────────────────────────────────────
+<<<<<<< HEAD
 // ─── TEMPORADA ────────────────────────────────────────────────
 // Baja: 5-ene al 26-jun → Lun-Vie
 // Alta: 27-jun al 31-dic → Lun-Sáb
@@ -135,6 +211,11 @@ function detectarTemporada(fecha) {
   const d=typeof fecha==='string'?new Date(fecha+'T12:00:00'):new Date(fecha);
   const val=(d.getMonth()+1)*100+d.getDate();
   // Baja: 01-05 (105) hasta 06-26 (626)
+=======
+function detectarTemporada(fecha) {
+  const d=typeof fecha==='string'?new Date(fecha+'T12:00:00'):new Date(fecha);
+  const val=(d.getMonth()+1)*100+d.getDate();
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   return (val>=105&&val<=626)?'baja':'alta';
 }
 function esFestivo(fecha) {
@@ -143,6 +224,7 @@ function esFestivo(fecha) {
   return FESTIVOS_PERU.includes(mm+'-'+dd);
 }
 function esDiaHabil(fecha,temporada) {
+<<<<<<< HEAD
   const dow=fecha.getDay(); // 0=Dom,1=Lun,...,6=Sáb
   if(dow===0) return false;                          // Domingo: nunca hábil
   if(temporada==='baja'&&dow===6) return false;      // Sáb en temporada baja: no hábil
@@ -153,10 +235,19 @@ function esDiaHabil(fecha,temporada) {
 // Paso 1: Calcular fecha límite
 // Regla: El día de ejecución NO cuenta. Se suman 3 días hábiles desde el día SIGUIENTE.
 // La temporada se determina según la fecha de ejecución.
+=======
+  const dow=fecha.getDay();
+  if(dow===0) return false;
+  if(temporada==='baja'&&dow===6) return false;
+  if(esFestivo(fecha)) return false;
+  return true;
+}
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
 function calcularFechaLimite(fechaEjecStr) {
   const temporada=detectarTemporada(fechaEjecStr);
   let d=new Date(fechaEjecStr+'T12:00:00');
   let habiles=0;
+<<<<<<< HEAD
   // Avanzar día por día desde el día SIGUIENTE a la ejecución
   while(habiles<3){
     d.setDate(d.getDate()+1);
@@ -176,10 +267,20 @@ function contarDiasHabiles(desde,hasta) {
     if(esDiaHabil(d,temp)) count++;
     d.setDate(d.getDate()+1);
   }
+=======
+  while(habiles<3){d.setDate(d.getDate()+1);if(esDiaHabil(d,temporada))habiles++;}
+  return {fechaLimite:formatDate(d),temporada};
+}
+function contarDiasHabiles(desde,hasta,temporada) {
+  let count=0,d=new Date(desde.getTime());
+  d.setDate(d.getDate()+1);
+  while(d<=hasta){if(esDiaHabil(d,temporada))count++;d.setDate(d.getDate()+1);}
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   return count;
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────
+<<<<<<< HEAD
 // Lógica:
 // A) Si tiene fecha de envío:
 //    - fEnvio <= fLimite → CUMPLIDO (avance 100%, retraso 0%)
@@ -229,6 +330,27 @@ function calcularEstado(reg) {
     retraso: Math.min(pctRetraso,100),
     diasRetraso: dr
   };
+=======
+function calcularEstado(reg) {
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const fLimite=new Date(reg.fechaLimite+'T12:00:00');
+  const fEjec=new Date(reg.fechaEjecucion+'T12:00:00');
+  const temporada=reg.temporada||detectarTemporada(reg.fechaEjecucion);
+  const fEnvio=reg.fechaEnvio?new Date(reg.fechaEnvio+'T12:00:00'):null;
+  if(fEnvio) {
+    if(fEnvio<=fLimite) return {estado:'cumplido',avance:100,retraso:0,diasRetraso:0};
+    const dr=contarDiasHabiles(fLimite,fEnvio,temporada);
+    const pct=Math.min(Math.round((dr/3)*100),100);
+    return {estado:dr<=2?'leve':'critico',avance:Math.max(100-pct,0),retraso:pct,diasRetraso:dr};
+  }
+  if(hoy<=fLimite) {
+    const du=contarDiasHabiles(fEjec,hoy,temporada);
+    return {estado:'proceso',avance:Math.min(Math.round((du/3)*100),99),retraso:0,diasRetraso:0};
+  }
+  const dr=contarDiasHabiles(fLimite,hoy,temporada);
+  const pct=Math.min(Math.round((dr/3)*100),100);
+  return {estado:dr<=2?'leve':'critico',avance:Math.max(100-pct,0),retraso:pct,diasRetraso:dr};
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
 }
 
 // ─── HEADER ───────────────────────────────────────────────────
@@ -249,6 +371,7 @@ function initForm() {
     document.getElementById('fSector').value=this.value?this.value.split('|')[1]||'':'';
     verificarRetrasoForm();
   });
+<<<<<<< HEAD
   // Mostrar bloque tipo personal cuando se selecciona un tema
   document.getElementById('fTema').addEventListener('change',function(){
     const bloquePersonal=document.getElementById('bloquePersonal');
@@ -289,6 +412,8 @@ function initForm() {
   document.getElementById('fCantAreas').addEventListener('input',function(){
     generarFilasAreas(parseInt(this.value)||0);
   });
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   ['fVarones','fMujeres'].forEach(id=>document.getElementById(id).addEventListener('input',calcularTotal));
   document.getElementById('fFechaEjecucion').addEventListener('change',verificarRetrasoForm);
   document.getElementById('fFechaEnvio').addEventListener('change',verificarRetrasoForm);
@@ -354,6 +479,7 @@ function obtenerRutas(){
   return {tipo:'detalle',rutas};
 }
 
+<<<<<<< HEAD
 function generarFilasAreas(cant){
   const cont=document.getElementById('areasItemsCont');
   if(cant<1||cant>50){cont.innerHTML='';return;}
@@ -378,6 +504,8 @@ function obtenerAreas(){
   return areas;
 }
 
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
 function mostrarPreview(){
   const fechaE=document.getElementById('fFechaEjecucion').value;
   if(!fechaE){showToast('Ingresa la fecha de ejecución primero.',true);return;}
@@ -404,9 +532,12 @@ async function guardarRegistro(){
   const fechaEnv=document.getElementById('fFechaEnvio').value;
   const obs=document.getElementById('fObservaciones').value.trim();
   if(!supVal||varones===''||mujeres===''||!tema||!fechaE){showToast('Completa todos los campos obligatorios (*).', true);return;}
+<<<<<<< HEAD
   // Tipo de personal (opcional para registros nuevos, requerido si se seleccionó tema)
   const tpEl=document.querySelector('input[name="tipoPersonal"]:checked');
   const tipoPersonal=tpEl?tpEl.value:'';
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   const {fechaLimite,temporada}=calcularFechaLimite(fechaE);
   const fLimite=new Date(fechaLimite+'T12:00:00');
   const hoy=new Date();hoy.setHours(0,0,0,0);
@@ -420,15 +551,23 @@ async function guardarRegistro(){
   }
   const [supervisor,sector]=supVal.split('|');
   const v=parseInt(varones)||0,m=parseInt(mujeres)||0;
+<<<<<<< HEAD
   const rutasData=tipoPersonal==='EMPLEADOS'?{tipo:'ninguna',rutas:[]}:obtenerRutas();
   const areasData=tipoPersonal==='EMPLEADOS'?obtenerAreas():[];
+=======
+  const rutasData=obtenerRutas();
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
   const reg={
     supervisor,sector,varones:v,mujeres:m,total:v+m,
     tema,fechaEjecucion:fechaE,fechaLimite,temporada,
     fechaEnvio:fechaEnv||null,observaciones:obs,
+<<<<<<< HEAD
     tipoPersonal:tipoPersonal||'',
     rutasTipo:rutasData.tipo,rutas:rutasData.rutas,
     areas:areasData,
+=======
+    rutasTipo:rutasData.tipo,rutas:rutasData.rutas,
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
     registradoPor:usuarioActual?usuarioActual.nombre:'',
     creadoEn:new Date().toISOString()
   };
@@ -443,10 +582,13 @@ async function guardarRegistro(){
     document.getElementById('rutasNumeroCont').style.display='none';
     document.getElementById('rutasVariasCont').style.display='none';
     document.getElementById('rutasItemsCont').innerHTML='';
+<<<<<<< HEAD
     document.getElementById('bloquePersonal').style.display='none';
     document.getElementById('bloqueRutas').style.display='block';
     document.getElementById('bloqueAreas').style.display='none';
     document.getElementById('areasItemsCont').innerHTML='';
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
     document.getElementById('obsAlert').style.display='none';
     document.getElementById('fObservaciones').style.borderColor='';
     // Ir a tabla
@@ -475,12 +617,17 @@ function renderTabla(){
     if(r.rutasTipo==='varias') rutasCell='<span class="badge badge-baja">Rutas Varias</span>';
     else if(r.rutasTipo==='detalle'&&r.rutas&&r.rutas.length>0) rutasCell=`<span title="${r.rutas.map(x=>x.codigo+' '+x.nombre).join(', ')}">${r.rutas.length} ruta(s)</span>`;
     const cr=est.retraso>50?'fill-red':'fill-orange';
+<<<<<<< HEAD
     const tpLabel = r.tipoPersonal==='OBREROS'?'<span class="badge badge-obrero tp-badge">👷 Obreros</span>':
                      r.tipoPersonal==='EMPLEADOS'?'<span class="badge badge-empleado tp-badge">💼 Empleados</span>':
                      '<span style="color:var(--gris-muted);font-size:10px;">–</span>';
     return `<tr>
       <td>${i+1}</td><td><strong>${esc(r.supervisor)}</strong></td><td>${esc(r.sector)}</td>
       <td>${tpLabel}</td>
+=======
+    return `<tr>
+      <td>${i+1}</td><td><strong>${esc(r.supervisor)}</strong></td><td>${esc(r.sector)}</td>
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
       <td class="text-right" style="color:#0050c8;font-weight:700">${r.varones}</td>
       <td class="text-right" style="color:#cc0000;font-weight:700">${r.mujeres}</td>
       <td class="text-right"><strong>${r.total}</strong></td>
@@ -537,6 +684,7 @@ function renderDashboard(){
   renderCharts(cumplido,proceso,leve,critico);
 }
 
+<<<<<<< HEAD
 let _chartEstado=null,_chartSupervisor=null,_chartMes=null,_chartTemporada=null;
 function renderCharts(cumplido,proceso,leve,critico){
   // Estado
@@ -560,6 +708,25 @@ function renderCharts(cumplido,proceso,leve,critico){
   const tempData=[alta,registros.length-alta];
   if(_chartTemporada){_chartTemporada.data.datasets[0].data=tempData;_chartTemporada.update('none');}
   else{_chartTemporada=new Chart(document.getElementById('chartTemporada'),{type:'pie',data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:tempData,backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}});}
+=======
+function renderCharts(cumplido,proceso,leve,critico){
+  const dc=(id)=>{const c=Chart.getChart(id);if(c)c.destroy();};
+  dc('chartEstado');
+  new Chart(document.getElementById('chartEstado'),{type:'doughnut',data:{labels:['Cumplido','En Proceso','Retraso Leve','Retraso Crítico'],datasets:[{data:[cumplido,proceso,leve,critico],backgroundColor:['#1a8040','#1a6fd4','#e07a2a','#cc0000'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}},cutout:'65%'}});
+  const sm={};
+  registros.forEach(r=>{if(!sm[r.supervisor])sm[r.supervisor]={c:0,t:0};sm[r.supervisor].t++;if(calcularEstado(r).estado==='cumplido')sm[r.supervisor].c++;});
+  const sl=Object.keys(sm),sp=sl.map(s=>Math.round((sm[s].c/sm[s].t)*100));
+  dc('chartSupervisor');
+  new Chart(document.getElementById('chartSupervisor'),{type:'bar',data:{labels:sl.map(s=>s.split(' ')[0]),datasets:[{label:'% Cumplimiento',data:sp,backgroundColor:'#003087',borderRadius:5}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}}}}});
+  const mm={},mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  registros.forEach(r=>{const m2=new Date(r.fechaEjecucion+'T12:00:00').getMonth();mm[m2]=(mm[m2]||0)+1;});
+  const mk=Object.keys(mm).sort((a,b)=>a-b);
+  dc('chartMes');
+  new Chart(document.getElementById('chartMes'),{type:'line',data:{labels:mk.map(k=>mn[k]),datasets:[{label:'Registros',data:mk.map(k=>mm[k]),borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.10)',tension:.4,fill:true,pointRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+  const alta=registros.filter(r=>r.temporada==='alta').length;
+  dc('chartTemporada');
+  new Chart(document.getElementById('chartTemporada'),{type:'pie',data:{labels:['Temporada Alta','Temporada Baja'],datasets:[{data:[alta,registros.length-alta],backgroundColor:['#e8b94a','#0050c8'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Tahoma',size:11}}}}}});
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
 }
 
 // ─── RANKING ──────────────────────────────────────────────────
@@ -671,6 +838,7 @@ function initBotones(){
   if(bc) bc.addEventListener('click',limpiarTodo);
 }
 
+<<<<<<< HEAD
 function renderAll(){
   // Solo renderizar la pestaña activa para evitar parpadeo
   const activeTab = document.querySelector('.tab-content.active');
@@ -682,6 +850,9 @@ function renderAll(){
   else if(tabId==='tab-ranking') renderRanking();
   // Estadísticas NO se llaman desde aquí, solo al hacer clic en la pestaña
 }
+=======
+function renderAll(){renderDashboard();renderTabla();renderRanking();}
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
 
 // ─── UTILS ────────────────────────────────────────────────────
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -701,6 +872,7 @@ function showToast(msg,isError=false,isWarning=false){
 }
 window.abrirModal=abrirModal;
 window.eliminarRegistro=eliminarRegistro;
+<<<<<<< HEAD
 
 // ═══════════════════════════════════════════════════════════════
 //  MÓDULO ESTADÍSTICO INDIVIDUAL
@@ -2520,3 +2692,5 @@ window.gGuardarRapido = async function() {
     showToast('❌ Error al guardar el supervisor', true);
   }
 };
+=======
+>>>>>>> 854e83d (Se agrega carpeta images con logo sistema ETI)
