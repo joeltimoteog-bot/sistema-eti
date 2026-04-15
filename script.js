@@ -709,6 +709,18 @@ function initUnidades() {
   if(sb('uBtnExpUnid')) sb('uBtnExpUnid').addEventListener('click', uExportarUnidades);
   if(sb('uBtnExpMant')) sb('uBtnExpMant').addEventListener('click', uExportarMant);
   if(sb('uBtnExpLic'))  sb('uBtnExpLic').addEventListener('click', uExportarLic);
+  if(sb('uBtnSaveUnid')) sb('uBtnSaveUnid').addEventListener('click', uGuardarUnidad);
+  if(sb('uBtnClearUnid')) sb('uBtnClearUnid').addEventListener('click', ()=>{
+    ['uNSup','uNDni','uNTipo','uNCodInt','uNCodSist','uNModelo','uNMarca',
+     'uNMotor','uNChasis','uNAnio','uNZonaRec','uNZonaAbast'].forEach(i=>{const el=sb(i);if(el)el.value='';});
+    ['uNSector','uNEmpresa'].forEach(i=>{const el=sb(i);if(el)el.value='';});
+    if(sb('uNEstatus'))sb('uNEstatus').value='Operativo';
+  });
+  if(sb('uNSup')) sb('uNSup').addEventListener('change', function(){
+    const parts = this.value.split('|');
+    if(sb('uNSector')) sb('uNSector').value = parts[1]||'';
+    if(sb('uNEmpresa') && parts[2]) sb('uNEmpresa').value = parts[2];
+  });
   if(sb('uBtnSaveLic')) sb('uBtnSaveLic').addEventListener('click', uGuardarLicencia);
   if(sb('uBtnClearLic')) sb('uBtnClearLic').addEventListener('click', ()=>{
     ['uLSup','uLNum','uLTipo','uLFExp','uLFReval'].forEach(i=>{const el=sb(i);if(el)el.value='';});
@@ -719,6 +731,37 @@ function initUnidades() {
   ['uFiltEmp','uFiltEst'].forEach(id=>{const el=sb(id);if(el)el.addEventListener('change',uRenderTablaUnidades);});
   ['uFiltMUser','uFiltMTipo'].forEach(id=>{const el=sb(id);if(el)el.addEventListener('input',uRenderTablaMant);});
   ['uFiltLUser','uFiltLEst'].forEach(id=>{const el=sb(id);if(el)el.addEventListener('input',uRenderTablaLic);});
+}
+
+async function uGuardarUnidad() {
+  const sb = id => document.getElementById(id);
+  const supVal = sb('uNSup').value;
+  const dni = (sb('uNDni').value||'').trim();
+  const tipo = sb('uNTipo').value;
+  if(!supVal||!dni||!tipo){showToast('Supervisor, DNI y Tipo de Unidad son obligatorios.',true);return;}
+  const parts = supVal.split('|');
+  const usuario = parts[0]||'';
+  const sector = parts[1]||'';
+  const empresa = sb('uNEmpresa').value || parts[2] || '';
+  try {
+    await addDoc(collection(db,'unidades'),{
+      usuario, sector, dni, empresa,
+      tipoUnidad: tipo,
+      codInterno: (sb('uNCodInt').value||'').trim(),
+      codSistema: (sb('uNCodSist').value||'').trim(),
+      modelo: (sb('uNModelo').value||'').trim(),
+      marca: (sb('uNMarca').value||'').trim(),
+      motor: (sb('uNMotor').value||'').trim(),
+      chasis: (sb('uNChasis').value||'').trim(),
+      anio: parseInt(sb('uNAnio').value)||null,
+      estatus: sb('uNEstatus').value||'Operativo',
+      zonaRecorrido: (sb('uNZonaRec').value||'').trim(),
+      zonaAbastecimiento: (sb('uNZonaAbast').value||'').trim(),
+      creadoEn: new Date().toISOString()
+    });
+    showToast('✅ Unidad registrada correctamente.');
+    sb('uBtnClearUnid').click();
+  } catch(e){showToast('❌ Error al guardar unidad.',true);}
 }
 
 function uPoblarSelects() {
@@ -737,9 +780,9 @@ function uCalcLicEstado() {
   const dias=Math.round((venc-hoy)/86400000);
   document.getElementById('uLDias').value = dias >= 0 ? dias+' días' : 'VENCIDA';
   let estado = 'vigente';
-  if(dias<0) estado='vencido';
-  else if(dias<=30) estado='critico';
-  else if(dias<=60) estado='riesgo';
+  if(dias<=0) estado='vencido';
+  else if(dias<=10) estado='critico';
+  else if(dias<=30) estado='riesgo';
   else if(dias<=90) estado='por_vencer';
   document.getElementById('uLEstado').value = {vigente:'✅ Vigente',por_vencer:'⚠️ Por Vencer',riesgo:'🟠 Riesgo',critico:'🔴 Crítico',vencido:'❌ Vencida'}[estado];
 }
@@ -755,7 +798,7 @@ async function uGuardarLicencia() {
   const venc=new Date(fReval+'T12:00:00');
   const dias=Math.round((venc-hoy)/86400000);
   let estado='vigente';
-  if(dias<0)estado='vencido';else if(dias<=30)estado='critico';else if(dias<=60)estado='riesgo';else if(dias<=90)estado='por_vencer';
+  if(dias<=0)estado='vencido';else if(dias<=10)estado='critico';else if(dias<=30)estado='riesgo';else if(dias<=90)estado='por_vencer';
   try {
     await addDoc(collection(db,'licencias'),{
       supervisorId:supId,usuario:sup.usuario||'',dni:sup.dni||'',codInterno:sup.codInterno||'',
