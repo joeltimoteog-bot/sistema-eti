@@ -970,20 +970,44 @@ function uExportarLic() {
 // ─── MÓDULO GERENCIAL / EVALUACIONES 360° ─────────────────────
 const G_CRITERIOS=[
   {id:'puntualidad',label:'⏰ Puntualidad y Asistencia'},
-  {id:'campo',label:'🌾 Presencia en Campo'},
-  {id:'reportes',label:'📋 Entrega de Reportes'},
+  {id:'capacitaciones',label:'📚 Cumplimiento de Capacitaciones ETI'},
+  {id:'registros',label:'📋 Calidad de Registros y Actas'},
   {id:'comunicacion',label:'💬 Comunicación con el Equipo'},
-  {id:'seguridad',label:'🦺 Cumplimiento de Seguridad'},
-  {id:'liderazgo',label:'👑 Liderazgo y Gestión'},
-  {id:'logros',label:'📈 Cumplimiento de Metas'}
+  {id:'conflictos',label:'🤝 Resolución de Conflictos'},
+  {id:'proactividad',label:'💡 Proactividad e Iniciativa'}
 ];
 let supervisoresGH=[], evaluacionesData=[], seguimientosData=[];
 let unsubSupsGH=null, unsubEvals=null, unsubSegs=null;
+let gSeeded=false;
+
+const G_SEED_SUPERVISORES=[
+  {nombre:'ELBERTH JEAN PIERRE CASTRO BAYONA',sector:'SAN VICENTE',empresa:'RAPEL'},
+  {nombre:'YHANELLY GERALDINE LUZON VENEGAS',sector:'SANTA ROSA',empresa:'VERFRUT'},
+  {nombre:'SERGIO VIERA GIRON',sector:'ALGARROBOS',empresa:'RAPEL'},
+  {nombre:'ALEX FABIAN ZAPATA SUAREZ',sector:'APROA',empresa:'RAPEL'},
+  {nombre:'FLOR DE LOS MILAGROS PULACHE VIERA',sector:'LOS OLIVARES',empresa:'RAPEL'},
+  {nombre:'POOL WILFREDO TAMAYO RODRIGUEZ',sector:'EL PAPAYO',empresa:'RAPEL'},
+  {nombre:'POOL WILFREDO TAMAYO RODRIGUEZ',sector:'LIMONES',empresa:'RAPEL'},
+  {nombre:'ALEXANDER MARTINEZ JAUEZ',sector:'PUNTA ARENAS',empresa:'VERFRUT'},
+  {nombre:'ROBERTO MOLERO ABAD',sector:'PLANTA',empresa:'RAPEL'},
+  {nombre:'JHONNY AVENDAÑO GRANDA',sector:'REEMPLAZO',empresa:'AMBAS'},
+  {nombre:'DEYSI QUISPE',sector:'REEMPLAZO',empresa:'AMBAS'}
+];
+
+async function gSeedSupervisores() {
+  for(const sup of G_SEED_SUPERVISORES){
+    await addDoc(collection(db,'supervisores_gh'),{
+      ...sup,admin:'',cargo:'SUPERVISOR(A) DE GESTION HUMANA',
+      estado:'activo',creadoEn:new Date().toISOString()
+    });
+  }
+}
 
 function initGerencial() {
   // Firebase listeners
   unsubSupsGH = onSnapshot(query(collection(db,'supervisores_gh'),orderBy('nombre','asc')), snap=>{
     supervisoresGH=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(supervisoresGH.length===0&&!gSeeded){gSeeded=true;gSeedSupervisores();}
     gPoblarSelects();gRenderSupervisores();
   }, e=>console.error('supervisores_gh:',e));
   unsubEvals = onSnapshot(query(collection(db,'evaluaciones'),orderBy('creadoEn','desc')), snap=>{
@@ -1135,7 +1159,9 @@ async function gGuardarSeguimiento() {
       meta:parseInt(document.getElementById('gSegMeta').value)||0,
       avance:parseInt(document.getElementById('gSegAvance').value)||0,
       actividades:document.getElementById('gSegActividades').value.trim(),
+      acuerdos:(document.getElementById('gSegAcuerdos')||{value:''}).value.trim(),
       incidencias:document.getElementById('gSegIncidencias').value.trim(),
+      proxFecha:(document.getElementById('gSegProxFecha')||{value:''}).value||null,
       creadoEn:new Date().toISOString()
     });
     showToast('✅ Seguimiento guardado.');gLimpiarSeg();
@@ -1143,7 +1169,7 @@ async function gGuardarSeguimiento() {
 }
 
 function gLimpiarSeg() {
-  ['gSegSup','gSegFecha','gSegMeta','gSegAvance','gSegActividades','gSegIncidencias'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['gSegSup','gSegFecha','gSegMeta','gSegAvance','gSegActividades','gSegAcuerdos','gSegIncidencias','gSegProxFecha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['gSegEmpresa','gSegSector'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
 
@@ -1211,12 +1237,14 @@ function gRenderTablaSegs() {
   const tbody=document.getElementById('gTbodySegs');if(!tbody)return;
   const supF=(document.getElementById('gFiltSegSup')||{}).value||'';
   const f=seguimientosData.filter(s=>!supF||s.supervisorId===supF);
-  if(f.length===0){tbody.innerHTML=`<tr><td colspan="11" class="ger-empty">Sin seguimientos.</td></tr>`;return;}
+  if(f.length===0){tbody.innerHTML=`<tr><td colspan="13" class="ger-empty">Sin seguimientos.</td></tr>`;return;}
   tbody.innerHTML=f.map((s,i)=>`<tr><td>${i+1}</td><td><strong>${esc(s.supervisor||'')}</strong></td>
     <td>${esc(s.empresa||'')}</td><td>${esc(s.sector||'')}</td><td>${s.fecha||''}</td>
     <td>${s.tipo||''}</td><td>${s.presencia||''}</td>
     <td>${s.meta||0}%</td><td>${s.avance||0}%</td>
-    <td title="${esc(s.actividades||'')}">${(s.actividades||'–').substring(0,40)}…</td>
+    <td title="${esc(s.actividades||'')}">${(s.actividades||'–').substring(0,30)}…</td>
+    <td title="${esc(s.acuerdos||'')}">${(s.acuerdos||'–').substring(0,30)}…</td>
+    <td>${s.proxFecha||'–'}</td>
     <td><button class="ger-btn ger-btn-danger ger-btn-sm" onclick="gEliminarSeg('${s.id}')">🗑</button></td></tr>`).join('');
 }
 
@@ -1227,8 +1255,8 @@ function gRenderRanking() {
     if(!promedios[e.supervisorId])promedios[e.supervisorId]={nombre:e.supervisor,empresa:e.empresa,sector:e.sector,evals:0,sumaPct:0,sumaCampo:0,sumaAdmin:0,sumaComun:0};
     promedios[e.supervisorId].evals++;
     promedios[e.supervisorId].sumaPct+=e.puntaje||0;
-    promedios[e.supervisorId].sumaCampo+=e.criterios?.campo||0;
-    promedios[e.supervisorId].sumaAdmin+=e.criterios?.reportes||0;
+    promedios[e.supervisorId].sumaCampo+=e.criterios?.capacitaciones||0;
+    promedios[e.supervisorId].sumaAdmin+=e.criterios?.registros||0;
     promedios[e.supervisorId].sumaComun+=e.criterios?.comunicacion||0;
   });
   if(Object.keys(promedios).length===0){tbody.innerHTML=`<tr><td colspan="11" class="ger-empty">Sin evaluaciones.</td></tr>`;return;}
