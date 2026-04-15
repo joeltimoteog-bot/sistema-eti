@@ -688,19 +688,6 @@ let unidadesData=[], mantenimientosData=[], licenciasData=[];
 let unsubUnidades=null, unsubMant=null, unsubLic=null;
 
 function initUnidades() {
-  // === DIAGNÓSTICO TEMPORAL: detectar colecciones con datos en Firebase ===
-  (async () => {
-    const colecciones = ['unidades','mantenimientos','licencias',
-      'supervisores_gh','supervisores','evaluaciones','seguimientos',
-      'capacitaciones','registros','users','vehiculos','motos'];
-    for (const col of colecciones) {
-      try {
-        const snap = await getDocs(collection(db, col));
-        if (!snap.empty) console.log('COLECCION ENCONTRADA:', col, 'documentos:', snap.size);
-      } catch(e) {}
-    }
-  })();
-  // === FIN DIAGNÓSTICO ===
   const qU = query(collection(db,'unidades'), orderBy('creadoEn','desc'));
   unsubUnidades = onSnapshot(qU, snap => {
     unidadesData = snap.docs.map(d=>({id:d.id,...d.data()}));
