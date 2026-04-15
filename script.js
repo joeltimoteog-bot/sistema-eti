@@ -606,81 +606,113 @@ function initBotones(){
 
 function renderAll(){renderDashboard();renderTabla();renderRanking();}
 
-// ─── ESTADÍSTICO INDIVIDUAL ───────────────────────────────────
+// ─── ESTADÍSTICAS ─────────────────────────────────────────────
+const STAT_SUP_EMPRESA = {
+  'POOL WILFREDO TAMAYO RODRIGUEZ': 'RAPEL',
+  'ALEX TINEO RAMOS': 'RAPEL',
+  'FLOR DE LOS MILAGROS PULACHE VIERA': 'RAPEL',
+  'ALEX FABIAN ZAPATA SUAREZ': 'RAPEL',
+  'SERGIO VIERA GIRON': 'RAPEL',
+  'ELBERTH JEAN PIERRE CASTRO BAYONA': 'RAPEL',
+  'ROBERTO MOLERO ABAD': 'RAPEL',
+  'YHANELLY GERALDINE LUZON VENEGAS': 'VERFRUT',
+  'ALEXANDER MARTINEZ JAUEZ': 'VERFRUT',
+  'JHONNY AVENDAÑO GRANDA': 'AMBAS',
+  'DEYSI QUISPE': 'AMBAS',
+};
+
 function initEstadisticas() {
-  ['statSupervisor','statTipo','statPersonal'].forEach(id => {
+  ['statSupervisor','statEmpresa','statFechaDesde','statFechaHasta'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', renderEstadisticas);
   });
+  renderEstadisticas();
 }
 
 function renderEstadisticas() {
-  const supVal = document.getElementById('statSupervisor').value;
-  const tipoVal = document.getElementById('statTipo').value;
-  const personalVal = document.getElementById('statPersonal').value;
-  document.getElementById('statSectorDisplay').textContent =
-    supVal ? (supVal.split('|')[1] || '–') : '— Se completa al elegir supervisor —';
+  const supVal    = document.getElementById('statSupervisor')?.value  || '';
+  const empVal    = document.getElementById('statEmpresa')?.value     || '';
+  const desdeVal  = document.getElementById('statFechaDesde')?.value  || '';
+  const hastaVal  = document.getElementById('statFechaHasta')?.value  || '';
+
   let filtrados = [...registros];
-  if (supVal) filtrados = filtrados.filter(r => r.supervisor+'|'+r.sector === supVal);
-  if (tipoVal) filtrados = filtrados.filter(r => r.tema === tipoVal);
+  if (supVal)    filtrados = filtrados.filter(r => r.supervisor+'|'+r.sector === supVal);
+  if (empVal)    filtrados = filtrados.filter(r => {
+    const emp = STAT_SUP_EMPRESA[r.supervisor] || '';
+    return emp === empVal || emp === 'AMBAS';
+  });
+  if (desdeVal)  filtrados = filtrados.filter(r => r.fechaEjecucion >= desdeVal);
+  if (hastaVal)  filtrados = filtrados.filter(r => r.fechaEjecucion <= hastaVal);
+
+  const total  = filtrados.length;
   const totalV = filtrados.reduce((s,r) => s+(r.varones||0), 0);
   const totalM = filtrados.reduce((s,r) => s+(r.mujeres||0), 0);
   const totalT = filtrados.reduce((s,r) => s+(r.total||0), 0);
-  let enPlazo=0,conRetraso=0,sumDias=0;
-  filtrados.forEach(r => {
-    const est = calcularEstado(r);
-    if(est.estado==='cumplido'||est.estado==='proceso') enPlazo++;
-    else { conRetraso++; sumDias += est.diasRetraso; }
+  const supSet = {};
+  filtrados.forEach(r => { supSet[r.supervisor] = (supSet[r.supervisor]||0)+1; });
+  const numSups = Object.keys(supSet).length;
+  const prom = numSups > 0 ? (total/numSups).toFixed(1) : 0;
+
+  const si = id => document.getElementById(id);
+  if (si('skpiTotal'))        si('skpiTotal').textContent        = total;
+  if (si('skpiTrabajadores')) si('skpiTrabajadores').textContent = totalT;
+  if (si('skpiVarones'))      si('skpiVarones').textContent      = totalV;
+  if (si('skpiMujeres'))      si('skpiMujeres').textContent      = totalM;
+  if (si('skpiProm'))         si('skpiProm').textContent         = prom;
+
+  const dc = id => { const c = Chart.getChart(id); if (c) c.destroy(); };
+  const MN = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // Chart 1 – Capacitaciones por supervisor (barras horizontales)
+  dc('chartStatSup');
+  const supCounts = {};
+  filtrados.forEach(r => { supCounts[r.supervisor] = (supCounts[r.supervisor]||0)+1; });
+  const supLabels = Object.keys(supCounts).map(s => s.split(' ')[0]);
+  const supData   = Object.values(supCounts);
+  if (si('chartStatSup')) new Chart(si('chartStatSup'), {
+    type: 'bar',
+    data: { labels: supLabels, datasets: [{ label: 'Capacitaciones', data: supData, backgroundColor: '#0050c8', borderRadius: 4 }] },
+    options: { responsive:true, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
   });
-  const total = filtrados.length;
-  document.getElementById('skpiActividades').textContent = total;
-  document.getElementById('skpiTrabajadores').textContent = totalT;
-  document.getElementById('skpiPlazo').textContent = enPlazo;
-  document.getElementById('skpiRetraso').textContent = conRetraso;
-  document.getElementById('skpiPctAvance').textContent = total>0 ? Math.round((enPlazo/total)*100)+'%' : '0%';
-  document.getElementById('skpiPctRetraso').textContent = total>0 ? Math.round((conRetraso/total)*100)+'%' : '0%';
-  document.getElementById('skpiPromDias').textContent = conRetraso>0 ? (sumDias/conRetraso).toFixed(1) : '0';
-  const maxG = Math.max(totalV, totalM, 1);
-  document.getElementById('sgBarVarones').style.width = Math.round((totalV/maxG)*100)+'%';
-  document.getElementById('sgBarMujeres').style.width = Math.round((totalM/maxG)*100)+'%';
-  document.getElementById('sgVaronesCount').textContent = totalV;
-  document.getElementById('sgMujeresCount').textContent = totalM;
-  document.getElementById('sgVaronesPct').textContent = totalT>0 ? Math.round((totalV/totalT)*100)+'%' : '0%';
-  document.getElementById('sgMujeresPct').textContent = totalT>0 ? Math.round((totalM/totalT)*100)+'%' : '0%';
-  const dc=(id)=>{const c=Chart.getChart(id);if(c)c.destroy();};
-  dc('chartGeneroStats');
-  new Chart(document.getElementById('chartGeneroStats'),{type:'doughnut',
-    data:{labels:['Varones','Mujeres'],datasets:[{data:[totalV,totalM],backgroundColor:['#0050c8','#cc0000'],borderWidth:0}]},
-    options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
-  const enPlazoTotal = enPlazo, conRetrasoTotal = conRetraso;
-  dc('chartAvanceRetraso');
-  new Chart(document.getElementById('chartAvanceRetraso'),{type:'bar',
-    data:{labels:['Resultado'],datasets:[
-      {label:'En Plazo',data:[enPlazoTotal],backgroundColor:'#1a8040'},
-      {label:'Con Retraso',data:[conRetrasoTotal],backgroundColor:'#cc0000'}]},
-    options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
-  const mm={},mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  filtrados.forEach(r=>{const m=new Date(r.fechaEjecucion+'T12:00:00').getMonth();mm[m]=(mm[m]||0)+1;});
-  const mk=Object.keys(mm).sort((a,b)=>a-b);
-  dc('chartMesStats');
-  new Chart(document.getElementById('chartMesStats'),{type:'line',
-    data:{labels:mk.map(k=>mn[k]),datasets:[{label:'Actividades',data:mk.map(k=>mm[k]),borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.1)',tension:.4,fill:true,pointRadius:4}]},
-    options:{responsive:true,plugins:{legend:{display:false}}}});
-  const secBody = document.getElementById('statsSectorBody');
-  if (!supVal) {
-    secBody.innerHTML = '<p class="stats-empty">Selecciona un supervisor para ver estadísticas del sector.</p>';
-  } else {
-    const cumplidos = filtrados.filter(r=>calcularEstado(r).estado==='cumplido').length;
-    secBody.innerHTML = `<div style="font-size:13px;line-height:2;">
-      <div>📋 Total actividades: <strong>${total}</strong></div>
-      <div>✅ Cumplidas: <strong>${cumplidos}</strong></div>
-      <div>📈 % Cumplimiento: <strong>${total>0?Math.round((cumplidos/total)*100)+'%':'0%'}</strong></div>
-      <div>👥 Trabajadores: <strong>${totalT}</strong> (${totalV}♂ + ${totalM}♀)</div></div>`;
-  }
-  const rutasP = document.getElementById('statsRutasPanel');
-  const areasP = document.getElementById('statsAreasPanel');
-  if (personalVal === 'EMPLEADOS') { rutasP.style.display='none'; areasP.style.display='block'; }
-  else { rutasP.style.display='block'; areasP.style.display='none'; }
+
+  // Chart 2 – Trabajadores capacitados por mes (línea)
+  dc('chartStatMes');
+  const mesMap = {};
+  filtrados.forEach(r => {
+    const m = new Date(r.fechaEjecucion+'T12:00:00').getMonth();
+    mesMap[m] = (mesMap[m]||0) + (r.total||0);
+  });
+  const mesKeys = Object.keys(mesMap).sort((a,b)=>a-b);
+  if (si('chartStatMes')) new Chart(si('chartStatMes'), {
+    type: 'line',
+    data: { labels: mesKeys.map(k=>MN[k]), datasets: [{ label:'Trabajadores', data: mesKeys.map(k=>mesMap[k]), borderColor:'#002060', backgroundColor:'rgba(0,32,96,.12)', tension:.4, fill:true, pointRadius:4 }] },
+    options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // Chart 3 – Distribución por tema (dona)
+  dc('chartStatTema');
+  const TEMAS = ['CAPACITACIONES ETI','EVALUACIONES DE CHECKLIST','REFORZAMIENTO'];
+  const temaCounts = TEMAS.map(t => filtrados.filter(r => r.tema===t).length);
+  if (si('chartStatTema')) new Chart(si('chartStatTema'), {
+    type: 'doughnut',
+    data: { labels:['CAPAC. ETI','CHECKLIST','REFORZAMIENTO'], datasets:[{ data:temaCounts, backgroundColor:['#002060','#0050c8','#cc0000'], borderWidth:0 }] },
+    options: { responsive:true, cutout:'58%', plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } } }
+  });
+
+  // Chart 4 – RAPEL vs VERFRUT (barras agrupadas)
+  dc('chartStatEmpresa');
+  const rapelReg  = filtrados.filter(r => STAT_SUP_EMPRESA[r.supervisor]==='RAPEL');
+  const verReg    = filtrados.filter(r => STAT_SUP_EMPRESA[r.supervisor]==='VERFRUT');
+  const rapelT    = rapelReg.reduce((s,r) => s+(r.total||0), 0);
+  const verT      = verReg.reduce((s,r) => s+(r.total||0), 0);
+  if (si('chartStatEmpresa')) new Chart(si('chartStatEmpresa'), {
+    type: 'bar',
+    data: { labels:['Capacitaciones','Trabajadores'], datasets:[
+      { label:'RAPEL',   data:[rapelReg.length, rapelT], backgroundColor:'#002060', borderRadius:4 },
+      { label:'VERFRUT', data:[verReg.length,   verT],   backgroundColor:'#cc0000', borderRadius:4 }
+    ]},
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true } } }
+  });
 }
 
 // ─── MÓDULO UNIDADES Y LICENCIAS ──────────────────────────────

@@ -271,13 +271,6 @@
   </div>
 </section>
 
-<!-- ESTADÍSTICAS -->
-<section class="tab-content" id="tab-estadisticas">
-  <div class="tab-placeholder">
-    <h2 class="form-heading">📈 Estadísticas</h2>
-    <p class="empty-msg">Módulo de estadísticas en desarrollo.</p>
-  </div>
-</section>
 
 
 
@@ -333,24 +326,16 @@
   </div>
 </div>
 
-<!-- ESTADÍSTICAS INDIVIDUALES -->
+<!-- ESTADÍSTICAS -->
 <section class="tab-content" id="tab-estadisticas">
-  <div class="stats-wrapper">
-
-    <!-- HEADER DEL MÓDULO -->
-    <div class="stats-header">
-      <div class="stats-header-left">
-        <h2 class="stats-main-title">📈 Módulo Estadístico Individual</h2>
-        <p class="stats-main-sub">Selecciona qué tipo de información estadística deseas visualizar.</p>
-      </div>
-    </div>
+  <div class="stat-wrapper">
 
     <!-- FILTROS -->
-    <div class="stats-filters">
-      <div class="stats-filter-group">
-        <label class="stats-filter-label">👤 Supervisor</label>
-        <select id="statSupervisor" class="stats-select">
-          <option value="">— Todos los supervisores —</option>
+    <div class="stat-filters">
+      <div class="stat-fg">
+        <label class="stat-flabel">👤 Supervisor</label>
+        <select id="statSupervisor" class="stat-select">
+          <option value="">— Todos —</option>
           <option value="POOL WILFREDO TAMAYO RODRIGUEZ|SECTOR EL PAPAYO">POOL WILFREDO TAMAYO RODRIGUEZ – El Papayo</option>
           <option value="POOL WILFREDO TAMAYO RODRIGUEZ|SECTOR LIMONES">POOL WILFREDO TAMAYO RODRIGUEZ – Limones</option>
           <option value="ALEX TINEO RAMOS|SECTOR OLIVARES BAJO">ALEX TINEO RAMOS – Olivares Bajo</option>
@@ -365,138 +350,74 @@
           <option value="DEYSI QUISPE|REEMPLAZO">DEYSI QUISPE – Reemplazo</option>
         </select>
       </div>
-      <div class="stats-filter-group">
-        <label class="stats-filter-label">🏭 Sector</label>
-        <div class="stats-sector-display" id="statSectorDisplay">— Se completa al elegir supervisor —</div>
-      </div>
-      <div class="stats-filter-group">
-        <label class="stats-filter-label">📋 Tipo de Actividad</label>
-        <select id="statTipo" class="stats-select">
-          <option value="">General (todas las actividades)</option>
-          <option value="CAPACITACIONES ETI">Capacitaciones ETI</option>
-          <option value="EVALUACIONES DE CHECKLIST">Evaluación Checklist</option>
-          <option value="REFORZAMIENTO">Reforzamiento</option>
+      <div class="stat-fg">
+        <label class="stat-flabel">🏭 Empresa</label>
+        <select id="statEmpresa" class="stat-select">
+          <option value="">— Todas —</option>
+          <option value="RAPEL">RAPEL</option>
+          <option value="VERFRUT">VERFRUT</option>
         </select>
       </div>
-      <div class="stats-filter-group">
-        <label class="stats-filter-label">👷 Tipo de Personal</label>
-        <select id="statPersonal" class="stats-select">
-          <option value="">Todos (Obreros + Empleados)</option>
-          <option value="OBREROS">👷 Obreros</option>
-          <option value="EMPLEADOS">💼 Empleados</option>
-        </select>
+      <div class="stat-fg">
+        <label class="stat-flabel">📅 Desde</label>
+        <input type="date" id="statFechaDesde" class="stat-select" />
+      </div>
+      <div class="stat-fg">
+        <label class="stat-flabel">📅 Hasta</label>
+        <input type="date" id="statFechaHasta" class="stat-select" />
       </div>
     </div>
 
-    <!-- CARDS KPI -->
-    <div class="stats-kpi-row" id="statsKpiRow">
-      <div class="stats-kpi-card skpi-total">
-        <div class="skpi-icon">📋</div>
-        <div class="skpi-value" id="skpiActividades">0</div>
-        <div class="skpi-label">Actividades Ejecutadas</div>
+    <!-- KPIs -->
+    <div class="stat-kpi-row">
+      <div class="stat-kpi-card sk-blue">
+        <div class="sk-icon">📋</div>
+        <div class="sk-val" id="skpiTotal">0</div>
+        <div class="sk-lab">Total Capacitaciones</div>
       </div>
-      <div class="stats-kpi-card skpi-workers">
-        <div class="skpi-icon">👥</div>
-        <div class="skpi-value" id="skpiTrabajadores">0</div>
-        <div class="skpi-label">Trabajadores Intervenidos</div>
+      <div class="stat-kpi-card sk-teal">
+        <div class="sk-icon">👥</div>
+        <div class="sk-val" id="skpiTrabajadores">0</div>
+        <div class="sk-lab">Trabajadores Capacitados</div>
       </div>
-      <div class="stats-kpi-card skpi-ok">
-        <div class="skpi-icon">✅</div>
-        <div class="skpi-value" id="skpiPlazo">0</div>
-        <div class="skpi-label">En Plazo</div>
+      <div class="stat-kpi-card sk-indigo">
+        <div class="sk-icon">♂</div>
+        <div class="sk-val" id="skpiVarones">0</div>
+        <div class="sk-lab">Varones</div>
       </div>
-      <div class="stats-kpi-card skpi-ret">
-        <div class="skpi-icon">⚠️</div>
-        <div class="skpi-value" id="skpiRetraso">0</div>
-        <div class="skpi-label">En Retraso</div>
+      <div class="stat-kpi-card sk-red">
+        <div class="sk-icon">♀</div>
+        <div class="sk-val" id="skpiMujeres">0</div>
+        <div class="sk-lab">Mujeres</div>
       </div>
-      <div class="stats-kpi-card skpi-pct-ok">
-        <div class="skpi-icon">📈</div>
-        <div class="skpi-value" id="skpiPctAvance">0%</div>
-        <div class="skpi-label">% Avance</div>
-      </div>
-      <div class="stats-kpi-card skpi-pct-ret">
-        <div class="skpi-icon">📉</div>
-        <div class="skpi-value" id="skpiPctRetraso">0%</div>
-        <div class="skpi-label">% Retraso</div>
-      </div>
-      <div class="stats-kpi-card skpi-dias">
-        <div class="skpi-icon">🗓</div>
-        <div class="skpi-value" id="skpiPromDias">0</div>
-        <div class="skpi-label">Prom. Días Retraso</div>
+      <div class="stat-kpi-card sk-green">
+        <div class="sk-icon">📊</div>
+        <div class="sk-val" id="skpiProm">0</div>
+        <div class="sk-lab">Prom. por Supervisión</div>
       </div>
     </div>
 
-    <!-- SECCIÓN GÉNERO + SECTOR -->
-    <div class="stats-mid-row">
-
-      <!-- GÉNERO -->
-      <div class="stats-panel">
-        <div class="stats-panel-title" id="statsGeneroTitle">👥 Distribución por Género</div>
-        <div class="stats-genero-body">
-          <div class="stats-genero-bars">
-            <div class="sgenero-item">
-              <div class="sgenero-label">♂ <span id="sgVaronesLabel">Varones</span></div>
-              <div class="sgenero-bar-wrap">
-                <div class="sgenero-bar bar-blue" id="sgBarVarones" style="width:0%"></div>
-              </div>
-              <div class="sgenero-nums">
-                <span class="sgenero-count" id="sgVaronesCount">0</span>
-                <span class="sgenero-pct" id="sgVaronesPct">0%</span>
-              </div>
-            </div>
-            <div class="sgenero-item">
-              <div class="sgenero-label">♀ <span id="sgMujeresLabel">Mujeres</span></div>
-              <div class="sgenero-bar-wrap">
-                <div class="sgenero-bar bar-red" id="sgBarMujeres" style="width:0%"></div>
-              </div>
-              <div class="sgenero-nums">
-                <span class="sgenero-count" id="sgMujeresCount">0</span>
-                <span class="sgenero-pct" id="sgMujeresPct">0%</span>
-              </div>
-            </div>
-          </div>
-          <div class="stats-chart-wrap">
-            <canvas id="chartGeneroStats" height="150"></canvas>
-          </div>
-        </div>
+    <!-- GRÁFICOS fila 1 -->
+    <div class="stat-charts-row">
+      <div class="stat-chart-card">
+        <div class="stat-chart-title">📊 Capacitaciones por Supervisor</div>
+        <canvas id="chartStatSup" height="220"></canvas>
       </div>
-
-      <!-- SECTOR -->
-      <div class="stats-panel">
-        <div class="stats-panel-title">🏭 Estadísticas por Sector</div>
-        <div id="statsSectorBody" class="stats-sector-body">
-          <p class="stats-empty">Selecciona un supervisor para ver estadísticas del sector.</p>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- GRÁFICOS -->
-    <div class="stats-charts-row">
-      <div class="stats-chart-card">
-        <div class="stats-panel-title">📊 Avance vs Retraso</div>
-        <canvas id="chartAvanceRetraso" height="180"></canvas>
-      </div>
-      <div class="stats-chart-card">
-        <div class="stats-panel-title">📅 Actividades por Mes</div>
-        <canvas id="chartMesStats" height="180"></canvas>
+      <div class="stat-chart-card">
+        <div class="stat-chart-title">📅 Trabajadores Capacitados por Mes</div>
+        <canvas id="chartStatMes" height="220"></canvas>
       </div>
     </div>
 
-    <!-- RUTAS -->
-    <div class="stats-panel stats-panel-full" id="statsRutasPanel">
-      <div class="stats-panel-title">🗺 Estadísticas por Rutas (Obreros)</div>
-      <div id="statsRutasBody">
-        <p class="stats-empty">Sin datos de rutas para mostrar.</p>
+    <!-- GRÁFICOS fila 2 -->
+    <div class="stat-charts-row" style="margin-top:16px;">
+      <div class="stat-chart-card">
+        <div class="stat-chart-title">🍩 Distribución por Tema</div>
+        <canvas id="chartStatTema" height="220"></canvas>
       </div>
-    </div>
-
-    <!-- ÁREAS -->
-    <div class="stats-panel stats-panel-full" id="statsAreasPanel" style="display:none;">
-      <div class="stats-panel-title">🏢 Estadísticas por Áreas (Empleados)</div>
-      <div id="statsAreasBody">
-        <p class="stats-empty">Sin datos de áreas para mostrar.</p>
+      <div class="stat-chart-card">
+        <div class="stat-chart-title">⚖️ Comparativo RAPEL vs VERFRUT</div>
+        <canvas id="chartStatEmpresa" height="220"></canvas>
       </div>
     </div>
 
