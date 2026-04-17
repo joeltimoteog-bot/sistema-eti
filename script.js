@@ -23,10 +23,10 @@ const COL = 'capacitaciones';
 
 // ─── USUARIOS ─────────────────────────────────────────────────
 const USUARIOS = [
-  { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza',   password:'jtimoteo2026',  rol:'admin'   },
-  { usuario:'ovilela',   nombre:'Olga Vilela Ludeña',      password:'ovilela2026',   rol:'usuario' },
-  { usuario:'jchavez',   nombre:'Jorge Chavez Cordova',    password:'jchavez2026',   rol:'usuario' },
-  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', password:'gcastillo2026', rol:'usuario' }
+  { usuario:'jtimoteo', nombre:'Joel A. Timoteo Gonza',   password:'jtimoteo2026', rol:'admin' },
+  { usuario:'jchavez',  nombre:'Jorge Chavez Cordova',    password:'jchavez2026',  rol:'admin' },
+  { usuario:'ovilela',  nombre:'Olga Vilela Ludeña',      password:'ovilela2026',  rol:'admin' },
+  { usuario:'glucia',   nombre:'Lucia Castillo Gonzalez', password:'glucia2026',   rol:'usuario', modulos: ['capacitaciones'] }
 ];
 
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
@@ -68,6 +68,8 @@ function intentarLogin() {
   if(btnClear) btnClear.style.display=found.rol==='admin'?'inline-flex':'none';
   actualizarHeaderFecha();
   initTabs();
+  aplicarPermisos(found);
+  initSidebar();
   initForm();
   initBuscador();
   initModal();
@@ -116,79 +118,82 @@ function escucharFirebase() {
   });
 }
 
-// ─── TABS ─────────────────────────────────────────────────────
-function initTabs() {
-  // Botones de módulo (nivel 1)
-  document.querySelectorAll('.mod-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mod = btn.dataset.mod;
-      document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.sub-bar').forEach(s => s.classList.remove('active'));
-      btn.classList.add('active');
-      const subBar = document.getElementById('sub-' + mod);
-      if (subBar) {
-        subBar.classList.add('active');
-        const activeSubBtn = subBar.querySelector('.sub-btn.active') || subBar.querySelector('.sub-btn');
-        if (activeSubBtn) activeSubBtn.click();
+// ─── TABS (vacío – reemplazado por initSidebar) ───────────────
+function initTabs() {}
+
+// ─── PERMISOS ─────────────────────────────────────────────────
+function aplicarPermisos(usuario) {
+  const modulosPermitidos = usuario.modulos || ['capacitaciones','unidades','evaluaciones'];
+  document.querySelectorAll('.sidebar-module').forEach(mod => {
+    const modulo = mod.dataset.modulo;
+    if (!modulosPermitidos.includes(modulo)) {
+      mod.style.display = 'none';
+    }
+  });
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const tab = item.dataset.tab;
+      const moduloTab = tab === 'unidades' ? 'unidades' :
+                        tab === 'gerencial' ? 'evaluaciones' : 'capacitaciones';
+      if (!modulosPermitidos.includes(moduloTab)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast('⛔ No tienes permisos para acceder a este módulo');
+        return false;
       }
     });
   });
+}
 
-  // Botones de sub-ítem (nivel 2)
-  document.querySelectorAll('.sub-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.tab;
-      const sub = btn.dataset.sub;
-      const subBar = btn.closest('.sub-bar');
-      if (subBar) subBar.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+// ─── SIDEBAR ──────────────────────────────────────────────────
+function initSidebar() {
+  // Acordeón: abrir/cerrar módulos
+  document.querySelectorAll('.sidebar-module-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const mod = header.parentElement;
+      const isOpen = mod.classList.contains('open');
+      document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
+      if (!isOpen) { mod.classList.add('open','active'); }
+    });
+  });
+
+  // Navegación por items
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+
+      const tab = item.dataset.tab;
+      const utab = item.dataset.utab;
+      const gtab = item.dataset.gtab;
+
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const tabEl = document.getElementById('tab-' + target);
+      const tabEl = document.getElementById('tab-' + tab);
       if (tabEl) tabEl.classList.add('active');
-      // Activar sub-tab interno si corresponde
-      if (sub && tabEl) {
-        tabEl.querySelectorAll('.inner-sub-content').forEach(c => c.classList.remove('active'));
-        const subEl = document.getElementById(sub);
-        if (subEl) subEl.classList.add('active');
-        const innerNav = tabEl.querySelector('.inner-sub-nav');
-        if (innerNav) {
-          innerNav.querySelectorAll('.inner-sub-btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.inner === sub);
-          });
-        }
+
+      if (utab) {
+        document.querySelectorAll('#tab-unidades .inner-sub-content').forEach(c => c.classList.remove('active'));
+        const utabEl = document.getElementById(utab);
+        if (utabEl) utabEl.classList.add('active');
+        if (utab === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
       }
-      // Llamar renders según corresponda
-      if (target === 'dashboard') renderDashboard();
-      if (target === 'tabla') renderTabla();
-      if (target === 'ranking') renderRanking();
-      if (target === 'estadisticas' && typeof renderEstadisticas === 'function') renderEstadisticas();
-      if (sub === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
-      if (sub === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
+      if (gtab) {
+        document.querySelectorAll('#tab-gerencial .inner-sub-content').forEach(c => c.classList.remove('active'));
+        const gtabEl = document.getElementById(gtab);
+        if (gtabEl) gtabEl.classList.add('active');
+        if (gtab === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
+      }
+
+      if (tab === 'dashboard') renderDashboard();
+      if (tab === 'tabla') renderTabla();
+      if (tab === 'ranking') renderRanking();
+      if (tab === 'estadisticas') renderEstadisticas();
     });
   });
 
-  // Botones de inner sub-nav (navegación dentro de tab-unidades / tab-gerencial)
-  document.querySelectorAll('.inner-sub-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const inner = btn.dataset.inner;
-      const tabContent = btn.closest('.tab-content');
-      const innerNav = btn.closest('.inner-sub-nav');
-      if (innerNav) innerNav.querySelectorAll('.inner-sub-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (tabContent) {
-        tabContent.querySelectorAll('.inner-sub-content').forEach(c => c.classList.remove('active'));
-        const innerEl = document.getElementById(inner);
-        if (innerEl) innerEl.classList.add('active');
-        // Sincronizar sub-btn del mod-nav superior
-        const modId = tabContent.id.replace('tab-', '');
-        document.querySelectorAll('.sub-btn[data-tab="' + modId + '"]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sub === inner);
-        });
-      }
-      if (inner === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
-      if (inner === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
-    });
-  });
+  // Abrir primer módulo visible por defecto
+  const primerModulo = document.querySelector('.sidebar-module:not([style*="display: none"])');
+  if (primerModulo) primerModulo.classList.add('open','active');
 }
 
 // ─── TEMPORADA ────────────────────────────────────────────────

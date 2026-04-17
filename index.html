@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema ETI – Unifrutti Group · Relaciones Laborales</title>
+  <title>Sistema de Seguimientos Generales – Unifrutti Group · Relaciones Laborales</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -15,8 +15,8 @@
   <div class="login-bg-overlay"></div>
   <div class="login-card">
     <img src="images/logo-unifrutti.jpg" alt="Unifrutti" class="login-logo" />
-    <h1 class="login-title">Sistema ETI</h1>
-    <p class="login-sub">Capacitaciones de Ética e Integridad</p>
+    <h1 class="login-title">Sistema de Seguimientos Generales</h1>
+    <p class="login-sub">Gestión Integral · Relaciones Laborales</p>
     <p class="login-sub2">Unifrutti Group · Relaciones Laborales</p>
     <div class="login-form">
       <div class="login-group">
@@ -39,16 +39,61 @@
 <!-- ══════════════ APP ══════════════ -->
 <div id="appPage" style="display:none;">
 
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside id="sidebar" class="sidebar">
+  <div class="sidebar-logo">
+    <img src="images/logo-unifrutti.jpg" alt="Unifrutti" />
+    <span>Sistema de Seguimientos Generales</span>
+  </div>
+
+  <!-- MÓDULO 1 -->
+  <div class="sidebar-module" data-modulo="capacitaciones">
+    <div class="sidebar-module-header">
+      <span>📚 Sistema de Capacitaciones</span>
+      <span class="arrow">▾</span>
+    </div>
+    <div class="sidebar-module-items">
+      <a class="sidebar-item active" data-tab="dashboard">📊 Dashboard</a>
+      <a class="sidebar-item" data-tab="registro">➕ Registrar</a>
+      <a class="sidebar-item" data-tab="tabla">📋 Registros</a>
+      <a class="sidebar-item" data-tab="ranking">🏆 Ranking</a>
+      <a class="sidebar-item" data-tab="estadisticas">📈 Estadísticas</a>
+    </div>
+  </div>
+
+  <!-- MÓDULO 2 -->
+  <div class="sidebar-module" data-modulo="unidades">
+    <div class="sidebar-module-header">
+      <span>🚗 Mantenimiento de Unidades</span>
+      <span class="arrow">▾</span>
+    </div>
+    <div class="sidebar-module-items">
+      <a class="sidebar-item" data-tab="unidades" data-utab="u-dashboard">📊 Dashboard</a>
+      <a class="sidebar-item" data-tab="unidades" data-utab="u-unidades">🚗 Unidades</a>
+      <a class="sidebar-item" data-tab="unidades" data-utab="u-mantenimiento">🔧 Mantenimiento</a>
+      <a class="sidebar-item" data-tab="unidades" data-utab="u-licencias">📋 Licencias</a>
+    </div>
+  </div>
+
+  <!-- MÓDULO 3 -->
+  <div class="sidebar-module" data-modulo="evaluaciones">
+    <div class="sidebar-module-header">
+      <span>🎯 Evaluaciones 360°</span>
+      <span class="arrow">▾</span>
+    </div>
+    <div class="sidebar-module-items">
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-dashboard">📊 Dashboard</a>
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-evaluacion">📝 Evaluación 360°</a>
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-seguimiento">📅 Seguimiento</a>
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-ranking">🏆 Ranking</a>
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-informes">📑 Informes</a>
+      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-supervisores">⚙️ Supervisores</a>
+    </div>
+  </div>
+</aside>
+
 <header class="site-header">
   <div class="header-inner">
-    <div class="header-brand">
-      <img src="images/logo-unifrutti.jpg" alt="Unifrutti" class="header-logo header-logo-uni" />
-      <div class="header-logo-sep"></div>
-      <div class="brand-text">
-        <span class="brand-title">Sistema de Capacitaciones ETI</span>
-        <span class="brand-sub">Ética e Integridad · Relaciones Laborales · Unifrutti Group</span>
-      </div>
-    </div>
     <div class="header-meta">
       <div class="season-badge" id="seasonBadge">–</div>
       <div class="current-date" id="currentDate">–</div>
@@ -58,7 +103,7 @@
   </div>
 </header>
 
-<nav class="mod-nav">
+<nav class="mod-nav" style="display:none;">
   <!-- Barra de módulos -->
   <div class="mod-bar">
     <button class="mod-btn active" data-mod="etica">Capacitaciones de Ética Social</button>
@@ -1004,7 +1049,7 @@
       <strong>Joel A. Timoteo Gonza</strong>
       <span>Equipo de Relaciones Laborales · Verfrut</span>
     </div>
-    <span class="footer-ver">Sistema ETI v3.0 · 2026</span>
+    <span class="footer-ver">Sistema de Seguimientos Generales v4.0 · 2026</span>
   </div>
 </footer>
 
