@@ -70,6 +70,7 @@ function intentarLogin() {
   initTabs();
   aplicarPermisos(found);
   initSidebar();
+  irAHome(found);
   initForm();
   initBuscador();
   initModal();
@@ -133,6 +134,7 @@ function aplicarPermisos(usuario) {
   document.querySelectorAll('.sidebar-item').forEach(item => {
     item.addEventListener('click', (e) => {
       const tab = item.dataset.tab;
+      if (tab === 'home') return;
       const moduloTab = tab === 'unidades' ? 'unidades' :
                         tab === 'gerencial' ? 'evaluaciones' : 'capacitaciones';
       if (!modulosPermitidos.includes(moduloTab)) {
@@ -184,16 +186,123 @@ function initSidebar() {
         if (gtab === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
       }
 
+      if (tab === 'home') {
+        document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
+      }
       if (tab === 'dashboard') renderDashboard();
       if (tab === 'tabla') renderTabla();
       if (tab === 'ranking') renderRanking();
       if (tab === 'estadisticas') renderEstadisticas();
     });
   });
+}
 
-  // Abrir primer módulo visible por defecto
-  const primerModulo = document.querySelector('.sidebar-module:not([style*="display: none"])');
-  if (primerModulo) primerModulo.classList.add('open','active');
+// ─── HOME ─────────────────────────────────────────────────────
+const HOME_MODULOS = [
+  {
+    id: 'capacitaciones',
+    icon: '📚',
+    title: 'Sistema de Capacitaciones',
+    desc: 'Registra y monitorea las capacitaciones ETI por supervisor, sector y temporada.',
+    color: '#003087',
+    tab: 'dashboard', utab: null, gtab: null
+  },
+  {
+    id: 'unidades',
+    icon: '🚗',
+    title: 'Mantenimiento de Unidades',
+    desc: 'Control de motos, cuatrimotos, mantenimientos preventivos y licencias de conducir.',
+    color: '#0050c8',
+    tab: 'unidades', utab: 'u-dashboard', gtab: null
+  },
+  {
+    id: 'evaluaciones',
+    icon: '🎯',
+    title: 'Evaluaciones 360°',
+    desc: 'Evaluaciones de desempeño de supervisores, seguimientos y ranking gerencial.',
+    color: '#CC0000',
+    tab: 'gerencial', utab: null, gtab: 'g-dashboard'
+  }
+];
+
+function initHome(usuario) {
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const nombre = usuario.nombre.split(' ')[0];
+  document.getElementById('homeGreeting').textContent = `${saludo}, ${nombre} 👋`;
+
+  // Info row
+  const temporada = detectarTemporada(new Date());
+  const badge = document.getElementById('homeSeasonBadge');
+  if (badge) {
+    badge.textContent = temporada === 'alta' ? '🌡 Temporada Alta' : '❄ Temporada Baja';
+    badge.style.background = temporada === 'alta' ? '#CC0000' : '#003087';
+  }
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const hoy = new Date();
+  const dateEl = document.getElementById('homeDateDisplay');
+  if (dateEl) dateEl.textContent = `${dias[hoy.getDay()]}, ${hoy.getDate()} de ${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+
+  // Cards
+  const modulosPermitidos = usuario.modulos || ['capacitaciones','unidades','evaluaciones'];
+  const container = document.getElementById('homeCards');
+  if (!container) return;
+  container.innerHTML = '';
+  HOME_MODULOS.filter(m => modulosPermitidos.includes(m.id)).forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'home-card';
+    card.style.setProperty('--card-color', m.color);
+    card.innerHTML = `
+      <div class="home-card-icon">${m.icon}</div>
+      <div class="home-card-title">${m.title}</div>
+      <div class="home-card-desc">${m.desc}</div>
+      <div class="home-card-arrow">→</div>
+    `;
+    card.addEventListener('click', () => navegarAModulo(m.tab, m.utab, m.gtab, m.id));
+    container.appendChild(card);
+  });
+}
+
+function irAHome(usuario) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-home').classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  const homeItem = document.querySelector('.sidebar-item[data-tab="home"]');
+  if (homeItem) homeItem.classList.add('active');
+  document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
+  if (usuario) initHome(usuario);
+}
+
+function navegarAModulo(tab, utab, gtab, moduloId) {
+  document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
+  const modEl = document.querySelector(`.sidebar-module[data-modulo="${moduloId}"]`);
+  if (modEl) modEl.classList.add('open','active');
+
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  let targetItem;
+  if (utab) targetItem = document.querySelector(`.sidebar-item[data-utab="${utab}"]`);
+  else if (gtab) targetItem = document.querySelector(`.sidebar-item[data-gtab="${gtab}"]`);
+  else targetItem = document.querySelector(`.sidebar-item[data-tab="${tab}"]:not([data-tab="home"])`);
+  if (targetItem) targetItem.classList.add('active');
+
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tabEl = document.getElementById('tab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+
+  if (utab) {
+    document.querySelectorAll('#tab-unidades .inner-sub-content').forEach(c => c.classList.remove('active'));
+    const utabEl = document.getElementById(utab);
+    if (utabEl) utabEl.classList.add('active');
+    if (utab === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
+  }
+  if (gtab) {
+    document.querySelectorAll('#tab-gerencial .inner-sub-content').forEach(c => c.classList.remove('active'));
+    const gtabEl = document.getElementById(gtab);
+    if (gtabEl) gtabEl.classList.add('active');
+    if (gtab === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
+  }
+  if (tab === 'dashboard') renderDashboard();
 }
 
 // ─── TEMPORADA ────────────────────────────────────────────────

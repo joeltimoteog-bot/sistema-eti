@@ -46,6 +46,9 @@
     <span>Sistema de Seguimientos Generales</span>
   </div>
 
+  <!-- INICIO -->
+  <a class="sidebar-item sidebar-home-item active" data-tab="home">🏠 Inicio</a>
+
   <!-- MÓDULO 1 -->
   <div class="sidebar-module" data-modulo="capacitaciones">
     <div class="sidebar-module-header">
@@ -53,7 +56,7 @@
       <span class="arrow">▾</span>
     </div>
     <div class="sidebar-module-items">
-      <a class="sidebar-item active" data-tab="dashboard">📊 Dashboard</a>
+      <a class="sidebar-item" data-tab="dashboard">📊 Dashboard</a>
       <a class="sidebar-item" data-tab="registro">➕ Registrar</a>
       <a class="sidebar-item" data-tab="tabla">📋 Registros</a>
       <a class="sidebar-item" data-tab="ranking">🏆 Ranking</a>
@@ -136,8 +139,23 @@
   </div>
 </nav>
 
+<!-- HOME -->
+<section class="tab-content active" id="tab-home">
+  <div class="home-container">
+    <div class="home-header">
+      <h1 id="homeGreeting" class="home-greeting">Bienvenido 👋</h1>
+      <p class="home-sub">Selecciona un módulo para comenzar tu jornada de trabajo</p>
+    </div>
+    <div id="homeCards" class="home-cards"></div>
+    <div class="home-info-row">
+      <div class="home-info-badge" id="homeSeasonBadge">–</div>
+      <div class="home-info-date" id="homeDateDisplay">–</div>
+    </div>
+  </div>
+</section>
+
 <!-- DASHBOARD -->
-<section class="tab-content active" id="tab-dashboard">
+<section class="tab-content" id="tab-dashboard">
   <div class="dashboard-grid">
     <div class="kpi-row">
       <div class="kpi-card kpi-total"><div class="kpi-value" id="kpiTotal">0</div><div class="kpi-label">Total Registros</div></div>
