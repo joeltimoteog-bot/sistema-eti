@@ -1570,6 +1570,8 @@ function showToast(msg,isError=false,isWarning=false){
   t.innerHTML=msg;document.body.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},4500);
 }
+window.irHome=irHome;
+window.volverAtras=volverAtras;
 window.abrirModal=abrirModal;
 window.eliminarRegistro=eliminarRegistro;
 window.uAbrirModal=uAbrirModal;
