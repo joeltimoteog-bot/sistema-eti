@@ -34,6 +34,9 @@ const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','
 let registros = [];
 let usuarioActual = null;
 let unsubscribe = null;
+let nivelActual = 'home';
+let moduloActual = null;
+let modulosPermitidos = ['capacitaciones','unidades','evaluaciones'];
 
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -69,8 +72,8 @@ function intentarLogin() {
   actualizarHeaderFecha();
   initTabs();
   aplicarPermisos(found);
-  initSidebar();
-  irAHome(found);
+  initHome(found);
+  irHome();
   initForm();
   initBuscador();
   initModal();
@@ -91,6 +94,8 @@ function cerrarSesion() {
   if(unsubEvals) unsubEvals();
   if(unsubSegs) unsubSegs();
   usuarioActual=null;
+  nivelActual='home';
+  moduloActual=null;
   registros=[];
   unidadesData=[];mantenimientosData=[];licenciasData=[];
   supervisoresGH=[];evaluacionesData=[];seguimientosData=[];
@@ -124,78 +129,11 @@ function initTabs() {}
 
 // ─── PERMISOS ─────────────────────────────────────────────────
 function aplicarPermisos(usuario) {
-  const modulosPermitidos = usuario.modulos || ['capacitaciones','unidades','evaluaciones'];
-  document.querySelectorAll('.sidebar-module').forEach(mod => {
-    const modulo = mod.dataset.modulo;
-    if (!modulosPermitidos.includes(modulo)) {
-      mod.style.display = 'none';
-    }
-  });
-  document.querySelectorAll('.sidebar-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      const tab = item.dataset.tab;
-      if (tab === 'home') return;
-      const moduloTab = tab === 'unidades' ? 'unidades' :
-                        tab === 'gerencial' ? 'evaluaciones' : 'capacitaciones';
-      if (!modulosPermitidos.includes(moduloTab)) {
-        e.preventDefault();
-        e.stopPropagation();
-        showToast('⛔ No tienes permisos para acceder a este módulo');
-        return false;
-      }
-    });
-  });
+  modulosPermitidos = usuario.modulos || ['capacitaciones','unidades','evaluaciones'];
 }
 
-// ─── SIDEBAR ──────────────────────────────────────────────────
-function initSidebar() {
-  // Acordeón: abrir/cerrar módulos
-  document.querySelectorAll('.sidebar-module-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const mod = header.parentElement;
-      const isOpen = mod.classList.contains('open');
-      document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
-      if (!isOpen) { mod.classList.add('open','active'); }
-    });
-  });
-
-  // Navegación por items
-  document.querySelectorAll('.sidebar-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-
-      const tab = item.dataset.tab;
-      const utab = item.dataset.utab;
-      const gtab = item.dataset.gtab;
-
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const tabEl = document.getElementById('tab-' + tab);
-      if (tabEl) tabEl.classList.add('active');
-
-      if (utab) {
-        document.querySelectorAll('#tab-unidades .inner-sub-content').forEach(c => c.classList.remove('active'));
-        const utabEl = document.getElementById(utab);
-        if (utabEl) utabEl.classList.add('active');
-        if (utab === 'u-dashboard' && typeof uRenderDashboard === 'function') uRenderDashboard();
-      }
-      if (gtab) {
-        document.querySelectorAll('#tab-gerencial .inner-sub-content').forEach(c => c.classList.remove('active'));
-        const gtabEl = document.getElementById(gtab);
-        if (gtabEl) gtabEl.classList.add('active');
-        if (gtab === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
-      }
-
-      if (tab === 'home') {
-        document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
-      }
-      if (tab === 'dashboard') renderDashboard();
-      if (tab === 'tabla') renderTabla();
-      if (tab === 'ranking') renderRanking();
-      if (tab === 'estadisticas') renderEstadisticas();
-    });
-  });
-}
+// ─── SIDEBAR (vacío – navegación reemplazada por breadcrumb) ──
+function initSidebar() {}
 
 // ─── HOME ─────────────────────────────────────────────────────
 const HOME_MODULOS = [
@@ -205,7 +143,13 @@ const HOME_MODULOS = [
     title: 'Sistema de Capacitaciones',
     desc: 'Registra y monitorea las capacitaciones ETI por supervisor, sector y temporada.',
     color: '#003087',
-    tab: 'dashboard', utab: null, gtab: null
+    submenus: [
+      { icon: '📊', title: 'Dashboard', tab: 'dashboard', utab: null, gtab: null },
+      { icon: '✏️', title: 'Registro', tab: 'registro', utab: null, gtab: null },
+      { icon: '📋', title: 'Tabla', tab: 'tabla', utab: null, gtab: null },
+      { icon: '🏆', title: 'Ranking', tab: 'ranking', utab: null, gtab: null },
+      { icon: '📈', title: 'Estadísticas', tab: 'estadisticas', utab: null, gtab: null }
+    ]
   },
   {
     id: 'unidades',
@@ -213,7 +157,12 @@ const HOME_MODULOS = [
     title: 'Mantenimiento de Unidades',
     desc: 'Control de motos, cuatrimotos, mantenimientos preventivos y licencias de conducir.',
     color: '#0050c8',
-    tab: 'unidades', utab: 'u-dashboard', gtab: null
+    submenus: [
+      { icon: '📊', title: 'Dashboard', tab: 'unidades', utab: 'u-dashboard', gtab: null },
+      { icon: '🚗', title: 'Unidades', tab: 'unidades', utab: 'u-unidades', gtab: null },
+      { icon: '🔧', title: 'Mantenimientos', tab: 'unidades', utab: 'u-mantenimientos', gtab: null },
+      { icon: '📄', title: 'Licencias', tab: 'unidades', utab: 'u-licencias', gtab: null }
+    ]
   },
   {
     id: 'evaluaciones',
@@ -221,70 +170,59 @@ const HOME_MODULOS = [
     title: 'Evaluaciones 360°',
     desc: 'Evaluaciones de desempeño de supervisores, seguimientos y ranking gerencial.',
     color: '#CC0000',
-    tab: 'gerencial', utab: null, gtab: 'g-dashboard'
+    submenus: [
+      { icon: '📊', title: 'Dashboard', tab: 'gerencial', utab: null, gtab: 'g-dashboard' },
+      { icon: '👥', title: 'Supervisores', tab: 'gerencial', utab: null, gtab: 'g-supervisores' },
+      { icon: '📝', title: 'Evaluaciones', tab: 'gerencial', utab: null, gtab: 'g-evaluaciones' },
+      { icon: '🔍', title: 'Seguimientos', tab: 'gerencial', utab: null, gtab: 'g-seguimientos' },
+      { icon: '🏆', title: 'Ranking', tab: 'gerencial', utab: null, gtab: 'g-ranking' }
+    ]
   }
 ];
 
-function initHome(usuario) {
-  const hora = new Date().getHours();
-  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
-  const nombre = usuario.nombre.split(' ')[0];
-  document.getElementById('homeGreeting').textContent = `${saludo}, ${nombre} 👋`;
+function irHome() {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-home').classList.add('active');
+  document.getElementById('btnVolver').style.display = 'none';
+  document.getElementById('bcModulo').style.display = 'none';
+  document.getElementById('bcSub').style.display = 'none';
+  nivelActual = 'home';
+  moduloActual = null;
+  actualizarStatsHome();
+}
 
-  // Info row
-  const temporada = detectarTemporada(new Date());
-  const badge = document.getElementById('homeSeasonBadge');
-  if (badge) {
-    badge.textContent = temporada === 'alta' ? '🌡 Temporada Alta' : '❄ Temporada Baja';
-    badge.style.background = temporada === 'alta' ? '#CC0000' : '#003087';
-  }
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const hoy = new Date();
-  const dateEl = document.getElementById('homeDateDisplay');
-  if (dateEl) dateEl.textContent = `${dias[hoy.getDay()]}, ${hoy.getDate()} de ${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+function mostrarSubmenu(moduloId) {
+  const modulo = HOME_MODULOS.find(m => m.id === moduloId);
+  if (!modulo) return;
+  moduloActual = moduloId;
+  nivelActual = 'submenu';
 
-  // Cards
-  const modulosPermitidos = usuario.modulos || ['capacitaciones','unidades','evaluaciones'];
-  const container = document.getElementById('homeCards');
-  if (!container) return;
+  document.getElementById('submenuTitle').textContent = modulo.title;
+  document.getElementById('submenuDesc').textContent = modulo.desc;
+
+  const container = document.getElementById('submenuCards');
   container.innerHTML = '';
-  HOME_MODULOS.filter(m => modulosPermitidos.includes(m.id)).forEach(m => {
+  modulo.submenus.forEach(sub => {
     const card = document.createElement('div');
-    card.className = 'home-card';
-    card.style.setProperty('--card-color', m.color);
+    card.className = 'submenu-card';
     card.innerHTML = `
-      <div class="home-card-icon">${m.icon}</div>
-      <div class="home-card-title">${m.title}</div>
-      <div class="home-card-desc">${m.desc}</div>
-      <div class="home-card-arrow">→</div>
+      <div class="submenu-card-icon">${sub.icon}</div>
+      <div class="submenu-card-title">${sub.title}</div>
     `;
-    card.addEventListener('click', () => navegarAModulo(m.tab, m.utab, m.gtab, m.id));
+    card.addEventListener('click', () => navegarASubmodulo(sub.tab, sub.utab, sub.gtab, sub.title));
     container.appendChild(card);
   });
+
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-submenu').classList.add('active');
+  document.getElementById('btnVolver').style.display = 'inline-flex';
+  document.getElementById('bcModulo').style.display = 'inline';
+  document.getElementById('bcModuloNombre').textContent = modulo.title;
+  document.getElementById('bcSub').style.display = 'none';
 }
 
-function irAHome(usuario) {
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-home').classList.add('active');
-  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  const homeItem = document.querySelector('.sidebar-item[data-tab="home"]');
-  if (homeItem) homeItem.classList.add('active');
-  document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
-  if (usuario) initHome(usuario);
-}
-
-function navegarAModulo(tab, utab, gtab, moduloId) {
-  document.querySelectorAll('.sidebar-module').forEach(m => m.classList.remove('open','active'));
-  const modEl = document.querySelector(`.sidebar-module[data-modulo="${moduloId}"]`);
-  if (modEl) modEl.classList.add('open','active');
-
-  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  let targetItem;
-  if (utab) targetItem = document.querySelector(`.sidebar-item[data-utab="${utab}"]`);
-  else if (gtab) targetItem = document.querySelector(`.sidebar-item[data-gtab="${gtab}"]`);
-  else targetItem = document.querySelector(`.sidebar-item[data-tab="${tab}"]:not([data-tab="home"])`);
-  if (targetItem) targetItem.classList.add('active');
+function navegarASubmodulo(tab, utab, gtab, titulo) {
+  nivelActual = 'submodulo';
 
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   const tabEl = document.getElementById('tab-' + tab);
@@ -303,6 +241,64 @@ function navegarAModulo(tab, utab, gtab, moduloId) {
     if (gtab === 'g-dashboard' && typeof gRenderDashboard === 'function') gRenderDashboard();
   }
   if (tab === 'dashboard') renderDashboard();
+  if (tab === 'tabla') renderTabla();
+  if (tab === 'ranking') renderRanking();
+  if (tab === 'estadisticas') renderEstadisticas();
+
+  document.getElementById('bcSub').style.display = 'inline';
+  document.getElementById('bcSubNombre').textContent = titulo;
+}
+
+function volverAtras() {
+  if (nivelActual === 'submodulo') {
+    mostrarSubmenu(moduloActual);
+  } else if (nivelActual === 'submenu') {
+    irHome();
+  }
+}
+
+function actualizarStatsHome() {
+  const total = registros.length;
+  const cumplidos = registros.filter(r => calcularEstado(r).estado === 'cumplido').length;
+  const statEl = document.getElementById('homeStatsCap');
+  if (statEl) statEl.textContent = `${total} registros · ${cumplidos} cumplidos`;
+}
+
+function initHome(usuario) {
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const nombre = usuario.nombre.split(' ')[0];
+  document.getElementById('homeGreeting').textContent = `${saludo}, ${nombre} 👋`;
+
+  const temporada = detectarTemporada(new Date());
+  const badge = document.getElementById('homeSeasonBadge');
+  if (badge) {
+    badge.textContent = temporada === 'alta' ? '🌡 Temporada Alta' : '❄ Temporada Baja';
+    badge.style.background = temporada === 'alta' ? '#CC0000' : '#003087';
+  }
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const hoy = new Date();
+  const dateEl = document.getElementById('homeDateDisplay');
+  if (dateEl) dateEl.textContent = `${dias[hoy.getDay()]}, ${hoy.getDate()} de ${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+
+  const container = document.getElementById('homeCards');
+  if (!container) return;
+  container.innerHTML = '';
+  HOME_MODULOS.filter(m => modulosPermitidos.includes(m.id)).forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'home-card';
+    card.style.setProperty('--card-color', m.color);
+    card.innerHTML = `
+      <div class="home-card-icon">${m.icon}</div>
+      <div class="home-card-title">${m.title}</div>
+      <div class="home-card-desc">${m.desc}</div>
+      <div class="home-card-stats" id="homeStatsCap" style="font-size:11px;color:#888;margin-top:6px;">–</div>
+      <div class="home-card-arrow">→</div>
+    `;
+    card.addEventListener('click', () => mostrarSubmenu(m.id));
+    container.appendChild(card);
+  });
 }
 
 // ─── TEMPORADA ────────────────────────────────────────────────
@@ -718,7 +714,7 @@ function initBotones(){
   if(bc) bc.addEventListener('click',limpiarTodo);
 }
 
-function renderAll(){renderDashboard();renderTabla();renderRanking();}
+function renderAll(){renderDashboard();renderTabla();renderRanking();actualizarStatsHome();}
 
 // ─── ESTADÍSTICAS ─────────────────────────────────────────────
 const STAT_SUP_EMPRESA = {

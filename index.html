@@ -39,70 +39,22 @@
 <!-- ══════════════ APP ══════════════ -->
 <div id="appPage" style="display:none;">
 
-<!-- ══════════════ SIDEBAR ══════════════ -->
-<aside id="sidebar" class="sidebar">
-  <div class="sidebar-logo">
-    <img src="images/logo-unifrutti.jpg" alt="Unifrutti" />
-    <span>Sistema de Seguimientos Generales</span>
-  </div>
-
-  <!-- INICIO -->
-  <a class="sidebar-item sidebar-home-item active" data-tab="home">🏠 Inicio</a>
-
-  <!-- MÓDULO 1 -->
-  <div class="sidebar-module" data-modulo="capacitaciones">
-    <div class="sidebar-module-header">
-      <span>📚 Sistema de Capacitaciones</span>
-      <span class="arrow">▾</span>
-    </div>
-    <div class="sidebar-module-items">
-      <a class="sidebar-item" data-tab="dashboard">📊 Dashboard</a>
-      <a class="sidebar-item" data-tab="registro">➕ Registrar</a>
-      <a class="sidebar-item" data-tab="tabla">📋 Registros</a>
-      <a class="sidebar-item" data-tab="ranking">🏆 Ranking</a>
-      <a class="sidebar-item" data-tab="estadisticas">📈 Estadísticas</a>
-    </div>
-  </div>
-
-  <!-- MÓDULO 2 -->
-  <div class="sidebar-module" data-modulo="unidades">
-    <div class="sidebar-module-header">
-      <span>🚗 Mantenimiento de Unidades</span>
-      <span class="arrow">▾</span>
-    </div>
-    <div class="sidebar-module-items">
-      <a class="sidebar-item" data-tab="unidades" data-utab="u-dashboard">📊 Dashboard</a>
-      <a class="sidebar-item" data-tab="unidades" data-utab="u-unidades">🚗 Unidades</a>
-      <a class="sidebar-item" data-tab="unidades" data-utab="u-mantenimiento">🔧 Mantenimiento</a>
-      <a class="sidebar-item" data-tab="unidades" data-utab="u-licencias">📋 Licencias</a>
-    </div>
-  </div>
-
-  <!-- MÓDULO 3 -->
-  <div class="sidebar-module" data-modulo="evaluaciones">
-    <div class="sidebar-module-header">
-      <span>🎯 Evaluaciones 360°</span>
-      <span class="arrow">▾</span>
-    </div>
-    <div class="sidebar-module-items">
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-dashboard">📊 Dashboard</a>
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-evaluacion">📝 Evaluación 360°</a>
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-seguimiento">📅 Seguimiento</a>
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-ranking">🏆 Ranking</a>
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-informes">📑 Informes</a>
-      <a class="sidebar-item" data-tab="gerencial" data-gtab="g-supervisores">⚙️ Supervisores</a>
-    </div>
-  </div>
-</aside>
-
 <header class="site-header">
-  <div class="header-inner">
-    <div class="header-meta">
-      <div class="season-badge" id="seasonBadge">–</div>
-      <div class="current-date" id="currentDate">–</div>
-      <div class="user-badge" id="userBadge">–</div>
-      <button class="btn-logout" id="btnLogout">⏻ Salir</button>
+  <div class="header-left">
+    <img src="images/logo-unifrutti.jpg" alt="Unifrutti" class="header-logo-img" />
+    <div class="header-brand-text">Sistema de Seguimientos Generales</div>
+    <div class="breadcrumb" id="breadcrumb">
+      <span id="bcHome" class="bc-link" onclick="irHome()">🏠 Inicio</span>
+      <span id="bcModulo" style="display:none"> › <span id="bcModuloNombre"></span></span>
+      <span id="bcSub" style="display:none"> › <span id="bcSubNombre"></span></span>
     </div>
+  </div>
+  <div class="header-right">
+    <button id="btnVolver" style="display:none" onclick="volverAtras()">← Volver</button>
+    <div class="season-badge" id="seasonBadge">–</div>
+    <div class="current-date" id="currentDate">–</div>
+    <div class="user-badge" id="userBadge">–</div>
+    <button class="btn-logout" id="btnLogout">⏻ Salir</button>
   </div>
 </header>
 
@@ -138,6 +90,15 @@
     <button class="sub-btn" data-tab="gerencial" data-sub="g-supervisores">Supervisores</button>
   </div>
 </nav>
+
+<!-- SUBMENU DE MÓDULO -->
+<section class="tab-content" id="tab-submenu">
+  <div class="submenu-container">
+    <h2 id="submenuTitle" class="submenu-title"></h2>
+    <p id="submenuDesc" class="submenu-desc"></p>
+    <div id="submenuCards" class="submenu-cards"></div>
+  </div>
+</section>
 
 <!-- HOME -->
 <section class="tab-content active" id="tab-home">
