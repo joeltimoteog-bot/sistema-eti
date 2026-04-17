@@ -160,7 +160,7 @@ const HOME_MODULOS = [
     submenus: [
       { icon: '📊', title: 'Dashboard', tab: 'unidades', utab: 'u-dashboard', gtab: null },
       { icon: '🚗', title: 'Unidades', tab: 'unidades', utab: 'u-unidades', gtab: null },
-      { icon: '🔧', title: 'Mantenimientos', tab: 'unidades', utab: 'u-mantenimientos', gtab: null },
+      { icon: '🔧', title: 'Mantenimientos', tab: 'unidades', utab: 'u-mantenimiento', gtab: null },
       { icon: '📄', title: 'Licencias', tab: 'unidades', utab: 'u-licencias', gtab: null }
     ]
   },
@@ -173,8 +173,8 @@ const HOME_MODULOS = [
     submenus: [
       { icon: '📊', title: 'Dashboard', tab: 'gerencial', utab: null, gtab: 'g-dashboard' },
       { icon: '👥', title: 'Supervisores', tab: 'gerencial', utab: null, gtab: 'g-supervisores' },
-      { icon: '📝', title: 'Evaluaciones', tab: 'gerencial', utab: null, gtab: 'g-evaluaciones' },
-      { icon: '🔍', title: 'Seguimientos', tab: 'gerencial', utab: null, gtab: 'g-seguimientos' },
+      { icon: '📝', title: 'Evaluaciones', tab: 'gerencial', utab: null, gtab: 'g-evaluacion' },
+      { icon: '🔍', title: 'Seguimientos', tab: 'gerencial', utab: null, gtab: 'g-seguimiento' },
       { icon: '🏆', title: 'Ranking', tab: 'gerencial', utab: null, gtab: 'g-ranking' }
     ]
   }
