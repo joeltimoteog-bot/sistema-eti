@@ -1106,6 +1106,18 @@ function initProgramacion() {
   document.getElementById('pSupervisor').addEventListener('change', function() {
     document.getElementById('pSector').value = this.value ? this.value.split('|')[1]||'' : '';
   });
+  // Contador de días designados en vivo
+  const actualizarDias = () => {
+    const ini = document.getElementById('pFecha').value;
+    let fin = document.getElementById('pFechaFin').value;
+    if(!ini) { document.getElementById('pDiasDesignados').value='–'; return; }
+    if(!fin) fin = ini;
+    if(fin < ini) { document.getElementById('pDiasDesignados').value='⚠️ Fecha fin inválida'; return; }
+    const dias = diasHabilesRango(ini, fin);
+    document.getElementById('pDiasDesignados').value = `${dias} día(s) hábil(es) para capacitar`;
+  };
+  document.getElementById('pFecha').addEventListener('change', actualizarDias);
+  document.getElementById('pFechaFin').addEventListener('change', actualizarDias);
   document.getElementById('btnProgGuardar').addEventListener('click', guardarProgramacion);
   document.getElementById('btnProgLimpiar').addEventListener('click', limpiarProg);
   document.getElementById('pFiltSup').addEventListener('change', renderProgramaciones);
@@ -1123,13 +1135,19 @@ async function guardarProgramacion() {
   const supVal = document.getElementById('pSupervisor').value;
   const tema = document.getElementById('pTema').value;
   const fecha = document.getElementById('pFecha').value;
+  let fechaFin = document.getElementById('pFechaFin').value;
   const obs = document.getElementById('pObs').value.trim();
-  if(!supVal || !tema || !fecha) { showToast('Completa supervisor, tema y fecha', true); return; }
+  if(!supVal || !tema || !fecha) { showToast('Completa supervisor, tema y fecha de inicio', true); return; }
+  if(fechaFin && fechaFin < fecha) { showToast('⚠️ La fecha fin no puede ser anterior a la fecha inicio', true); return; }
+  if(!fechaFin) fechaFin = fecha; // un solo día
   const [supervisor, sector] = supVal.split('|');
+  const diasDesignados = diasHabilesRango(fecha, fechaFin);
   try {
     await addDoc(collection(db, COL_PROG), {
       supervisor, sector, tema,
       fechaProgramada: fecha,
+      fechaFin: fechaFin,
+      diasDesignados,
       observaciones: obs,
       estado: 'pendiente',
       registroId: null,
@@ -1137,26 +1155,54 @@ async function guardarProgramacion() {
       creadoEn: new Date().toISOString()
     });
     limpiarProg();
-    showToast('📅 Capacitación programada correctamente');
+    showToast(`📅 Programado: ${diasDesignados} día(s) designado(s) para el sector`);
   } catch(e) { showToast('❌ Error al programar', true); }
 }
 
-function limpiarProg() {
-  ['pSupervisor','pSector','pTema','pFecha','pObs'].forEach(id => document.getElementById(id).value='');
+// Días hábiles del rango INCLUSIVE (según temporada de cada día)
+function diasHabilesRango(iniStr, finStr) {
+  let count = 0;
+  let d = new Date(iniStr + 'T12:00:00');
+  const fin = new Date(finStr + 'T12:00:00');
+  while(d <= fin) {
+    if(esDiaHabil(d, detectarTemporada(d))) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count || 1;
 }
 
-// Estado calculado de una programación
+// Obtener rango normalizado de una programación (compatible con las antiguas de un solo día)
+function rangoProg(p) {
+  const ini = p.fechaProgramada;
+  const fin = p.fechaFin || p.fechaProgramada;
+  return { ini, fin, dias: p.diasDesignados || diasHabilesRango(ini, fin) };
+}
+
+function limpiarProg() {
+  ['pSupervisor','pSector','pTema','pFecha','pFechaFin','pObs'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('pDiasDesignados').value='–';
+}
+
+// Estado calculado de una programación (soporta rango de días designados)
 function estadoProg(p) {
   if(p.estado === 'ejecutada') return {key:'ejecutada', label:'✅ Ejecutada', badge:'badge-verde', dias:0};
+  const {ini, fin, dias} = rangoProg(p);
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const fp = new Date(p.fechaProgramada + 'T12:00:00'); fp.setHours(0,0,0,0);
-  if(fp.getTime() === hoy.getTime()) return {key:'hoy', label:'📍 Para HOY', badge:'badge-amarillo', dias:0};
-  if(fp > hoy) {
-    const diasCal = Math.round((fp - hoy) / 86400000);
+  const fIni = new Date(ini + 'T12:00:00'); fIni.setHours(0,0,0,0);
+  const fFin = new Date(fin + 'T12:00:00'); fFin.setHours(0,0,0,0);
+
+  // Hoy dentro del rango designado → EN CURSO (o "Para hoy" si es 1 solo día)
+  if(hoy >= fIni && hoy <= fFin) {
+    if(fIni.getTime() === fFin.getTime()) return {key:'hoy', label:'📍 Para HOY', badge:'badge-amarillo', dias:0};
+    const diaActual = diasHabilesRango(ini, formatDate(hoy));
+    return {key:'curso', label:`🟠 En Curso (día ${diaActual} de ${dias})`, badge:'badge-naranja', dias:0, diaActual, diasTot:dias};
+  }
+  if(fIni > hoy) {
+    const diasCal = Math.round((fIni - hoy) / 86400000);
     return {key:'proxima', label:'🔵 Próxima', badge:'badge-azul', dias:diasCal};
   }
-  // Vencida: días hábiles de atraso
-  const dr = contarDiasHabiles(fp, hoy);
+  // Vencida: días hábiles de atraso DESDE EL ÚLTIMO DÍA designado
+  const dr = contarDiasHabiles(fFin, hoy);
   return {key:'vencida', label:'🚨 Vencida', badge:'badge-rojo', dias:dr};
 }
 
@@ -1165,7 +1211,7 @@ function renderProgramaciones() {
   const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
   setText('pkTotal', programaciones.length);
   setText('pkProximas', conEst.filter(p => p._est.key==='proxima' && p._est.dias<=3).length);
-  setText('pkHoy', conEst.filter(p => p._est.key==='hoy').length);
+  setText('pkHoy', conEst.filter(p => p._est.key==='hoy' || p._est.key==='curso').length);
   setText('pkVencidas', conEst.filter(p => p._est.key==='vencida').length);
   setText('pkEjecutadas', conEst.filter(p => p._est.key==='ejecutada').length);
 
@@ -1186,7 +1232,7 @@ function renderProgramaciones() {
   if(fSup) data = data.filter(p => p.supervisor === fSup);
   if(fEst) data = data.filter(p => p._est.key === fEst);
   // Orden: vencidas primero, luego hoy, próximas, ejecutadas al final
-  const ordenKey = {vencida:0, hoy:1, proxima:2, ejecutada:3};
+  const ordenKey = {vencida:0, curso:1, hoy:1, proxima:2, ejecutada:3};
   data.sort((a,b) => ordenKey[a._est.key]-ordenKey[b._est.key] || a.fechaProgramada.localeCompare(b.fechaProgramada));
 
   const tbody = document.getElementById('tbodyProg');
@@ -1201,7 +1247,12 @@ function renderProgramaciones() {
       <td><strong>${esc(p.supervisor)}</strong></td>
       <td style="font-size:10.5px;">${esc(p.sector||'')}</td>
       <td style="font-size:10.5px;">${esc(p.tema)}</td>
-      <td style="font-weight:700;">${formatDateDisplay(p.fechaProgramada)}</td>
+      <td style="font-weight:700;">${(() => {
+        const rg = rangoProg(p);
+        return rg.ini===rg.fin
+          ? formatDateDisplay(rg.ini)
+          : `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`;
+      })()}</td>
       <td><span class="badge ${e.badge}">${e.label}</span></td>
       <td>${diasTxt}</td>
       <td style="max-width:140px;font-size:10px;">${esc((p.observaciones||'').substring(0,40))}${(p.observaciones||'').length>40?'…':''}</td>
@@ -1223,7 +1274,8 @@ window.ejecutarProg = function(id) {
   document.getElementById('fSector').value = p.sector || '';
   document.getElementById('fTema').value = p.tema;
   document.getElementById('bloqueTipoPersonal').style.display = 'block';
-  document.getElementById('fFechaEjecucion').value = p.fechaProgramada;
+  const rgEj = rangoProg(p);
+  document.getElementById('fFechaEjecucion').value = rgEj.fin; // el plazo de actas corre desde el ÚLTIMO día designado
   document.getElementById('fProgId').value = id;
   document.getElementById('progVinculadaBanner').style.display = 'flex';
   verificarRetrasoForm();
@@ -1248,7 +1300,9 @@ function exportProgExcel() {
     const e = estadoProg(p);
     return {
       'Supervisor': p.supervisor, 'Sector': p.sector||'', 'Tema': p.tema,
-      'Fecha Programada': p.fechaProgramada,
+      'Fecha Inicio': p.fechaProgramada,
+      'Fecha Fin': p.fechaFin||p.fechaProgramada,
+      'Días Designados': rangoProg(p).dias,
       'Estado': e.label.replace(/^[^\s]+\s/,''),
       'Días': e.key==='vencida' ? e.dias+' hábiles de atraso' : e.key==='proxima' ? 'faltan '+e.dias : '',
       'Observaciones': p.observaciones||'', 'Programado Por': p.creadoPor||''
@@ -1302,7 +1356,9 @@ function exportIncumplimientosPDF() {
       pdf.text(`CASO ${i+1}: ${p.supervisor}`, 18, y); y+=5.5;
       pdf.setFontSize(9); pdf.setTextColor(70,70,70); pdf.setFont(undefined,'normal');
       pdf.text(`Sector: ${p.sector||'–'}  ·  Tema: ${p.tema}`, 21, y); y+=5;
-      pdf.text(`Fecha programada: ${formatDateDisplay(p.fechaProgramada)}  ·  Atraso: ${p._est.dias} día(s) hábil(es)`, 21, y); y+=5;
+      const rgPdf = rangoProg(p);
+      const fTxt = rgPdf.ini===rgPdf.fin ? formatDateDisplay(rgPdf.ini) : `${formatDateDisplay(rgPdf.ini)} al ${formatDateDisplay(rgPdf.fin)} (${rgPdf.dias} días designados)`;
+      pdf.text(`Fechas designadas: ${fTxt}  ·  Atraso: ${p._est.dias} día(s) hábil(es) desde el último día`, 21, y); y+=5;
       const sit = p.observaciones ? `Situación: ${p.observaciones}` : 'Situación: Sin observaciones registradas — requiere justificación del supervisor.';
       const sitLines = pdf.splitTextToSize(sit, 168);
       sitLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 21, y); y+=4.5; });
@@ -1350,16 +1406,23 @@ function renderAlertasProg() {
   if(!div) return;
   const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
   const vencidas = conEst.filter(p => p._est.key==='vencida').sort((a,b)=>b._est.dias-a._est.dias);
+  const enCurso = conEst.filter(p => p._est.key==='curso');
   const paraHoy = conEst.filter(p => p._est.key==='hoy');
   const proximas = conEst.filter(p => p._est.key==='proxima' && p._est.dias<=3).sort((a,b)=>a._est.dias-b._est.dias);
 
-  if(!vencidas.length && !paraHoy.length && !proximas.length) {
+  if(!vencidas.length && !enCurso.length && !paraHoy.length && !proximas.length) {
     div.innerHTML = '<p class="empty-msg">✅ Sin programaciones próximas ni vencidas.</p>';
     return;
   }
   let html = '';
   vencidas.slice(0,5).forEach(p => {
-    html += `<div class="alert-card alert-rojo"><span class="alert-icon">🚨</span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
+    const rg = rangoProg(p);
+    const fechasTxt = rg.ini===rg.fin ? `el <strong>${formatDateDisplay(rg.ini)}</strong>` : `del <strong>${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}</strong> (${rg.dias} días designados)`;
+    html += `<div class="alert-card alert-rojo"><span class="alert-icon">🚨</span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada ${fechasTxt} — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
+  });
+  enCurso.forEach(p => {
+    const rg = rangoProg(p);
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon">🟠</span><div><strong>EN CURSO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — <strong>día ${p._est.diaActual} de ${p._est.diasTot} designados</strong> (${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}). Al terminar el último día, registra la ejecución.</div></div>`;
   });
   paraHoy.forEach(p => {
     html += `<div class="alert-card alert-amarillo"><span class="alert-icon">📍</span><div><strong>HOY — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
@@ -1464,11 +1527,23 @@ function renderCalendario() {
   // Lunes=0 ... Domingo=6
   let inicio = primerDia.getDay()-1; if(inicio<0) inicio=6;
 
-  // Programaciones por fecha
+  // Programaciones por fecha (un chip por cada día del rango designado)
   const porFecha = {};
   programaciones.forEach(p => {
-    if(!porFecha[p.fechaProgramada]) porFecha[p.fechaProgramada]=[];
-    porFecha[p.fechaProgramada].push({...p, _est: estadoProg(p)});
+    const est = estadoProg(p);
+    const rg = rangoProg(p);
+    let d = new Date(rg.ini + 'T12:00:00');
+    const fin = new Date(rg.fin + 'T12:00:00');
+    let nDia = 0;
+    while(d <= fin) {
+      const fStr = formatDate(d);
+      if(esDiaHabil(d, detectarTemporada(d)) || rg.ini===rg.fin) {
+        nDia++;
+        if(!porFecha[fStr]) porFecha[fStr]=[];
+        porFecha[fStr].push({...p, _est: est, _nDia: nDia, _diasTot: rg.dias});
+      }
+      d.setDate(d.getDate()+1);
+    }
   });
 
   let html = '';
@@ -1490,7 +1565,8 @@ function renderCalendario() {
       const cls = p._est.key==='ejecutada'?'c-ejecutada':p._est.key==='vencida'?'c-vencida':p._est.key==='hoy'?'c-hoy':'c-proxima';
     const nombreCorto = p.supervisor.split(' ')[0]+' '+(p.supervisor.split(' ')[1]||'');
       const temaCorto = p.tema==='CAPACITACIONES ETI'?'ETI':p.tema==='EVALUACIONES DE CHECKLIST'?'CHECKLIST':'REFORZ.';
-      chips += `<span class="cal-chip ${cls}" title="${esc(p.supervisor)} · ${esc(p.tema)} · ${esc(p.sector||'')}" onclick="verProgDia('${fStr}')">${temaCorto}: ${esc(nombreCorto)}</span>`;
+      const diaTag = p._diasTot>1 ? ` (${p._nDia}/${p._diasTot})` : '';
+      chips += `<span class="cal-chip ${cls}" title="${esc(p.supervisor)} · ${esc(p.tema)} · ${esc(p.sector||'')}${p._diasTot>1?` · Día ${p._nDia} de ${p._diasTot}`:''}" onclick="verProgDia('${fStr}')">${temaCorto}: ${esc(nombreCorto)}${diaTag}</span>`;
     });
     if(progs.length>3) chips += `<span class="cal-mas" onclick="verProgDia('${fStr}')">+${progs.length-3} más...</span>`;
     html += `<div class="cal-dia ${esHoy?'hoy':''} ${!habil?'no-habil':''}"><div class="cal-dia-num">${d}${esHoy?' 📍':''}</div>${chips}</div>`;
@@ -1506,11 +1582,16 @@ function renderCalendario() {
 
 // Ver programaciones de un día (filtra la tabla y hace scroll)
 window.verProgDia = function(fechaStr) {
-  const progs = programaciones.filter(p => p.fechaProgramada===fechaStr);
+  const progs = programaciones.filter(p => {
+    const rg = rangoProg(p);
+    return fechaStr >= rg.ini && fechaStr <= rg.fin;
+  });
   if(!progs.length) return;
   const detalle = progs.map(p => {
     const e = estadoProg(p);
-    return `${e.label} — ${p.supervisor} · ${p.tema} · ${p.sector||''}`;
-  }).join('\n');
+    const rg = rangoProg(p);
+    const rango = rg.ini===rg.fin ? formatDateDisplay(rg.ini) : `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días designados)`;
+    return `${e.label} — ${p.supervisor} · ${p.tema}\n   Sector: ${p.sector||''} · Fechas: ${rango}`;
+  }).join('\n\n');
   alert(`📅 Programaciones del ${formatDateDisplay(fechaStr)}:\n\n${detalle}`);
 };

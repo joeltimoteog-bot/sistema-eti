@@ -125,7 +125,7 @@
   <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
     <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-val" id="pkTotal">0</div><div class="kpi-label">Programadas</div></div>
     <div class="kpi-card azul"><div class="kpi-icon">🔜</div><div class="kpi-val" id="pkProximas">0</div><div class="kpi-label">Próximas (≤3 días)</div></div>
-    <div class="kpi-card amarillo"><div class="kpi-icon">📍</div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">Para Hoy</div></div>
+    <div class="kpi-card amarillo"><div class="kpi-icon">📍</div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">En Curso / Hoy</div></div>
     <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
     <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
     <div class="kpi-card gold"><div class="kpi-icon">🎯</div><div class="kpi-val" id="pkEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
@@ -156,12 +156,22 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="pFecha">Fecha Programada *</label>
+          <label for="pFecha">Fecha Inicio *</label>
           <input type="date" id="pFecha" />
         </div>
-        <div class="form-group" style="grid-column:span 2;">
+        <div class="form-group">
+          <label for="pFechaFin">Fecha Fin (si son varios días)</label>
+          <input type="date" id="pFechaFin" />
+          <small>Dejar en blanco si es un solo día</small>
+        </div>
+        <div class="form-group">
+          <label>Días Designados</label>
+          <input type="text" id="pDiasDesignados" readonly class="input-readonly input-calc" value="–" />
+          <small>Días hábiles para capacitar en el sector</small>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
           <label for="pObs">Observaciones de la programación</label>
-          <input type="text" id="pObs" placeholder="Ej: Coordinar con administrador del sector, material impreso, etc." />
+          <input type="text" id="pObs" placeholder="Ej: Sector con 1,500 trabajadores, se divide en 3 fechas. Coordinar con administrador." />
         </div>
       </div>
       <div class="actions-row">
@@ -201,6 +211,7 @@
         <select class="filter-select" id="pFiltEstado">
           <option value="">Todos los estados</option>
           <option value="proxima">🔵 Próxima</option>
+          <option value="curso">🟠 En curso</option>
           <option value="hoy">📍 Para hoy</option>
           <option value="vencida">🚨 Vencida</option>
           <option value="ejecutada">✅ Ejecutada</option>
@@ -212,7 +223,7 @@
     <div class="table-scroll">
       <table class="data-table">
         <thead>
-          <tr><th>#</th><th>Supervisor</th><th>Sector</th><th>Tema</th><th>F. Programada</th><th>Estado</th><th>Días</th><th>Obs.</th><th>Acciones</th></tr>
+          <tr><th>#</th><th>Supervisor</th><th>Sector</th><th>Tema</th><th>Fechas Designadas</th><th>Estado</th><th>Días</th><th>Obs.</th><th>Acciones</th></tr>
         </thead>
         <tbody id="tbodyProg"><tr><td colspan="9" class="empty-msg">Sin programaciones registradas.</td></tr></tbody>
       </table>
