@@ -63,6 +63,7 @@
 
 <nav class="tab-nav">
   <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab-btn" data-tab="programacion">📅 Programación</button>
   <button class="tab-btn" data-tab="registro">➕ Registrar</button>
   <button class="tab-btn" data-tab="tabla">📋 Registros</button>
   <button class="tab-btn" data-tab="ranking">🏆 Ranking</button>
@@ -84,7 +85,11 @@
 
   <div class="panel-grid">
     <div class="panel">
-      <div class="panel-title">🚨 Alertas Activas</div>
+      <div class="panel-title">📅 Alertas de Programación</div>
+      <div id="dashAlertasProg"><p class="empty-msg">Sin programaciones próximas ni vencidas.</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">🚨 Alertas de Actas (Envíos)</div>
       <div id="dashAlertas"><p class="empty-msg">Sin alertas activas.</p></div>
     </div>
     <div class="panel">
@@ -104,10 +109,91 @@
   </div>
 </section>
 
+<!-- ══ TAB: PROGRAMACIÓN ══ -->
+<section class="tab-content" id="tab-programacion">
+  <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+    <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-val" id="pkTotal">0</div><div class="kpi-label">Programadas</div></div>
+    <div class="kpi-card azul"><div class="kpi-icon">🔜</div><div class="kpi-val" id="pkProximas">0</div><div class="kpi-label">Próximas (≤3 días)</div></div>
+    <div class="kpi-card amarillo"><div class="kpi-icon">📍</div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">Para Hoy</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📅 Programar Capacitación (Calendario de Proyección)</div>
+    <div class="section-block">
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="pSupervisor">Supervisor *</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="pSupervisor" style="flex:1;"><option value="">— Seleccionar —</option></select>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores">➕</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="pSector">Sector (auto-completado)</label>
+          <input type="text" id="pSector" readonly class="input-readonly" placeholder="Se completa al elegir supervisor" />
+        </div>
+        <div class="form-group">
+          <label for="pTema">Tema *</label>
+          <select id="pTema">
+            <option value="">— Seleccionar tema —</option>
+            <option value="CAPACITACIONES ETI">CAPACITACIONES ETI</option>
+            <option value="EVALUACIONES DE CHECKLIST">EVALUACIONES DE CHECKLIST</option>
+            <option value="REFORZAMIENTO">REFORZAMIENTO</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pFecha">Fecha Programada *</label>
+          <input type="date" id="pFecha" />
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label for="pObs">Observaciones de la programación</label>
+          <input type="text" id="pObs" placeholder="Ej: Coordinar con administrador del sector, material impreso, etc." />
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" id="btnProgGuardar">📅 Programar</button>
+        <button class="btn btn-danger btn-sm" id="btnProgLimpiar">🗑 Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <div class="panel-title" style="margin:0;border:0;padding:0;">🗓 Calendario de Programaciones</div>
+      <div class="filters-bar">
+        <select class="filter-select" id="pFiltSup"><option value="">Todos los supervisores</option></select>
+        <select class="filter-select" id="pFiltEstado">
+          <option value="">Todos los estados</option>
+          <option value="proxima">🔵 Próxima</option>
+          <option value="hoy">📍 Para hoy</option>
+          <option value="vencida">🚨 Vencida</option>
+          <option value="ejecutada">✅ Ejecutada</option>
+        </select>
+        <button class="btn btn-pdf btn-sm" id="btnIncumplPdf">📄 Informe de Incumplimientos</button>
+        <button class="btn btn-excel btn-sm" id="btnProgExcel">📥 Excel</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Supervisor</th><th>Sector</th><th>Tema</th><th>F. Programada</th><th>Estado</th><th>Días</th><th>Obs.</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="tbodyProg"><tr><td colspan="9" class="empty-msg">Sin programaciones registradas.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <!-- ══ TAB: REGISTRAR ══ -->
 <section class="tab-content" id="tab-registro">
   <div class="panel">
     <div class="panel-title">➕ Nueva Capacitación ETI</div>
+    <div class="alert-card alert-azul" id="progVinculadaBanner" style="display:none;">
+      <span class="alert-icon">🔗</span>
+      <div><strong>Ejecutando programación vinculada</strong> — al guardar este registro, la programación se marcará automáticamente como ✅ Ejecutada. <a href="#" onclick="desvincularProg();return false;" style="color:var(--rojo);font-weight:700;">Desvincular</a></div>
+    </div>
     <form id="etiForm" onsubmit="return false;">
 
       <div class="section-block">
@@ -115,18 +201,13 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="fSupervisor">Supervisor de Gestión Humana *</label>
-            <select id="fSupervisor" required>
-              <option value="">— Seleccionar supervisor —</option>
-              <option value="POOL TAMAYO RODRIGUEZ|SECTOR EL PAPAYO">POOL TAMAYO RODRIGUEZ – El Papayo</option>
-              <option value="POOL TAMAYO RODRIGUEZ|SECTOR LIMONES">POOL TAMAYO RODRIGUEZ – Limones</option>
-              <option value="ALEX TINEO RAMOS|SECTOR OLIVARES BAJO">ALEX TINEO RAMOS</option>
-              <option value="FLOR PULACHE VIERA|SECTOR LOS OLIVARES">FLOR PULACHE VIERA</option>
-              <option value="ALEX ZAPATA JUAREZ|SECTOR APROA">ALEX ZAPATA JUAREZ</option>
-              <option value="YHANELLY LUZON VENEGA|SECTOR SANTA ROSA">YHANELLY LUZON VENEGA</option>
-              <option value="ALEXANDER MARTINEZ JUAREZ|SECTOR PUNTA ARENAS">ALEXANDER MARTINEZ JUAREZ</option>
-              <option value="SERGIO VIERA GIRON|SECTOR ALGARROBOS">SERGIO VIERA GIRON</option>
-              <option value="ELBERTH CASTRO BAYONA|SECTOR SAN VICENTE">ELBERTH CASTRO BAYONA</option>
-            </select>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <select id="fSupervisor" required style="flex:1;">
+                <option value="">— Seleccionar supervisor —</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores">➕</button>
+            </div>
+            <input type="hidden" id="fProgId" value="" />
           </div>
           <div class="form-group">
             <label for="fSector">Sector (auto-completado)</label>
@@ -344,6 +425,34 @@
 </footer>
 
 </div><!-- /appPage -->
+
+<!-- MODAL GESTIÓN SUPERVISORES -->
+<div class="modal-overlay" id="modalSups">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>👤 Gestión de Supervisores</h3>
+      <button class="modal-close" onclick="cerrarModalSups()">✕</button>
+    </div>
+    <div class="section-block" style="margin-bottom:14px;">
+      <h3 class="section-subtitle">➕ Registrar Nuevo Supervisor</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre Completo *</label>
+          <input type="text" id="nsNombre" placeholder="Ej: JUAN PEREZ GARCIA" style="text-transform:uppercase;" />
+        </div>
+        <div class="form-group">
+          <label>Sector Designado *</label>
+          <input type="text" id="nsSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" />
+        </div>
+      </div>
+      <div class="actions-row" style="margin-top:12px;">
+        <button class="btn btn-primary btn-sm" onclick="guardarNuevoSup()">💾 Guardar Supervisor</button>
+      </div>
+    </div>
+    <h3 class="section-subtitle">📋 Supervisores Registrados</h3>
+    <div id="listaSups" style="max-height:280px;overflow-y:auto;"></div>
+  </div>
+</div>
 
 <!-- MODAL DETALLE -->
 <div class="modal-overlay" id="modalDetalle">

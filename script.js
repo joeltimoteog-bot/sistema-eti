@@ -17,6 +17,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const COL = 'capacitaciones';
+const COL_SUPS = 'supervisores_eti';
+const COL_PROG = 'programaciones_eti';
+
+// Seed inicial de supervisores (solo si la colección está vacía)
+const SUPS_SEED = [
+  {nombre:'POOL TAMAYO RODRIGUEZ', sector:'SECTOR EL PAPAYO'},
+  {nombre:'POOL TAMAYO RODRIGUEZ', sector:'SECTOR LIMONES'},
+  {nombre:'ALEX TINEO RAMOS', sector:'SECTOR OLIVARES BAJO'},
+  {nombre:'FLOR PULACHE VIERA', sector:'SECTOR LOS OLIVARES'},
+  {nombre:'ALEX ZAPATA JUAREZ', sector:'SECTOR APROA'},
+  {nombre:'YHANELLY LUZON VENEGA', sector:'SECTOR SANTA ROSA'},
+  {nombre:'ALEXANDER MARTINEZ JUAREZ', sector:'SECTOR PUNTA ARENAS'},
+  {nombre:'SERGIO VIERA GIRON', sector:'SECTOR ALGARROBOS'},
+  {nombre:'ELBERTH CASTRO BAYONA', sector:'SECTOR SAN VICENTE'}
+];
 
 // ─── USUARIOS ─────────────────────────────────────────────────
 const USUARIOS = [
@@ -29,8 +44,12 @@ const USUARIOS = [
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
 
 let registros = [];
+let supervisores = [];
+let programaciones = [];
 let usuarioActual = null;
 let unsubscribe = null;
+let unsubSups = null;
+let unsubProg = null;
 let chEstados=null, chTendencia=null;
 let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMensual=null, stTemporada=null, stPersonal=null;
 
@@ -65,11 +84,16 @@ function intentarLogin() {
   initForm();
   initFiltros();
   initBotones();
+  initProgramacion();
   escucharFirebase();
+  escucharSupervisores();
+  escucharProgramaciones();
 }
 
 function cerrarSesion() {
   if(unsubscribe) { unsubscribe(); unsubscribe=null; }
+  if(unsubSups) { unsubSups(); unsubSups=null; }
+  if(unsubProg) { unsubProg(); unsubProg=null; }
   usuarioActual=null;
   document.getElementById('appPage').style.display='none';
   document.getElementById('loginPage').style.display='flex';
@@ -380,8 +404,14 @@ async function guardarRegistro() {
     creadoEn:new Date().toISOString()
   };
   try {
-    await addDoc(collection(db,COL),reg);
-    showToast('✅ Registro guardado correctamente.',false);
+    const refDoc = await addDoc(collection(db,COL),reg);
+    // Si viene de una programación, marcarla como ejecutada
+    const progId = document.getElementById('fProgId').value;
+    if(progId) {
+      try { await updateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+      catch(e2) { console.error('Error al marcar programación:', e2); }
+    }
+    showToast(progId ? '✅ Registro guardado y programación marcada como ejecutada.' : '✅ Registro guardado correctamente.', false);
     limpiarFormulario();
     document.querySelector('[data-tab="dashboard"]').click();
   } catch(e) {
@@ -404,6 +434,8 @@ function limpiarFormulario() {
   document.getElementById('rutasNumeroCont').style.display='none';
   document.getElementById('rutasVariasCont').style.display='none';
   document.querySelectorAll('.radio-chip').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('fProgId').value='';
+  document.getElementById('progVinculadaBanner').style.display='none';
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────
@@ -449,6 +481,9 @@ function renderDashboard() {
       return `<div class="alert-card alert-azul" style="cursor:pointer;" onclick="verDetalle('${r.id}')"><span class="alert-icon">📚</span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.tema)}<br>${formatDateDisplay(r.fechaEjecucion)} · ${r.total} trabajadores · <span class="badge ${meta.badge}">${meta.label}</span></div></div>`;
     }).join('');
   }
+
+  // Alertas de programación
+  renderAlertasProg();
 
   // Avance por supervisor
   renderAvanceSupervisores(conEstado);
@@ -957,4 +992,365 @@ function showToast(msg,isError=false,isWarn=false){
   if(isWarn)t.style.background='#c89010';
   t.innerHTML=msg;document.body.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},5000);
+}
+
+// ════════════════════════════════════════════════
+//  SUPERVISORES DINÁMICOS
+// ════════════════════════════════════════════════
+function escucharSupervisores() {
+  const q = query(collection(db, COL_SUPS), orderBy('nombre'));
+  unsubSups = onSnapshot(q, async snap => {
+    if(snap.empty) {
+      // Seed inicial una sola vez
+      for(const s of SUPS_SEED) {
+        await addDoc(collection(db, COL_SUPS), {...s, estado:'activo', creadoEn:new Date().toISOString()});
+      }
+      return; // el snapshot se volverá a disparar con los datos
+    }
+    supervisores = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    poblarSelectsSupervisores();
+    renderListaSups();
+  }, err => console.error('Sups error:', err));
+}
+
+function poblarSelectsSupervisores() {
+  const activos = supervisores.filter(s => s.estado === 'activo');
+  const opts = activos.map(s => `<option value="${esc(s.nombre)}|${esc(s.sector)}">${esc(s.nombre)} – ${esc(s.sector.replace(/^SECTOR\s*/i,''))}</option>`).join('');
+  [['fSupervisor','— Seleccionar supervisor —'],['pSupervisor','— Seleccionar —'],['pFiltSup','Todos los supervisores']].forEach(([id,first]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="">${first}</option>` + (id==='pFiltSup'
+      ? [...new Set(activos.map(s=>s.nombre))].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')
+      : opts);
+    el.value = cur;
+  });
+}
+
+window.abrirModalSups = function() {
+  document.getElementById('nsNombre').value='';
+  document.getElementById('nsSector').value='';
+  renderListaSups();
+  document.getElementById('modalSups').classList.add('open');
+};
+window.cerrarModalSups = function() {
+  document.getElementById('modalSups').classList.remove('open');
+};
+
+window.guardarNuevoSup = async function() {
+  const nombre = document.getElementById('nsNombre').value.trim().toUpperCase();
+  let sector = document.getElementById('nsSector').value.trim().toUpperCase();
+  if(!nombre || !sector) { showToast('Completa nombre y sector', true); return; }
+  if(!sector.startsWith('SECTOR')) sector = 'SECTOR ' + sector;
+  // Evitar duplicado exacto
+  if(supervisores.some(s => s.nombre===nombre && s.sector===sector && s.estado==='activo')) {
+    showToast('⚠️ Ese supervisor con ese sector ya existe', true); return;
+  }
+  try {
+    await addDoc(collection(db, COL_SUPS), {nombre, sector, estado:'activo', creadoEn:new Date().toISOString()});
+    document.getElementById('nsNombre').value='';
+    document.getElementById('nsSector').value='';
+    showToast(`✅ Supervisor "${nombre}" registrado`);
+  } catch(e) { showToast('❌ Error al guardar', true); }
+};
+
+function renderListaSups() {
+  const div = document.getElementById('listaSups');
+  if(!div) return;
+  if(!supervisores.length) { div.innerHTML='<p class="empty-msg">Sin supervisores.</p>'; return; }
+  const esAdmin = usuarioActual?.rol === 'admin';
+  div.innerHTML = supervisores.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:${s.estado==='activo'?'var(--azul-bg)':'#f5f5f5'};border:1px solid var(--gris-border);border-radius:8px;margin-bottom:6px;${s.estado!=='activo'?'opacity:.55;':''}">
+      <div>
+        <div style="font-weight:700;font-size:12px;">${esc(s.nombre)}</div>
+        <div style="font-size:10px;color:var(--gris-text);">${esc(s.sector)} ${s.estado!=='activo'?'· <span style="color:var(--rojo);font-weight:700;">INACTIVO</span>':''}</div>
+      </div>
+      <div style="display:flex;gap:5px;">
+        ${s.estado==='activo'
+          ? `<button class="btn btn-danger btn-sm" onclick="toggleSup('${s.id}','inactivo')" title="Desactivar">⛔</button>`
+          : `<button class="btn btn-success btn-sm" onclick="toggleSup('${s.id}','activo')" title="Reactivar">✅</button>`}
+        ${esAdmin?`<button class="btn btn-danger btn-sm" onclick="eliminarSup('${s.id}')" title="Eliminar">🗑</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+window.toggleSup = async function(id, estado) {
+  try { await updateDoc(doc(db, COL_SUPS, id), {estado}); showToast(estado==='activo'?'✅ Supervisor reactivado':'⛔ Supervisor desactivado'); }
+  catch(e) { showToast('Error', true); }
+};
+
+window.eliminarSup = async function(id) {
+  if(usuarioActual?.rol!=='admin') { showToast('Solo administradores', true); return; }
+  if(!confirm('¿Eliminar este supervisor? El historial de capacitaciones se conserva.')) return;
+  try { await deleteDoc(doc(db, COL_SUPS, id)); showToast('🗑 Supervisor eliminado'); }
+  catch(e) { showToast('Error', true); }
+};
+
+// ════════════════════════════════════════════════
+//  PROGRAMACIÓN DE CAPACITACIONES (PROYECCIÓN)
+// ════════════════════════════════════════════════
+function escucharProgramaciones() {
+  const q = query(collection(db, COL_PROG), orderBy('fechaProgramada'));
+  unsubProg = onSnapshot(q, snap => {
+    programaciones = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    renderProgramaciones();
+    renderDashboard(); // refresca alertas y KPIs
+  }, err => console.error('Prog error:', err));
+}
+
+function initProgramacion() {
+  document.getElementById('pSupervisor').addEventListener('change', function() {
+    document.getElementById('pSector').value = this.value ? this.value.split('|')[1]||'' : '';
+  });
+  document.getElementById('btnProgGuardar').addEventListener('click', guardarProgramacion);
+  document.getElementById('btnProgLimpiar').addEventListener('click', limpiarProg);
+  document.getElementById('pFiltSup').addEventListener('change', renderProgramaciones);
+  document.getElementById('pFiltEstado').addEventListener('change', renderProgramaciones);
+  document.getElementById('btnProgExcel').addEventListener('click', exportProgExcel);
+  document.getElementById('btnIncumplPdf').addEventListener('click', exportIncumplimientosPDF);
+  document.getElementById('modalSups').addEventListener('click', function(e){if(e.target===this)cerrarModalSups();});
+}
+
+async function guardarProgramacion() {
+  const supVal = document.getElementById('pSupervisor').value;
+  const tema = document.getElementById('pTema').value;
+  const fecha = document.getElementById('pFecha').value;
+  const obs = document.getElementById('pObs').value.trim();
+  if(!supVal || !tema || !fecha) { showToast('Completa supervisor, tema y fecha', true); return; }
+  const [supervisor, sector] = supVal.split('|');
+  try {
+    await addDoc(collection(db, COL_PROG), {
+      supervisor, sector, tema,
+      fechaProgramada: fecha,
+      observaciones: obs,
+      estado: 'pendiente',
+      registroId: null,
+      creadoPor: usuarioActual?.nombre || '',
+      creadoEn: new Date().toISOString()
+    });
+    limpiarProg();
+    showToast('📅 Capacitación programada correctamente');
+  } catch(e) { showToast('❌ Error al programar', true); }
+}
+
+function limpiarProg() {
+  ['pSupervisor','pSector','pTema','pFecha','pObs'].forEach(id => document.getElementById(id).value='');
+}
+
+// Estado calculado de una programación
+function estadoProg(p) {
+  if(p.estado === 'ejecutada') return {key:'ejecutada', label:'✅ Ejecutada', badge:'badge-verde', dias:0};
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const fp = new Date(p.fechaProgramada + 'T12:00:00'); fp.setHours(0,0,0,0);
+  if(fp.getTime() === hoy.getTime()) return {key:'hoy', label:'📍 Para HOY', badge:'badge-amarillo', dias:0};
+  if(fp > hoy) {
+    const diasCal = Math.round((fp - hoy) / 86400000);
+    return {key:'proxima', label:'🔵 Próxima', badge:'badge-azul', dias:diasCal};
+  }
+  // Vencida: días hábiles de atraso
+  const dr = contarDiasHabiles(fp, hoy);
+  return {key:'vencida', label:'🚨 Vencida', badge:'badge-rojo', dias:dr};
+}
+
+function renderProgramaciones() {
+  // KPIs
+  const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
+  setText('pkTotal', programaciones.length);
+  setText('pkProximas', conEst.filter(p => p._est.key==='proxima' && p._est.dias<=3).length);
+  setText('pkHoy', conEst.filter(p => p._est.key==='hoy').length);
+  setText('pkVencidas', conEst.filter(p => p._est.key==='vencida').length);
+  setText('pkEjecutadas', conEst.filter(p => p._est.key==='ejecutada').length);
+
+  // Tabla con filtros
+  const fSup = document.getElementById('pFiltSup').value;
+  const fEst = document.getElementById('pFiltEstado').value;
+  let data = [...conEst];
+  if(fSup) data = data.filter(p => p.supervisor === fSup);
+  if(fEst) data = data.filter(p => p._est.key === fEst);
+  // Orden: vencidas primero, luego hoy, próximas, ejecutadas al final
+  const ordenKey = {vencida:0, hoy:1, proxima:2, ejecutada:3};
+  data.sort((a,b) => ordenKey[a._est.key]-ordenKey[b._est.key] || a.fechaProgramada.localeCompare(b.fechaProgramada));
+
+  const tbody = document.getElementById('tbodyProg');
+  if(!data.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-msg">Sin programaciones que coincidan.</td></tr>'; return; }
+  const esAdmin = usuarioActual?.rol === 'admin';
+  tbody.innerHTML = data.map((p,i) => {
+    const e = p._est;
+    const diasTxt = e.key==='vencida' ? `<strong style="color:var(--rojo);">${e.dias} hábil(es) atraso</strong>`
+      : e.key==='proxima' ? `${e.dias} día(s)` : '–';
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(p.supervisor)}</strong></td>
+      <td style="font-size:10.5px;">${esc(p.sector||'')}</td>
+      <td style="font-size:10.5px;">${esc(p.tema)}</td>
+      <td style="font-weight:700;">${formatDateDisplay(p.fechaProgramada)}</td>
+      <td><span class="badge ${e.badge}">${e.label}</span></td>
+      <td>${diasTxt}</td>
+      <td style="max-width:140px;font-size:10px;">${esc((p.observaciones||'').substring(0,40))}${(p.observaciones||'').length>40?'…':''}</td>
+      <td style="white-space:nowrap;">
+        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución">▶ Ejecutar</button>` : ''}
+        ${esAdmin || p.estado!=='ejecutada' ? `<button class="btn btn-danger btn-sm" onclick="eliminarProg('${p.id}')" title="Eliminar">🗑</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Ejecutar: lleva al formulario Registrar prellenado y vinculado
+window.ejecutarProg = function(id) {
+  const p = programaciones.find(x => x.id === id);
+  if(!p) return;
+  document.querySelector('[data-tab="registro"]').click();
+  const sel = document.getElementById('fSupervisor');
+  sel.value = p.supervisor + '|' + p.sector;
+  document.getElementById('fSector').value = p.sector || '';
+  document.getElementById('fTema').value = p.tema;
+  document.getElementById('bloqueTipoPersonal').style.display = 'block';
+  document.getElementById('fFechaEjecucion').value = p.fechaProgramada;
+  document.getElementById('fProgId').value = id;
+  document.getElementById('progVinculadaBanner').style.display = 'flex';
+  verificarRetrasoForm();
+  showToast('🔗 Completa los datos y guarda para marcar la programación como ejecutada');
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+window.desvincularProg = function() {
+  document.getElementById('fProgId').value = '';
+  document.getElementById('progVinculadaBanner').style.display = 'none';
+};
+
+window.eliminarProg = async function(id) {
+  if(!confirm('¿Eliminar esta programación?')) return;
+  try { await deleteDoc(doc(db, COL_PROG, id)); showToast('🗑 Programación eliminada'); }
+  catch(e) { showToast('Error', true); }
+};
+
+function exportProgExcel() {
+  if(!programaciones.length) { showToast('Sin datos', true); return; }
+  const data = programaciones.map(p => {
+    const e = estadoProg(p);
+    return {
+      'Supervisor': p.supervisor, 'Sector': p.sector||'', 'Tema': p.tema,
+      'Fecha Programada': p.fechaProgramada,
+      'Estado': e.label.replace(/^[^\s]+\s/,''),
+      'Días': e.key==='vencida' ? e.dias+' hábiles de atraso' : e.key==='proxima' ? 'faltan '+e.dias : '',
+      'Observaciones': p.observaciones||'', 'Programado Por': p.creadoPor||''
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Programaciones');
+  XLSX.writeFile(wb, `ETI_Programaciones_${formatDate(new Date())}.xlsx`);
+  showToast('📥 Excel exportado');
+}
+
+// ════════════════════════════════════════════════
+//  INFORME DE INCUMPLIMIENTOS (PDF)
+// ════════════════════════════════════════════════
+function exportIncumplimientosPDF() {
+  const progVencidas = programaciones.map(p => ({...p, _est: estadoProg(p)})).filter(p => p._est.key === 'vencida');
+  const actasRetraso = registros.map(r => ({...r, ...calcularEstado(r)})).filter(r => r.estado==='leve' || r.estado==='critico');
+
+  if(!progVencidas.length && !actasRetraso.length) {
+    showToast('✅ No hay incumplimientos que reportar. ¡Todo al día!');
+    return;
+  }
+
+  const {jsPDF} = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  let y = 18;
+
+  pdf.setFontSize(15); pdf.setTextColor(153,0,0); pdf.setFont(undefined,'bold');
+  pdf.text('INFORME DE INCUMPLIMIENTOS — CAPACITACIONES ETI', 15, y); y+=7;
+  pdf.setFontSize(9.5); pdf.setTextColor(80,80,80); pdf.setFont(undefined,'normal');
+  pdf.text(`Verfrut · Relaciones Laborales · Generado: ${formatDateDisplay(formatDate(new Date()))} · Sistema ETI v5.0`, 15, y); y+=4;
+  pdf.setDrawColor(153,0,0); pdf.line(15, y, 195, y); y+=9;
+
+  // Resumen
+  pdf.setFontSize(11); pdf.setTextColor(0,26,94); pdf.setFont(undefined,'bold');
+  pdf.text('RESUMEN', 15, y); y+=6.5;
+  pdf.setFontSize(10); pdf.setTextColor(40,40,40); pdf.setFont(undefined,'normal');
+  pdf.text(`• Capacitaciones programadas NO ejecutadas (vencidas): ${progVencidas.length}`, 18, y); y+=6;
+  pdf.text(`• Actas con retraso en envío: ${actasRetraso.length}`, 18, y); y+=6;
+  pdf.text(`• Total de casos de incumplimiento: ${progVencidas.length + actasRetraso.length}`, 18, y); y+=11;
+
+  // Sección 1: Programaciones vencidas
+  if(progVencidas.length) {
+    pdf.setFontSize(12); pdf.setTextColor(153,0,0); pdf.setFont(undefined,'bold');
+    pdf.text('1. CAPACITACIONES PROGRAMADAS NO EJECUTADAS', 15, y); y+=8;
+    progVencidas.sort((a,b) => b._est.dias - a._est.dias);
+    progVencidas.forEach((p, i) => {
+      if(y > 262) { pdf.addPage(); y = 18; }
+      pdf.setFontSize(10); pdf.setTextColor(20,20,20); pdf.setFont(undefined,'bold');
+      pdf.text(`CASO ${i+1}: ${p.supervisor}`, 18, y); y+=5.5;
+      pdf.setFontSize(9); pdf.setTextColor(70,70,70); pdf.setFont(undefined,'normal');
+      pdf.text(`Sector: ${p.sector||'–'}  ·  Tema: ${p.tema}`, 21, y); y+=5;
+      pdf.text(`Fecha programada: ${formatDateDisplay(p.fechaProgramada)}  ·  Atraso: ${p._est.dias} día(s) hábil(es)`, 21, y); y+=5;
+      const sit = p.observaciones ? `Situación: ${p.observaciones}` : 'Situación: Sin observaciones registradas — requiere justificación del supervisor.';
+      const sitLines = pdf.splitTextToSize(sit, 168);
+      sitLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 21, y); y+=4.5; });
+      y+=4;
+    });
+    y+=4;
+  }
+
+  // Sección 2: Actas con retraso
+  if(actasRetraso.length) {
+    if(y > 240) { pdf.addPage(); y = 18; }
+    pdf.setFontSize(12); pdf.setTextColor(153,0,0); pdf.setFont(undefined,'bold');
+    pdf.text('2. ACTAS CON RETRASO EN ENVÍO', 15, y); y+=8;
+    actasRetraso.sort((a,b) => b.diasRetraso - a.diasRetraso);
+    actasRetraso.forEach((r, i) => {
+      if(y > 258) { pdf.addPage(); y = 18; }
+      pdf.setFontSize(10); pdf.setTextColor(20,20,20); pdf.setFont(undefined,'bold');
+      pdf.text(`CASO ${i+1}: ${r.supervisor} ${r.estado==='critico'?'[CRÍTICO]':'[LEVE]'}`, 18, y); y+=5.5;
+      pdf.setFontSize(9); pdf.setTextColor(70,70,70); pdf.setFont(undefined,'normal');
+      pdf.text(`Sector: ${r.sector||'–'}  ·  Tema: ${r.tema}  ·  ${r.total||0} trabajadores`, 21, y); y+=5;
+      pdf.text(`Ejecutada: ${formatDateDisplay(r.fechaEjecucion)}  ·  Límite: ${formatDateDisplay(r.fechaLimite)}  ·  Envío: ${r.fechaEnvio?formatDateDisplay(r.fechaEnvio):'PENDIENTE'}`, 21, y); y+=5;
+      pdf.text(`Retraso: ${r.diasRetraso} día(s) hábil(es)`, 21, y); y+=5;
+      const mot = r.observaciones ? `Motivo: ${r.observaciones}` : 'Motivo: NO REGISTRADO — requiere justificación del supervisor.';
+      const motLines = pdf.splitTextToSize(mot, 168);
+      motLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 21, y); y+=4.5; });
+      y+=4;
+    });
+  }
+
+  // Pie de firmas
+  if(y > 240) { pdf.addPage(); y = 25; } else y+=12;
+  pdf.setDrawColor(150,150,150);
+  pdf.line(25, y+14, 85, y+14); pdf.line(125, y+14, 185, y+14);
+  pdf.setFontSize(9); pdf.setTextColor(80,80,80);
+  pdf.text('Coordinador de Relaciones Laborales', 30, y+19);
+  pdf.text('Jefatura de Gestión Humana', 133, y+19);
+
+  pdf.save(`Informe_Incumplimientos_ETI_${formatDate(new Date())}.pdf`);
+  showToast('📄 Informe de incumplimientos descargado');
+}
+
+// ─── ALERTAS DE PROGRAMACIÓN (Dashboard) ──────────────────────
+function renderAlertasProg() {
+  const div = document.getElementById('dashAlertasProg');
+  if(!div) return;
+  const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
+  const vencidas = conEst.filter(p => p._est.key==='vencida').sort((a,b)=>b._est.dias-a._est.dias);
+  const paraHoy = conEst.filter(p => p._est.key==='hoy');
+  const proximas = conEst.filter(p => p._est.key==='proxima' && p._est.dias<=3).sort((a,b)=>a._est.dias-b._est.dias);
+
+  if(!vencidas.length && !paraHoy.length && !proximas.length) {
+    div.innerHTML = '<p class="empty-msg">✅ Sin programaciones próximas ni vencidas.</p>';
+    return;
+  }
+  let html = '';
+  vencidas.slice(0,5).forEach(p => {
+    html += `<div class="alert-card alert-rojo"><span class="alert-icon">🚨</span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
+  });
+  paraHoy.forEach(p => {
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon">📍</span><div><strong>HOY — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
+  });
+  proximas.slice(0,4).forEach(p => {
+    html += `<div class="alert-card alert-azul"><span class="alert-icon">🔜</span><div><strong>Próxima — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> (en ${p._est.dias} día(s))</div></div>`;
+  });
+  if(vencidas.length) {
+    html += `<div style="margin-top:8px;"><button class="btn btn-pdf btn-sm" onclick="document.getElementById('btnIncumplPdf').click()">📄 Generar Informe de Incumplimientos</button></div>`;
+  }
+  div.innerHTML = html;
 }
