@@ -72,15 +72,26 @@
 
 <!-- ══ TAB: DASHBOARD ══ -->
 <section class="tab-content active" id="tab-dashboard">
+
+  <div class="semaforo-banner" id="semaforoBanner">
+    <div class="semaforo-luz" id="semaforoLuz">🟢</div>
+    <div class="semaforo-info">
+      <div class="semaforo-titulo" id="semaforoTitulo">Salud del Sistema ETI</div>
+      <div class="semaforo-detalle" id="semaforoDetalle">Calculando indicadores...</div>
+    </div>
+    <div class="semaforo-score" id="semaforoScore">–</div>
+  </div>
+
   <div class="kpi-row">
-    <div class="kpi-card"><div class="kpi-icon">📚</div><div class="kpi-val" id="kTotal">0</div><div class="kpi-label">Capacitaciones</div></div>
-    <div class="kpi-card gold"><div class="kpi-icon">👥</div><div class="kpi-val" id="kTrabajadores">0</div><div class="kpi-label">Trabajadores<br>Capacitados</div></div>
+    <div class="kpi-card"><div class="kpi-icon">📚</div><div class="kpi-val" id="kTotal">0</div><div class="kpi-label">Capacitaciones</div><div class="kpi-trend" id="tTotal"></div></div>
+    <div class="kpi-card gold"><div class="kpi-icon">👥</div><div class="kpi-val" id="kTrabajadores">0</div><div class="kpi-label">Trabajadores<br>Capacitados</div><div class="kpi-trend" id="tTrabajadores"></div></div>
     <div class="kpi-card"><div class="kpi-icon">👨</div><div class="kpi-val" id="kVarones">0</div><div class="kpi-label">Varones</div></div>
     <div class="kpi-card naranja"><div class="kpi-icon">👩</div><div class="kpi-val" id="kMujeres">0</div><div class="kpi-label">Mujeres</div></div>
-    <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="kCumplidos">0</div><div class="kpi-label">Cumplidos</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="kCumplidos">0</div><div class="kpi-label">Cumplidos</div><div class="kpi-trend" id="tCumplidos"></div></div>
     <div class="kpi-card amarillo"><div class="kpi-icon">⏳</div><div class="kpi-val" id="kProceso">0</div><div class="kpi-label">En Proceso</div></div>
-    <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="kRetrasos">0</div><div class="kpi-label">Con Retraso</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="kRetrasos">0</div><div class="kpi-label">Con Retraso</div><div class="kpi-trend" id="tRetrasos"></div></div>
     <div class="kpi-card verde"><div class="kpi-icon">🎯</div><div class="kpi-val" id="kCumplimiento">0%</div><div class="kpi-label">% Cumplimiento</div></div>
+    <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-val" id="kEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
   </div>
 
   <div class="panel-grid">
@@ -117,6 +128,7 @@
     <div class="kpi-card amarillo"><div class="kpi-icon">📍</div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">Para Hoy</div></div>
     <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
     <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
+    <div class="kpi-card gold"><div class="kpi-icon">🎯</div><div class="kpi-val" id="pkEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
   </div>
 
   <div class="panel">
@@ -161,7 +173,29 @@
 
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">🗓 Calendario de Programaciones</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;">📆 Vista Calendario Mensual</div>
+      <div class="filters-bar">
+        <button class="btn btn-secondary btn-sm" id="btnCalPrev">← Anterior</button>
+        <span id="calTitulo" style="font-weight:700;font-size:13px;color:var(--azul-deep);min-width:150px;text-align:center;">–</span>
+        <button class="btn btn-secondary btn-sm" id="btnCalNext">Siguiente →</button>
+        <button class="btn btn-secondary btn-sm" id="btnCalHoy">📍 Hoy</button>
+      </div>
+    </div>
+    <div class="cal-leyenda">
+      <span class="badge badge-azul">🔵 Próxima</span>
+      <span class="badge badge-amarillo">📍 Hoy</span>
+      <span class="badge badge-rojo">🚨 Vencida</span>
+      <span class="badge badge-verde">✅ Ejecutada</span>
+    </div>
+    <div class="cal-grid-header">
+      <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <div class="panel-title" style="margin:0;border:0;padding:0;">🗓 Lista de Programaciones</div>
       <div class="filters-bar">
         <select class="filter-select" id="pFiltSup"><option value="">Todos los supervisores</option></select>
         <select class="filter-select" id="pFiltEstado">

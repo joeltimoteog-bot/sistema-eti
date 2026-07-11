@@ -482,6 +482,10 @@ function renderDashboard() {
     }).join('');
   }
 
+  // Semáforo global + tendencias vs mes anterior
+  renderSemaforo(pctCumpl);
+  renderTendencias(conEstado);
+
   // Alertas de programación
   renderAlertasProg();
 
@@ -1109,6 +1113,10 @@ function initProgramacion() {
   document.getElementById('btnProgExcel').addEventListener('click', exportProgExcel);
   document.getElementById('btnIncumplPdf').addEventListener('click', exportIncumplimientosPDF);
   document.getElementById('modalSups').addEventListener('click', function(e){if(e.target===this)cerrarModalSups();});
+  // Navegación calendario
+  document.getElementById('btnCalPrev').addEventListener('click', () => { calMes--; if(calMes<0){calMes=11;calAnio--;} renderCalendario(); });
+  document.getElementById('btnCalNext').addEventListener('click', () => { calMes++; if(calMes>11){calMes=0;calAnio++;} renderCalendario(); });
+  document.getElementById('btnCalHoy').addEventListener('click', () => { const h=new Date(); calMes=h.getMonth(); calAnio=h.getFullYear(); renderCalendario(); });
 }
 
 async function guardarProgramacion() {
@@ -1160,6 +1168,16 @@ function renderProgramaciones() {
   setText('pkHoy', conEst.filter(p => p._est.key==='hoy').length);
   setText('pkVencidas', conEst.filter(p => p._est.key==='vencida').length);
   setText('pkEjecutadas', conEst.filter(p => p._est.key==='ejecutada').length);
+
+  // Eficacia de programación: ejecutadas / (ejecutadas + vencidas)
+  const nEjec = conEst.filter(p => p._est.key==='ejecutada').length;
+  const nVenc = conEst.filter(p => p._est.key==='vencida').length;
+  const eficacia = (nEjec+nVenc) ? Math.round((nEjec/(nEjec+nVenc))*100) : null;
+  setText('pkEficacia', eficacia===null ? '–' : eficacia+'%');
+  setText('kEficacia', eficacia===null ? '–' : eficacia+'%');
+
+  // Calendario visual
+  renderCalendario();
 
   // Tabla con filtros
   const fSup = document.getElementById('pFiltSup').value;
@@ -1354,3 +1372,145 @@ function renderAlertasProg() {
   }
   div.innerHTML = html;
 }
+
+// ════════════════════════════════════════════════
+//  SEMÁFORO GLOBAL DE SALUD
+// ════════════════════════════════════════════════
+function renderSemaforo(pctCumplActas) {
+  const banner = document.getElementById('semaforoBanner');
+  if(!banner) return;
+  const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
+  const nEjec = conEst.filter(p => p._est.key==='ejecutada').length;
+  const nVenc = conEst.filter(p => p._est.key==='vencida').length;
+  const eficaciaProg = (nEjec+nVenc) ? Math.round((nEjec/(nEjec+nVenc))*100) : null;
+
+  // Score combinado: promedio de cumplimiento de actas y eficacia de programación
+  let score, partes=[];
+  const finActas = registros.map(r=>calcularEstado(r)).filter(e=>e.estado!=='proceso').length;
+  if(finActas>0) partes.push(pctCumplActas);
+  if(eficaciaProg!==null) partes.push(eficaciaProg);
+  score = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0)/partes.length) : null;
+
+  const luz = document.getElementById('semaforoLuz');
+  const detalle = document.getElementById('semaforoDetalle');
+  const scoreEl = document.getElementById('semaforoScore');
+
+  if(score===null) {
+    banner.className='semaforo-banner';
+    luz.textContent='⚪';
+    scoreEl.textContent='–';
+    detalle.textContent='Aún no hay suficientes datos. Registra capacitaciones y programaciones para calcular la salud del sistema.';
+    return;
+  }
+  scoreEl.textContent=score+'%';
+  const dActas = finActas>0 ? `Actas a tiempo: ${pctCumplActas}%` : 'Actas: sin datos';
+  const dProg = eficaciaProg!==null ? `Eficacia de programación: ${eficaciaProg}%` : 'Programación: sin datos';
+  const dVenc = nVenc>0 ? ` · ⚠️ ${nVenc} programación(es) vencida(s) sin ejecutar` : '';
+  detalle.textContent = `${dActas} · ${dProg}${dVenc}`;
+  if(score>=80) { banner.className='semaforo-banner'; luz.textContent='🟢'; }
+  else if(score>=50) { banner.className='semaforo-banner amarillo'; luz.textContent='🟡'; }
+  else { banner.className='semaforo-banner rojo'; luz.textContent='🔴'; }
+}
+
+// ════════════════════════════════════════════════
+//  TENDENCIAS VS MES ANTERIOR (▲▼)
+// ════════════════════════════════════════════════
+function renderTendencias(conEstado) {
+  const hoy = new Date();
+  const mesActual = hoy.getFullYear()*100 + hoy.getMonth();
+  const prev = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  const mesPrev = prev.getFullYear()*100 + prev.getMonth();
+
+  const delMes = (m) => conEstado.filter(r => {
+    const d = new Date(r.fechaEjecucion+'T12:00:00');
+    return d.getFullYear()*100+d.getMonth() === m;
+  });
+  const act = delMes(mesActual), ant = delMes(mesPrev);
+
+  const setTrend = (id, vAct, vAnt, invertir=false) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(vAnt===0 && vAct===0) { el.textContent=''; el.className='kpi-trend'; return; }
+    const diff = vAct - vAnt;
+    if(diff===0) { el.textContent='= igual que mes ant.'; el.className='kpi-trend neutral'; return; }
+    const pct = vAnt>0 ? Math.abs(Math.round((diff/vAnt)*100)) : 100;
+    const sube = diff>0;
+    const positivo = invertir ? !sube : sube; // para retrasos, subir es malo
+    el.textContent = `${sube?'▲':'▼'} ${pct}% vs mes ant.`;
+    el.className = 'kpi-trend ' + (positivo?'up':'down');
+  };
+
+  setTrend('tTotal', act.length, ant.length);
+  setTrend('tTrabajadores', act.reduce((a,r)=>a+(r.total||0),0), ant.reduce((a,r)=>a+(r.total||0),0));
+  setTrend('tCumplidos', act.filter(r=>r.estado==='cumplido').length, ant.filter(r=>r.estado==='cumplido').length);
+  setTrend('tRetrasos', act.filter(r=>r.estado==='leve'||r.estado==='critico').length, ant.filter(r=>r.estado==='leve'||r.estado==='critico').length, true);
+}
+
+// ════════════════════════════════════════════════
+//  CALENDARIO VISUAL MENSUAL
+// ════════════════════════════════════════════════
+let calMes = new Date().getMonth();
+let calAnio = new Date().getFullYear();
+
+function renderCalendario() {
+  const grid = document.getElementById('calGrid');
+  if(!grid) return;
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  setText('calTitulo', `${MESES[calMes]} ${calAnio}`);
+
+  const hoyStr = formatDate(new Date());
+  const primerDia = new Date(calAnio, calMes, 1);
+  const ultimoDia = new Date(calAnio, calMes+1, 0);
+  // Lunes=0 ... Domingo=6
+  let inicio = primerDia.getDay()-1; if(inicio<0) inicio=6;
+
+  // Programaciones por fecha
+  const porFecha = {};
+  programaciones.forEach(p => {
+    if(!porFecha[p.fechaProgramada]) porFecha[p.fechaProgramada]=[];
+    porFecha[p.fechaProgramada].push({...p, _est: estadoProg(p)});
+  });
+
+  let html = '';
+  // Días del mes anterior (relleno)
+  const prevUltimo = new Date(calAnio, calMes, 0).getDate();
+  for(let i=inicio-1; i>=0; i--) {
+    html += `<div class="cal-dia otro-mes"><div class="cal-dia-num">${prevUltimo-i}</div></div>`;
+  }
+  // Días del mes
+  for(let d=1; d<=ultimoDia.getDate(); d++) {
+    const fecha = new Date(calAnio, calMes, d);
+    const fStr = formatDate(fecha);
+    const temporada = detectarTemporada(fecha);
+    const esHoy = fStr===hoyStr;
+    const habil = esDiaHabil(fecha, temporada);
+    const progs = porFecha[fStr]||[];
+    let chips = '';
+    progs.slice(0,3).forEach(p => {
+      const cls = p._est.key==='ejecutada'?'c-ejecutada':p._est.key==='vencida'?'c-vencida':p._est.key==='hoy'?'c-hoy':'c-proxima';
+    const nombreCorto = p.supervisor.split(' ')[0]+' '+(p.supervisor.split(' ')[1]||'');
+      const temaCorto = p.tema==='CAPACITACIONES ETI'?'ETI':p.tema==='EVALUACIONES DE CHECKLIST'?'CHECKLIST':'REFORZ.';
+      chips += `<span class="cal-chip ${cls}" title="${esc(p.supervisor)} · ${esc(p.tema)} · ${esc(p.sector||'')}" onclick="verProgDia('${fStr}')">${temaCorto}: ${esc(nombreCorto)}</span>`;
+    });
+    if(progs.length>3) chips += `<span class="cal-mas" onclick="verProgDia('${fStr}')">+${progs.length-3} más...</span>`;
+    html += `<div class="cal-dia ${esHoy?'hoy':''} ${!habil?'no-habil':''}"><div class="cal-dia-num">${d}${esHoy?' 📍':''}</div>${chips}</div>`;
+  }
+  // Relleno siguiente mes
+  const totalCeldas = inicio + ultimoDia.getDate();
+  const faltan = (7 - (totalCeldas % 7)) % 7;
+  for(let d=1; d<=faltan; d++) {
+    html += `<div class="cal-dia otro-mes"><div class="cal-dia-num">${d}</div></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+// Ver programaciones de un día (filtra la tabla y hace scroll)
+window.verProgDia = function(fechaStr) {
+  const progs = programaciones.filter(p => p.fechaProgramada===fechaStr);
+  if(!progs.length) return;
+  const detalle = progs.map(p => {
+    const e = estadoProg(p);
+    return `${e.label} — ${p.supervisor} · ${p.tema} · ${p.sector||''}`;
+  }).join('\n');
+  alert(`📅 Programaciones del ${formatDateDisplay(fechaStr)}:\n\n${detalle}`);
+};
