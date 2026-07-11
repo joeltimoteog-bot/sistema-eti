@@ -170,6 +170,14 @@
           <input type="text" id="pDiasDesignados" readonly class="input-readonly input-calc" value="–" />
           <small>Días hábiles para capacitar en el sector</small>
         </div>
+        <div class="form-group" style="grid-column:1/-1;" id="pFechasWrap">
+          <label>Fechas Designadas — puedes quitar ✕ o agregar fechas específicas (no tienen que ser consecutivas)</label>
+          <div id="pFechasChips" class="fechas-chips"><span class="empty-chip">Elige fecha inicio (y fin) para generar las fechas, o agrégalas una por una aquí abajo</span></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:7px;flex-wrap:wrap;">
+            <input type="date" id="pFechaExtra" class="filter-input" style="min-width:160px;" />
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAddFecha">➕ Agregar fecha</button>
+          </div>
+        </div>
         <div class="form-group" style="grid-column:1/-1;">
           <label for="pObs">Observaciones de la programación</label>
           <input type="text" id="pObs" placeholder="Ej: Sector con 1,500 trabajadores, se divide en 3 fechas. Coordinar con administrador." />
@@ -499,14 +507,13 @@
       <div id="eProgInfo">–</div>
     </div>
     <div class="form-grid" style="margin-bottom:12px;">
-      <div class="form-group">
-        <label>Nueva Fecha Inicio *</label>
-        <input type="date" id="eIni" />
-      </div>
-      <div class="form-group">
-        <label>Nueva Fecha Fin</label>
-        <input type="date" id="eFin" />
-        <small>En blanco si es un solo día</small>
+      <div class="form-group full">
+        <label>Fechas Designadas — cambia solo la(s) fecha(s) afectada(s), quita ✕ o agrega ➕</label>
+        <div id="eFechasList"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:7px;flex-wrap:wrap;">
+          <input type="date" id="eFechaExtra" class="filter-input" style="min-width:160px;" />
+          <button type="button" class="btn btn-secondary btn-sm" id="btnAddFechaE">➕ Agregar fecha</button>
+        </div>
       </div>
       <div class="form-group full">
         <label>Días Designados</label>

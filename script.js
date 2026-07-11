@@ -1106,18 +1106,36 @@ function initProgramacion() {
   document.getElementById('pSupervisor').addEventListener('change', function() {
     document.getElementById('pSector').value = this.value ? this.value.split('|')[1]||'' : '';
   });
-  // Contador de días designados en vivo
-  const actualizarDias = () => {
+  // Fechas designadas en vivo (chips) — se generan del rango y se pueden ajustar una por una
+  const regenerarFechas = () => {
     const ini = document.getElementById('pFecha').value;
     let fin = document.getElementById('pFechaFin').value;
-    if(!ini) { document.getElementById('pDiasDesignados').value='–'; return; }
+    if(!ini) { progFechasSel=[]; renderPFechasChips(); return; }
     if(!fin) fin = ini;
     if(fin < ini) { document.getElementById('pDiasDesignados').value='⚠️ Fecha fin inválida'; return; }
-    const dias = diasHabilesRango(ini, fin);
-    document.getElementById('pDiasDesignados').value = `${dias} día(s) hábil(es) para capacitar`;
+    progFechasSel = fechasHabilesDelRango(ini, fin);
+    renderPFechasChips();
   };
-  document.getElementById('pFecha').addEventListener('change', actualizarDias);
-  document.getElementById('pFechaFin').addEventListener('change', actualizarDias);
+  document.getElementById('pFecha').addEventListener('change', regenerarFechas);
+  document.getElementById('pFechaFin').addEventListener('change', regenerarFechas);
+  document.getElementById('btnAddFecha').addEventListener('click', () => {
+    const f = document.getElementById('pFechaExtra').value;
+    if(!f) { showToast('Elige una fecha para agregar', true); return; }
+    if(progFechasSel.includes(f)) { showToast('⚠️ Esa fecha ya está en la lista', true); return; }
+    progFechasSel.push(f);
+    progFechasSel.sort();
+    document.getElementById('pFechaExtra').value='';
+    renderPFechasChips();
+  });
+  // Modal editar: agregar fecha
+  document.getElementById('btnAddFechaE').addEventListener('click', () => {
+    const f = document.getElementById('eFechaExtra').value;
+    if(!f) { showToast('Elige una fecha para agregar', true); return; }
+    if(editFechasSel.includes(f)) { showToast('⚠️ Esa fecha ya está en la lista', true); return; }
+    editFechasSel.push(f);
+    document.getElementById('eFechaExtra').value='';
+    renderEFechasList();
+  });
   document.getElementById('btnProgGuardar').addEventListener('click', guardarProgramacion);
   document.getElementById('btnProgLimpiar').addEventListener('click', limpiarProg);
   document.getElementById('pFiltSup').addEventListener('change', renderProgramaciones);
@@ -1127,8 +1145,6 @@ function initProgramacion() {
   document.getElementById('modalSups').addEventListener('click', function(e){if(e.target===this)cerrarModalSups();});
   // Modal reprogramación
   document.getElementById('modalReprog').addEventListener('click', function(e){if(e.target===this)cerrarReprog();});
-  document.getElementById('eIni').addEventListener('change', actualizarDiasReprog);
-  document.getElementById('eFin').addEventListener('change', actualizarDiasReprog);
   // Navegación calendario
   document.getElementById('btnCalPrev').addEventListener('click', () => { calMes--; if(calMes<0){calMes=11;calAnio--;} renderCalendario(); });
   document.getElementById('btnCalNext').addEventListener('click', () => { calMes++; if(calMes>11){calMes=0;calAnio++;} renderCalendario(); });
@@ -1145,13 +1161,16 @@ async function guardarProgramacion() {
   if(fechaFin && fechaFin < fecha) { showToast('⚠️ La fecha fin no puede ser anterior a la fecha inicio', true); return; }
   if(!fechaFin) fechaFin = fecha; // un solo día
   const [supervisor, sector] = supVal.split('|');
-  const diasDesignados = diasHabilesRango(fecha, fechaFin);
+  // Usar las fechas seleccionadas en los chips (permiten fechas no consecutivas)
+  const fechas = progFechasSel.length ? [...progFechasSel].sort() : fechasHabilesDelRango(fecha, fechaFin);
+  if(!fechas.length) { showToast('⚠️ No hay fechas designadas válidas', true); return; }
   try {
     await addDoc(collection(db, COL_PROG), {
       supervisor, sector, tema,
-      fechaProgramada: fecha,
-      fechaFin: fechaFin,
-      diasDesignados,
+      fechaProgramada: fechas[0],
+      fechaFin: fechas[fechas.length-1],
+      fechas,
+      diasDesignados: fechas.length,
       observaciones: obs,
       estado: 'pendiente',
       registroId: null,
@@ -1177,14 +1196,35 @@ function diasHabilesRango(iniStr, finStr) {
 
 // Obtener rango normalizado de una programación (compatible con las antiguas de un solo día)
 function rangoProg(p) {
+  const fechas = fechasDeProg(p);
+  return { ini: fechas[0], fin: fechas[fechas.length-1], dias: fechas.length, fechas };
+}
+
+// Array de fechas designadas de una programación (soporta fechas específicas no consecutivas)
+function fechasDeProg(p) {
+  if(p.fechas && p.fechas.length) return [...p.fechas].sort();
   const ini = p.fechaProgramada;
   const fin = p.fechaFin || p.fechaProgramada;
-  return { ini, fin, dias: p.diasDesignados || diasHabilesRango(ini, fin) };
+  return fechasHabilesDelRango(ini, fin);
+}
+
+// Fechas hábiles de un rango como array (según temporada de cada día)
+function fechasHabilesDelRango(iniStr, finStr) {
+  const out = [];
+  let d = new Date(iniStr + 'T12:00:00');
+  const fin = new Date(finStr + 'T12:00:00');
+  while(d <= fin) {
+    if(esDiaHabil(d, detectarTemporada(d))) out.push(formatDate(d));
+    d.setDate(d.getDate()+1);
+  }
+  return out.length ? out : [iniStr];
 }
 
 function limpiarProg() {
-  ['pSupervisor','pSector','pTema','pFecha','pFechaFin','pObs'].forEach(id => document.getElementById(id).value='');
+  ['pSupervisor','pSector','pTema','pFecha','pFechaFin','pObs','pFechaExtra'].forEach(id => document.getElementById(id).value='');
   document.getElementById('pDiasDesignados').value='–';
+  progFechasSel = [];
+  renderPFechasChips();
 }
 
 // Estado calculado de una programación (soporta rango de días designados)
@@ -1198,7 +1238,9 @@ function estadoProg(p) {
   // Hoy dentro del rango designado → EN CURSO (o "Para hoy" si es 1 solo día)
   if(hoy >= fIni && hoy <= fFin) {
     if(fIni.getTime() === fFin.getTime()) return {key:'hoy', label:'📍 Para HOY', badge:'badge-amarillo', dias:0};
-    const diaActual = diasHabilesRango(ini, formatDate(hoy));
+    const hoyStr = formatDate(hoy);
+    const fechasP = fechasDeProg(p);
+    const diaActual = Math.max(1, fechasP.filter(f => f <= hoyStr).length);
     return {key:'curso', label:`🟠 En Curso (día ${diaActual} de ${dias})`, badge:'badge-naranja', dias:0, diaActual, diasTot:dias};
   }
   if(fIni > hoy) {
@@ -1260,9 +1302,13 @@ function renderProgramaciones() {
       <td style="font-weight:700;">${(() => {
         const rg = rangoProg(p);
         const reprogBadge = (p.vecesReprogramada>0) ? `<br><span class="badge badge-naranja" style="font-size:8.5px;" title="${esc((p.reprogramaciones||[]).map(x=>x.motivo).join(', '))}">🔄 Reprogramada x${p.vecesReprogramada}</span>` : '';
+        const consec = rg.fechas.length === fechasHabilesDelRango(rg.ini, rg.fin).length;
+        const fechasTitle = rg.fechas.map(f=>formatDateDisplay(f)).join(' · ');
         return (rg.ini===rg.fin
           ? formatDateDisplay(rg.ini)
-          : `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`) + reprogBadge;
+          : consec
+            ? `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`
+            : `<span title="${fechasTitle}">${formatDateDisplay(rg.ini)} … ${formatDateDisplay(rg.fin)}</span><br><span style="font-size:9px;color:var(--naranja);" title="${fechasTitle}">📆 ${rg.dias} fechas específicas: ${fechasTitle}</span>`) + reprogBadge;
       })()}</td>
       <td><span class="badge ${e.badge}">${e.label}</span></td>
       <td>${diasTxt}</td>
@@ -1314,6 +1360,7 @@ function exportProgExcel() {
       'Supervisor': p.supervisor, 'Sector': p.sector||'', 'Tema': p.tema,
       'Fecha Inicio': p.fechaProgramada,
       'Fecha Fin': p.fechaFin||p.fechaProgramada,
+      'Fechas Designadas': fechasDeProg(p).join(', '),
       'Días Designados': rangoProg(p).dias,
       'Estado': e.label.replace(/^[^\s]+\s/,''),
       'Días': e.key==='vencida' ? e.dias+' hábiles de atraso' : e.key==='proxima' ? 'faltan '+e.dias : '',
@@ -1382,9 +1429,14 @@ function exportIncumplimientosPDF() {
         pdf.text(`Reprogramada ${p.reprogramaciones.length} vez/veces:`, 21, y); y+=4.5;
         p.reprogramaciones.forEach(rr => {
           if(y>270){pdf.addPage();y=18;}
-          const antT = rr.fechaAnteriorIni===rr.fechaAnteriorFin ? formatDateDisplay(rr.fechaAnteriorIni) : `${formatDateDisplay(rr.fechaAnteriorIni)} al ${formatDateDisplay(rr.fechaAnteriorFin)}`;
-          const nueT = rr.nuevaIni===rr.nuevaFin ? formatDateDisplay(rr.nuevaIni) : `${formatDateDisplay(rr.nuevaIni)} al ${formatDateDisplay(rr.nuevaFin)}`;
-          const linea = `  - ${antT} → ${nueT} · Motivo: ${rr.motivo}${rr.detalle?` (${rr.detalle})`:''}`;
+          let cambioT;
+          if(rr.cambios) cambioT = rr.cambios;
+          else {
+            const antT = rr.fechaAnteriorIni===rr.fechaAnteriorFin ? formatDateDisplay(rr.fechaAnteriorIni) : `${formatDateDisplay(rr.fechaAnteriorIni)} al ${formatDateDisplay(rr.fechaAnteriorFin)}`;
+            const nueT = rr.nuevaIni===rr.nuevaFin ? formatDateDisplay(rr.nuevaIni) : `${formatDateDisplay(rr.nuevaIni)} al ${formatDateDisplay(rr.nuevaFin)}`;
+            cambioT = `${antT} → ${nueT}`;
+          }
+          const linea = `  - ${cambioT} · Motivo: ${rr.motivo}${rr.detalle?` (${rr.detalle})`:''}`;
           const rrLines = pdf.splitTextToSize(linea, 165);
           rrLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 23, y); y+=4.3; });
         });
@@ -1555,23 +1607,15 @@ function renderCalendario() {
   // Lunes=0 ... Domingo=6
   let inicio = primerDia.getDay()-1; if(inicio<0) inicio=6;
 
-  // Programaciones por fecha (un chip por cada día del rango designado)
+  // Programaciones por fecha (un chip por cada fecha designada, aunque no sean consecutivas)
   const porFecha = {};
   programaciones.forEach(p => {
     const est = estadoProg(p);
-    const rg = rangoProg(p);
-    let d = new Date(rg.ini + 'T12:00:00');
-    const fin = new Date(rg.fin + 'T12:00:00');
-    let nDia = 0;
-    while(d <= fin) {
-      const fStr = formatDate(d);
-      if(esDiaHabil(d, detectarTemporada(d)) || rg.ini===rg.fin) {
-        nDia++;
-        if(!porFecha[fStr]) porFecha[fStr]=[];
-        porFecha[fStr].push({...p, _est: est, _nDia: nDia, _diasTot: rg.dias});
-      }
-      d.setDate(d.getDate()+1);
-    }
+    const fechasP = fechasDeProg(p);
+    fechasP.forEach((fStr, idx) => {
+      if(!porFecha[fStr]) porFecha[fStr]=[];
+      porFecha[fStr].push({...p, _est: est, _nDia: idx+1, _diasTot: fechasP.length});
+    });
   });
 
   let html = '';
@@ -1610,15 +1654,15 @@ function renderCalendario() {
 
 // Ver programaciones de un día (filtra la tabla y hace scroll)
 window.verProgDia = function(fechaStr) {
-  const progs = programaciones.filter(p => {
-    const rg = rangoProg(p);
-    return fechaStr >= rg.ini && fechaStr <= rg.fin;
-  });
+  const progs = programaciones.filter(p => fechasDeProg(p).includes(fechaStr));
   if(!progs.length) return;
   const detalle = progs.map(p => {
     const e = estadoProg(p);
     const rg = rangoProg(p);
-    const rango = rg.ini===rg.fin ? formatDateDisplay(rg.ini) : `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días designados)`;
+    const consecutivas = rg.fechas.length === fechasHabilesDelRango(rg.ini, rg.fin).length;
+    const rango = rg.ini===rg.fin ? formatDateDisplay(rg.ini)
+      : consecutivas ? `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días designados)`
+      : rg.fechas.map(f=>formatDateDisplay(f)).join(', ') + ` (${rg.dias} fechas designadas)`;
     return `${e.label} — ${p.supervisor} · ${p.tema}\n   Sector: ${p.sector||''} · Fechas: ${rango}`;
   }).join('\n\n');
   alert(`📅 Programaciones del ${formatDateDisplay(fechaStr)}:\n\n${detalle}`);
@@ -1629,67 +1673,103 @@ window.verProgDia = function(fechaStr) {
 // ════════════════════════════════════════════════
 let chartMotivos = null;
 
+let editFechasSel = [];
+let editFechasOrig = [];
+
 window.abrirReprog = function(id) {
   const p = programaciones.find(x => x.id === id);
   if(!p) return;
   const rg = rangoProg(p);
   document.getElementById('eProgId').value = id;
-  const fechasTxt = rg.ini===rg.fin ? formatDateDisplay(rg.ini) : `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días)`;
-  document.getElementById('eProgInfo').innerHTML = `<strong>${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — Fechas actuales: <strong>${fechasTxt}</strong>${p.vecesReprogramada?`<br><span style="color:var(--naranja);font-weight:700;">🔄 Ya fue reprogramada ${p.vecesReprogramada} vez/veces</span>`:''}`;
-  document.getElementById('eIni').value = rg.ini;
-  document.getElementById('eFin').value = rg.ini===rg.fin ? '' : rg.fin;
+  const fechasTxt = rg.fechas.map(f=>formatDateDisplay(f)).join(' · ');
+  document.getElementById('eProgInfo').innerHTML = `<strong>${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — Fechas actuales: <strong>${fechasTxt}</strong> (${rg.dias} día(s))${p.vecesReprogramada?`<br><span style="color:var(--naranja);font-weight:700;">🔄 Ya fue reprogramada ${p.vecesReprogramada} vez/veces</span>`:''}`;
+  editFechasOrig = [...rg.fechas];
+  editFechasSel = [...rg.fechas];
   document.getElementById('eMotivo').value = '';
   document.getElementById('eDetalle').value = '';
-  actualizarDiasReprog();
+  document.getElementById('eFechaExtra').value = '';
+  renderEFechasList();
   document.getElementById('modalReprog').classList.add('open');
 };
 window.cerrarReprog = function() { document.getElementById('modalReprog').classList.remove('open'); };
 
-function actualizarDiasReprog() {
-  const ini = document.getElementById('eIni').value;
-  let fin = document.getElementById('eFin').value;
-  if(!ini) { document.getElementById('eDias').value='–'; return; }
-  if(!fin) fin = ini;
-  if(fin < ini) { document.getElementById('eDias').value='⚠️ Fecha fin inválida'; return; }
-  document.getElementById('eDias').value = `${diasHabilesRango(ini, fin)} día(s) hábil(es) para capacitar`;
+function renderEFechasList() {
+  const div = document.getElementById('eFechasList');
+  if(!editFechasSel.length) {
+    div.innerHTML = '<p class="empty-msg" style="padding:12px;">Sin fechas — agrega al menos una.</p>';
+  } else {
+    div.innerHTML = editFechasSel.map((f, i) => {
+      const orig = editFechasOrig[i];
+      const cambiada = orig !== undefined && orig !== f;
+      return `<div class="efecha-row">
+        <div class="efecha-num">${i+1}</div>
+        <input type="date" value="${f}" class="${cambiada?'cambiada':''}" onchange="cambiarFechaE(${i}, this.value)" />
+        ${cambiada ? `<span class="efecha-orig">antes: ${formatDateDisplay(orig)} 🔄</span>` : (orig!==undefined ? '<span class="efecha-orig">sin cambio</span>' : '<span class="efecha-orig" style="color:var(--verde);">nueva ➕</span>')}
+        <button type="button" class="efecha-x" onclick="quitarFechaE(${i})" title="Quitar esta fecha">✕</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('eDias').value = editFechasSel.length ? `${editFechasSel.length} día(s) designado(s)` : '–';
 }
+
+window.cambiarFechaE = function(i, val) {
+  if(!val) return;
+  if(editFechasSel.some((f, j) => j!==i && f===val)) { showToast('⚠️ Esa fecha ya está en la lista', true); renderEFechasList(); return; }
+  editFechasSel[i] = val;
+  renderEFechasList();
+};
+window.quitarFechaE = function(i) {
+  editFechasSel.splice(i, 1);
+  editFechasOrig.splice(i, 1);
+  renderEFechasList();
+};
 
 window.guardarReprog = async function() {
   const id = document.getElementById('eProgId').value;
   const p = programaciones.find(x => x.id === id);
   if(!p) return;
-  const nuevaIni = document.getElementById('eIni').value;
-  let nuevaFin = document.getElementById('eFin').value;
   const motivo = document.getElementById('eMotivo').value;
   const detalle = document.getElementById('eDetalle').value.trim();
 
-  if(!nuevaIni) { showToast('Ingresa la nueva fecha de inicio', true); return; }
-  if(nuevaFin && nuevaFin < nuevaIni) { showToast('⚠️ La fecha fin no puede ser anterior al inicio', true); return; }
-  if(!nuevaFin) nuevaFin = nuevaIni;
-
-  const rg = rangoProg(p);
-  const sinCambio = (nuevaIni === rg.ini && nuevaFin === rg.fin);
+  if(!editFechasSel.length) { showToast('⚠️ Debe quedar al menos una fecha designada', true); return; }
+  const nuevas = [...editFechasSel].sort();
+  const anteriores = [...fechasDeProg(p)].sort();
+  const sinCambio = JSON.stringify(nuevas) === JSON.stringify(anteriores);
   if(sinCambio) { showToast('⚠️ Las fechas son iguales a las actuales. No hay cambio.', true); return; }
   if(!motivo) { showToast('⚠️ El MOTIVO del cambio de fecha es obligatorio', true); document.getElementById('eMotivo').focus(); return; }
 
+  // Detalle de cambios específicos: pares cambiados, quitadas y agregadas
+  const cambios = [];
+  editFechasOrig.forEach((orig, i) => {
+    if(orig !== undefined && editFechasSel[i] !== undefined && orig !== editFechasSel[i])
+      cambios.push(`${formatDateDisplay(orig)} → ${formatDateDisplay(editFechasSel[i])}`);
+  });
+  anteriores.filter(f => !nuevas.includes(f) && !cambios.some(c => c.startsWith(formatDateDisplay(f)))).forEach(f => cambios.push(`${formatDateDisplay(f)} eliminada`));
+  nuevas.filter(f => !anteriores.includes(f) && !cambios.some(c => c.endsWith(formatDateDisplay(f)))).forEach(f => cambios.push(`${formatDateDisplay(f)} agregada`));
+
   const entrada = {
-    fechaAnteriorIni: rg.ini,
-    fechaAnteriorFin: rg.fin,
-    nuevaIni, nuevaFin,
+    fechaAnteriorIni: anteriores[0],
+    fechaAnteriorFin: anteriores[anteriores.length-1],
+    fechasAnterior: anteriores,
+    fechasNueva: nuevas,
+    nuevaIni: nuevas[0],
+    nuevaFin: nuevas[nuevas.length-1],
+    cambios: cambios.join(' · '),
     motivo, detalle,
     registradoPor: usuarioActual?.nombre || '',
     fecha: new Date().toISOString()
   };
   try {
     await updateDoc(doc(db, COL_PROG, id), {
-      fechaProgramada: nuevaIni,
-      fechaFin: nuevaFin,
-      diasDesignados: diasHabilesRango(nuevaIni, nuevaFin),
+      fechaProgramada: nuevas[0],
+      fechaFin: nuevas[nuevas.length-1],
+      fechas: nuevas,
+      diasDesignados: nuevas.length,
       reprogramaciones: [...(p.reprogramaciones||[]), entrada],
       vecesReprogramada: (p.vecesReprogramada||0) + 1
     });
     cerrarReprog();
-    showToast(`🔄 Reprogramada correctamente. Motivo: ${motivo}`);
+    showToast(`🔄 Reprogramada: ${cambios.join(' · ')}`);
   } catch(e) { showToast('❌ Error al reprogramar', true); }
 };
 
@@ -1736,16 +1816,44 @@ function renderMotivosReprog() {
     if(!todas.length) { hDiv.innerHTML='<p class="empty-msg">Sin reprogramaciones registradas.</p>'; return; }
     todas.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
     hDiv.innerHTML = todas.slice(0,15).map(r => {
-      const antTxt = r.fechaAnteriorIni===r.fechaAnteriorFin ? formatDateDisplay(r.fechaAnteriorIni) : `${formatDateDisplay(r.fechaAnteriorIni)}–${formatDateDisplay(r.fechaAnteriorFin)}`;
-      const nueTxt = r.nuevaIni===r.nuevaFin ? formatDateDisplay(r.nuevaIni) : `${formatDateDisplay(r.nuevaIni)}–${formatDateDisplay(r.nuevaFin)}`;
+      let cambioTxt;
+      if(r.cambios) {
+        cambioTxt = `<strong>${esc(r.cambios)}</strong>`;
+      } else {
+        const antTxt = r.fechaAnteriorIni===r.fechaAnteriorFin ? formatDateDisplay(r.fechaAnteriorIni) : `${formatDateDisplay(r.fechaAnteriorIni)}–${formatDateDisplay(r.fechaAnteriorFin)}`;
+        const nueTxt = r.nuevaIni===r.nuevaFin ? formatDateDisplay(r.nuevaIni) : `${formatDateDisplay(r.nuevaIni)}–${formatDateDisplay(r.nuevaFin)}`;
+        cambioTxt = `<span style="color:var(--gris-text);">${antTxt}</span> ➜ <strong>${nueTxt}</strong>`;
+      }
       return `<div class="alert-card alert-naranja" style="background:var(--naranja-light);border-left:4px solid var(--naranja);">
         <span class="alert-icon">🔄</span>
         <div style="font-size:11.5px;">
           <strong>${esc(r.supervisor)}</strong> · ${esc(r.sector||'')} · ${esc(r.tema)}<br>
-          <span style="color:var(--gris-text);">${antTxt}</span> ➜ <strong>${nueTxt}</strong><br>
+          ${cambioTxt}<br>
           <span class="badge badge-naranja" style="margin-top:3px;">${esc(r.motivo)}</span>${r.detalle?` <span style="font-size:10px;color:var(--gris-text);">— ${esc(r.detalle)}</span>`:''}
         </div>
       </div>`;
     }).join('');
   }
 }
+
+// ─── CHIPS DE FECHAS EN FORMULARIO DE PROGRAMACIÓN ────────────
+let progFechasSel = [];
+
+function renderPFechasChips() {
+  const div = document.getElementById('pFechasChips');
+  if(!div) return;
+  if(!progFechasSel.length) {
+    div.innerHTML = '<span class="empty-chip">Elige fecha inicio (y fin) para generar las fechas, o agrégalas una por una aquí abajo</span>';
+  } else {
+    div.innerHTML = progFechasSel.map((f, i) =>
+      `<span class="fecha-chip">📅 ${formatDateDisplay(f)}<span class="chip-x" onclick="quitarFechaP(${i})" title="Quitar">✕</span></span>`
+    ).join('');
+  }
+  document.getElementById('pDiasDesignados').value = progFechasSel.length
+    ? `${progFechasSel.length} día(s) designado(s) para capacitar` : '–';
+}
+
+window.quitarFechaP = function(i) {
+  progFechasSel.splice(i, 1);
+  renderPFechasChips();
+};
