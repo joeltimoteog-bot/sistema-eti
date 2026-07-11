@@ -129,6 +129,7 @@
     <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
     <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
     <div class="kpi-card gold"><div class="kpi-icon">🎯</div><div class="kpi-val" id="pkEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
+    <div class="kpi-card naranja"><div class="kpi-icon">🔄</div><div class="kpi-val" id="pkReprog">0</div><div class="kpi-label">Reprogramadas</div></div>
   </div>
 
   <div class="panel">
@@ -227,6 +228,20 @@
         </thead>
         <tbody id="tbodyProg"><tr><td colspan="9" class="empty-msg">Sin programaciones registradas.</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <div class="panel-title">🔄 Indicador: Motivos de Reprogramación</div>
+      <div class="chart-card" style="box-shadow:none;padding:0;">
+        <canvas id="chartMotivos" style="max-height:190px;"></canvas>
+      </div>
+      <div id="listaMotivos" style="margin-top:12px;"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">📜 Historial de Cambios de Fecha</div>
+      <div id="histReprog" style="max-height:290px;overflow-y:auto;"><p class="empty-msg">Sin reprogramaciones registradas.</p></div>
     </div>
   </div>
 </section>
@@ -470,6 +485,57 @@
 </footer>
 
 </div><!-- /appPage -->
+
+<!-- MODAL REPROGRAMAR -->
+<div class="modal-overlay" id="modalReprog">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-header">
+      <h3>🔄 Editar / Reprogramar Capacitación</h3>
+      <button class="modal-close" onclick="cerrarReprog()">✕</button>
+    </div>
+    <input type="hidden" id="eProgId" />
+    <div class="alert-card alert-azul" style="margin-bottom:14px;">
+      <span class="alert-icon">📅</span>
+      <div id="eProgInfo">–</div>
+    </div>
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>Nueva Fecha Inicio *</label>
+        <input type="date" id="eIni" />
+      </div>
+      <div class="form-group">
+        <label>Nueva Fecha Fin</label>
+        <input type="date" id="eFin" />
+        <small>En blanco si es un solo día</small>
+      </div>
+      <div class="form-group full">
+        <label>Días Designados</label>
+        <input type="text" id="eDias" readonly class="input-readonly input-calc" value="–" />
+      </div>
+      <div class="form-group full">
+        <label>Motivo del Cambio de Fecha *</label>
+        <select id="eMotivo">
+          <option value="">— Seleccionar motivo —</option>
+          <option value="LLUVIA / CLIMA">🌧 Lluvia / Clima</option>
+          <option value="PARO / BLOQUEO">🚧 Paro / Bloqueo</option>
+          <option value="LABORES ATRASADAS">🌾 Labores atrasadas en campo</option>
+          <option value="FALTA DE PERSONAL">👥 Falta de personal</option>
+          <option value="DECISION DE ADMINISTRACION">👔 Decisión de administración</option>
+          <option value="CRUCE CON OTRA ACTIVIDAD">📆 Cruce con otra actividad</option>
+          <option value="OTRO">📝 Otro motivo</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Detalle del motivo</label>
+        <textarea id="eDetalle" rows="2" placeholder="Describe brevemente la situación..."></textarea>
+      </div>
+    </div>
+    <div class="actions-row" style="justify-content:flex-end;margin-top:0;">
+      <button class="btn btn-danger btn-sm" onclick="cerrarReprog()">✕ Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarReprog()">💾 Guardar Reprogramación</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL GESTIÓN SUPERVISORES -->
 <div class="modal-overlay" id="modalSups">

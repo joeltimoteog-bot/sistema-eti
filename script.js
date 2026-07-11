@@ -1125,6 +1125,10 @@ function initProgramacion() {
   document.getElementById('btnProgExcel').addEventListener('click', exportProgExcel);
   document.getElementById('btnIncumplPdf').addEventListener('click', exportIncumplimientosPDF);
   document.getElementById('modalSups').addEventListener('click', function(e){if(e.target===this)cerrarModalSups();});
+  // Modal reprogramación
+  document.getElementById('modalReprog').addEventListener('click', function(e){if(e.target===this)cerrarReprog();});
+  document.getElementById('eIni').addEventListener('change', actualizarDiasReprog);
+  document.getElementById('eFin').addEventListener('change', actualizarDiasReprog);
   // Navegación calendario
   document.getElementById('btnCalPrev').addEventListener('click', () => { calMes--; if(calMes<0){calMes=11;calAnio--;} renderCalendario(); });
   document.getElementById('btnCalNext').addEventListener('click', () => { calMes++; if(calMes>11){calMes=0;calAnio++;} renderCalendario(); });
@@ -1222,6 +1226,12 @@ function renderProgramaciones() {
   setText('pkEficacia', eficacia===null ? '–' : eficacia+'%');
   setText('kEficacia', eficacia===null ? '–' : eficacia+'%');
 
+  // KPI reprogramadas
+  setText('pkReprog', programaciones.filter(p => (p.vecesReprogramada||0)>0).length);
+
+  // Indicador de motivos + historial
+  renderMotivosReprog();
+
   // Calendario visual
   renderCalendario();
 
@@ -1249,15 +1259,17 @@ function renderProgramaciones() {
       <td style="font-size:10.5px;">${esc(p.tema)}</td>
       <td style="font-weight:700;">${(() => {
         const rg = rangoProg(p);
-        return rg.ini===rg.fin
+        const reprogBadge = (p.vecesReprogramada>0) ? `<br><span class="badge badge-naranja" style="font-size:8.5px;" title="${esc((p.reprogramaciones||[]).map(x=>x.motivo).join(', '))}">🔄 Reprogramada x${p.vecesReprogramada}</span>` : '';
+        return (rg.ini===rg.fin
           ? formatDateDisplay(rg.ini)
-          : `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`;
+          : `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`) + reprogBadge;
       })()}</td>
       <td><span class="badge ${e.badge}">${e.label}</span></td>
       <td>${diasTxt}</td>
       <td style="max-width:140px;font-size:10px;">${esc((p.observaciones||'').substring(0,40))}${(p.observaciones||'').length>40?'…':''}</td>
       <td style="white-space:nowrap;">
-        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución">▶ Ejecutar</button>` : ''}
+        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución">▶</button>` : ''}
+        ${p.estado!=='ejecutada' ? `<button class="btn btn-secondary btn-sm" onclick="abrirReprog('${p.id}')" title="Editar / Reprogramar fechas">✏️</button>` : ''}
         ${esAdmin || p.estado!=='ejecutada' ? `<button class="btn btn-danger btn-sm" onclick="eliminarProg('${p.id}')" title="Eliminar">🗑</button>` : ''}
       </td>
     </tr>`;
@@ -1305,6 +1317,8 @@ function exportProgExcel() {
       'Días Designados': rangoProg(p).dias,
       'Estado': e.label.replace(/^[^\s]+\s/,''),
       'Días': e.key==='vencida' ? e.dias+' hábiles de atraso' : e.key==='proxima' ? 'faltan '+e.dias : '',
+      'Reprogramaciones': p.vecesReprogramada||0,
+      'Motivos de Cambio': (p.reprogramaciones||[]).map(r=>r.motivo).join('; '),
       'Observaciones': p.observaciones||'', 'Programado Por': p.creadoPor||''
     };
   });
@@ -1362,6 +1376,20 @@ function exportIncumplimientosPDF() {
       const sit = p.observaciones ? `Situación: ${p.observaciones}` : 'Situación: Sin observaciones registradas — requiere justificación del supervisor.';
       const sitLines = pdf.splitTextToSize(sit, 168);
       sitLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 21, y); y+=4.5; });
+      // Historial de reprogramaciones del caso
+      if(p.reprogramaciones && p.reprogramaciones.length) {
+        pdf.setTextColor(180,90,20);
+        pdf.text(`Reprogramada ${p.reprogramaciones.length} vez/veces:`, 21, y); y+=4.5;
+        p.reprogramaciones.forEach(rr => {
+          if(y>270){pdf.addPage();y=18;}
+          const antT = rr.fechaAnteriorIni===rr.fechaAnteriorFin ? formatDateDisplay(rr.fechaAnteriorIni) : `${formatDateDisplay(rr.fechaAnteriorIni)} al ${formatDateDisplay(rr.fechaAnteriorFin)}`;
+          const nueT = rr.nuevaIni===rr.nuevaFin ? formatDateDisplay(rr.nuevaIni) : `${formatDateDisplay(rr.nuevaIni)} al ${formatDateDisplay(rr.nuevaFin)}`;
+          const linea = `  - ${antT} → ${nueT} · Motivo: ${rr.motivo}${rr.detalle?` (${rr.detalle})`:''}`;
+          const rrLines = pdf.splitTextToSize(linea, 165);
+          rrLines.forEach(l => { if(y>270){pdf.addPage();y=18;} pdf.text(l, 23, y); y+=4.3; });
+        });
+        pdf.setTextColor(70,70,70);
+      }
       y+=4;
     });
     y+=4;
@@ -1595,3 +1623,129 @@ window.verProgDia = function(fechaStr) {
   }).join('\n\n');
   alert(`📅 Programaciones del ${formatDateDisplay(fechaStr)}:\n\n${detalle}`);
 };
+
+// ════════════════════════════════════════════════
+//  REPROGRAMACIÓN (EDITAR FECHAS CON MOTIVO)
+// ════════════════════════════════════════════════
+let chartMotivos = null;
+
+window.abrirReprog = function(id) {
+  const p = programaciones.find(x => x.id === id);
+  if(!p) return;
+  const rg = rangoProg(p);
+  document.getElementById('eProgId').value = id;
+  const fechasTxt = rg.ini===rg.fin ? formatDateDisplay(rg.ini) : `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días)`;
+  document.getElementById('eProgInfo').innerHTML = `<strong>${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — Fechas actuales: <strong>${fechasTxt}</strong>${p.vecesReprogramada?`<br><span style="color:var(--naranja);font-weight:700;">🔄 Ya fue reprogramada ${p.vecesReprogramada} vez/veces</span>`:''}`;
+  document.getElementById('eIni').value = rg.ini;
+  document.getElementById('eFin').value = rg.ini===rg.fin ? '' : rg.fin;
+  document.getElementById('eMotivo').value = '';
+  document.getElementById('eDetalle').value = '';
+  actualizarDiasReprog();
+  document.getElementById('modalReprog').classList.add('open');
+};
+window.cerrarReprog = function() { document.getElementById('modalReprog').classList.remove('open'); };
+
+function actualizarDiasReprog() {
+  const ini = document.getElementById('eIni').value;
+  let fin = document.getElementById('eFin').value;
+  if(!ini) { document.getElementById('eDias').value='–'; return; }
+  if(!fin) fin = ini;
+  if(fin < ini) { document.getElementById('eDias').value='⚠️ Fecha fin inválida'; return; }
+  document.getElementById('eDias').value = `${diasHabilesRango(ini, fin)} día(s) hábil(es) para capacitar`;
+}
+
+window.guardarReprog = async function() {
+  const id = document.getElementById('eProgId').value;
+  const p = programaciones.find(x => x.id === id);
+  if(!p) return;
+  const nuevaIni = document.getElementById('eIni').value;
+  let nuevaFin = document.getElementById('eFin').value;
+  const motivo = document.getElementById('eMotivo').value;
+  const detalle = document.getElementById('eDetalle').value.trim();
+
+  if(!nuevaIni) { showToast('Ingresa la nueva fecha de inicio', true); return; }
+  if(nuevaFin && nuevaFin < nuevaIni) { showToast('⚠️ La fecha fin no puede ser anterior al inicio', true); return; }
+  if(!nuevaFin) nuevaFin = nuevaIni;
+
+  const rg = rangoProg(p);
+  const sinCambio = (nuevaIni === rg.ini && nuevaFin === rg.fin);
+  if(sinCambio) { showToast('⚠️ Las fechas son iguales a las actuales. No hay cambio.', true); return; }
+  if(!motivo) { showToast('⚠️ El MOTIVO del cambio de fecha es obligatorio', true); document.getElementById('eMotivo').focus(); return; }
+
+  const entrada = {
+    fechaAnteriorIni: rg.ini,
+    fechaAnteriorFin: rg.fin,
+    nuevaIni, nuevaFin,
+    motivo, detalle,
+    registradoPor: usuarioActual?.nombre || '',
+    fecha: new Date().toISOString()
+  };
+  try {
+    await updateDoc(doc(db, COL_PROG, id), {
+      fechaProgramada: nuevaIni,
+      fechaFin: nuevaFin,
+      diasDesignados: diasHabilesRango(nuevaIni, nuevaFin),
+      reprogramaciones: [...(p.reprogramaciones||[]), entrada],
+      vecesReprogramada: (p.vecesReprogramada||0) + 1
+    });
+    cerrarReprog();
+    showToast(`🔄 Reprogramada correctamente. Motivo: ${motivo}`);
+  } catch(e) { showToast('❌ Error al reprogramar', true); }
+};
+
+// ─── INDICADOR DE MOTIVOS + HISTORIAL ─────────────────────────
+function renderMotivosReprog() {
+  const todas = [];
+  programaciones.forEach(p => (p.reprogramaciones||[]).forEach(r => todas.push({...r, supervisor:p.supervisor, sector:p.sector, tema:p.tema})));
+
+  // Chart de motivos
+  const conteo = {};
+  todas.forEach(r => { conteo[r.motivo] = (conteo[r.motivo]||0)+1; });
+  const labels = Object.keys(conteo).sort((a,b)=>conteo[b]-conteo[a]);
+  const datos = labels.map(l => conteo[l]);
+  const colores = ['#0050c8','#cc0000','#c89010','#e07a2a','#1a8040','#6a4c93','#9aaabb'];
+
+  const canvas = document.getElementById('chartMotivos');
+  if(canvas) {
+    if(!todas.length) {
+      if(chartMotivos) { chartMotivos.destroy(); chartMotivos=null; }
+      canvas.style.display='none';
+    } else {
+      canvas.style.display='block';
+      if(chartMotivos) { chartMotivos.data.labels=labels; chartMotivos.data.datasets[0].data=datos; chartMotivos.update('none'); }
+      else chartMotivos = new Chart(canvas, {type:'doughnut',
+        data:{labels, datasets:[{data:datos, backgroundColor:colores, borderWidth:0}]},
+        options:{responsive:true, maintainAspectRatio:false, animation:{duration:300}, plugins:{legend:{position:'bottom', labels:{font:{family:'Tahoma',size:9.5}}}}, cutout:'55%'}});
+    }
+  }
+
+  // Lista resumen
+  const lDiv = document.getElementById('listaMotivos');
+  if(lDiv) {
+    lDiv.innerHTML = !todas.length
+      ? '<p class="empty-msg">Sin reprogramaciones registradas aún.</p>'
+      : labels.map((l,i) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--azul-bg);border-radius:7px;margin-bottom:5px;font-size:11.5px;">
+          <span style="font-weight:700;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${colores[i%colores.length]};margin-right:7px;"></span>${esc(l)}</span>
+          <span class="badge badge-azul">${conteo[l]} cambio(s)</span>
+        </div>`).join('');
+  }
+
+  // Historial
+  const hDiv = document.getElementById('histReprog');
+  if(hDiv) {
+    if(!todas.length) { hDiv.innerHTML='<p class="empty-msg">Sin reprogramaciones registradas.</p>'; return; }
+    todas.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    hDiv.innerHTML = todas.slice(0,15).map(r => {
+      const antTxt = r.fechaAnteriorIni===r.fechaAnteriorFin ? formatDateDisplay(r.fechaAnteriorIni) : `${formatDateDisplay(r.fechaAnteriorIni)}–${formatDateDisplay(r.fechaAnteriorFin)}`;
+      const nueTxt = r.nuevaIni===r.nuevaFin ? formatDateDisplay(r.nuevaIni) : `${formatDateDisplay(r.nuevaIni)}–${formatDateDisplay(r.nuevaFin)}`;
+      return `<div class="alert-card alert-naranja" style="background:var(--naranja-light);border-left:4px solid var(--naranja);">
+        <span class="alert-icon">🔄</span>
+        <div style="font-size:11.5px;">
+          <strong>${esc(r.supervisor)}</strong> · ${esc(r.sector||'')} · ${esc(r.tema)}<br>
+          <span style="color:var(--gris-text);">${antTxt}</span> ➜ <strong>${nueTxt}</strong><br>
+          <span class="badge badge-naranja" style="margin-top:3px;">${esc(r.motivo)}</span>${r.detalle?` <span style="font-size:10px;color:var(--gris-text);">— ${esc(r.detalle)}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
