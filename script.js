@@ -43,22 +43,6 @@ const USUARIOS = [
 
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
 
-// ─── SECCIONES DE EVALUACIÓN (pesos fijos, verde ≥ 70% de la sección) ──
-const SECCIONES_EVAL = [
-  {key:'legislacion',    nombre:'DE LEGISLACIÓN LABORAL',              corto:'Legislación\nLaboral',    peso:18},
-  {key:'bienestar',      nombre:'DE BIENESTAR SOCIAL',                 corto:'Bienestar\nSocial',       peso:32},
-  {key:'etica',          nombre:'DE ÉTICA EMPRESARIAL',                corto:'Ética\nEmpresarial',      peso:6},
-  {key:'seguridad',      nombre:'DE SEGURIDAD Y SALUD EN EL TRABAJO',  corto:'Seguridad\ny Salud',      peso:12},
-  {key:'medioambiente',  nombre:'DE COMPROMISO MEDIOAMBIENTAL',        corto:'Compromiso\nMedioamb.',   peso:16},
-  {key:'sustentabilidad',nombre:'DE SUSTENTABILIDAD',                  corto:'Sustenta-\nbilidad',      peso:16}
-];
-const UMBRAL_VERDE = 0.7; // 70% del peso de la sección
-// Colores del semáforo (informe)
-const SEM_COLORES = {
-  verdeFuerte:'#1F9D44', verdeClaro:'#d6f5df', rojoFuerte:'#E00000', rojoClaro:'#ffd9d9',
-  amarillo:'#FFFF00', grisHead:'#d9d9d9', grisFila:'#f2f2f2'
-};
-
 let registros = [];
 let supervisores = [];
 let programaciones = [];
@@ -66,8 +50,6 @@ let usuarioActual = null;
 let unsubscribe = null;
 let unsubSups = null;
 let unsubProg = null;
-let destiempoInfo = null;   // datos confirmados del modal de destiempo (evaluaciones)
-let dProgActual = null;     // programación en evaluación dentro del modal
 let chEstados=null, chTendencia=null;
 let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMensual=null, stTemporada=null, stPersonal=null;
 
@@ -239,27 +221,12 @@ function initForm() {
   document.getElementById('fSupervisor').addEventListener('change', function() {
     document.getElementById('fSector').value=this.value ? this.value.split('|')[1]||'' : '';
     verificarRetrasoForm();
-    actualizarBannerEvalProg();
   });
 
-  // Tema → mostrar tipo personal y bloque de notas de evaluación
+  // Tema → mostrar tipo personal
   document.getElementById('fTema').addEventListener('change', function() {
     document.getElementById('bloqueTipoPersonal').style.display=this.value?'block':'none';
-    document.getElementById('bloqueEvalSecciones').style.display=this.value==='EVALUACIONES DE CHECKLIST'?'block':'none';
-    actualizarBannerEvalProg();
   });
-
-  document.getElementById('evNumRutas').addEventListener('input', generarEvalGrid);
-
-  // Modal destiempo: recalcular tipo al cambiar la fecha real
-  document.getElementById('dFechaReal').addEventListener('change', actualizarTipoDestiempo);
-  document.querySelectorAll('input[name="dReporto"]').forEach(r => {
-    r.addEventListener('change', function() {
-      document.querySelectorAll('input[name="dReporto"]').forEach(x=>x.closest('.radio-chip').classList.remove('selected'));
-      this.closest('.radio-chip').classList.add('selected');
-    });
-  });
-  document.getElementById('modalDestiempo').addEventListener('click', function(e){ if(e.target===this) cerrarDestiempo(); });
 
   // Tipo personal → rutas u áreas
   document.querySelectorAll('input[name="tipoPersonal"]').forEach(r => {
@@ -305,111 +272,7 @@ function initForm() {
   ['fFechaEjecucion','fFechaEnvio'].forEach(id => {
     document.getElementById(id).addEventListener('change', verificarRetrasoForm);
   });
-  document.getElementById('fFechaEjecucion').addEventListener('change', actualizarBannerEvalProg);
 }
-
-// ─── CONTROL DE DESTIEMPO (EVALUACIONES) ─────────────────────
-// Busca la programación de EVALUACIONES pendiente/vencida del supervisor
-function buscarProgEvaluacion(supervisor, sector) {
-  const progIdVinc = document.getElementById('fProgId').value;
-  if(progIdVinc) {
-    const pv = programaciones.find(x => x.id===progIdVinc && x.tema==='EVALUACIONES DE CHECKLIST');
-    if(pv) return pv;
-  }
-  const cands = programaciones.filter(p =>
-    p.tema==='EVALUACIONES DE CHECKLIST' &&
-    p.estado!=='ejecutada' &&
-    p.supervisor===supervisor &&
-    (!sector || !p.sector || p.sector===sector)
-  );
-  if(!cands.length) return null;
-  cands.sort((a,b) => (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
-  return cands[0];
-}
-
-// Banner informativo en el formulario de registro
-function actualizarBannerEvalProg() {
-  const banner = document.getElementById('evalProgBanner');
-  const texto = document.getElementById('evalProgTexto');
-  if(!banner) return;
-  const supVal = document.getElementById('fSupervisor').value;
-  const tema = document.getElementById('fTema').value;
-  if(tema!=='EVALUACIONES DE CHECKLIST' || !supVal) { banner.style.display='none'; return; }
-  const [supervisor, sector] = supVal.split('|');
-  const prog = buscarProgEvaluacion(supervisor, sector);
-  if(!prog) { banner.style.display='none'; return; }
-  const fechasP = fechasDeProg(prog);
-  const hoyStr = formatDate(new Date());
-  const vencida = hoyStr > fechasP[fechasP.length-1];
-  texto.innerHTML = `<strong>${vencida?'🚨 Evaluaciones programadas VENCIDAS':'📅 Este supervisor tiene evaluaciones programadas'}</strong> para: <strong>${fechasP.map(formatDateDisplay).join(', ')}</strong>.` +
-    (vencida ? ' Al guardar se te pedirá justificar el <strong>destiempo</strong>.' : '');
-  banner.style.display='flex';
-}
-
-function abrirDestiempo(prog, fechasP, fechaEjecIngresada) {
-  dProgActual = { prog, fechasP };
-  const fechasTxt = fechasP.map(formatDateDisplay).join(', ');
-  document.getElementById('dMensajeProg').innerHTML =
-    `<strong>⚠️ Estás registrando A DESTIEMPO.</strong><br>` +
-    `La fecha de registro de tus evaluaciones estaba programada para el: <strong>${fechasTxt}</strong> ` +
-    `(Supervisor: <strong>${esc(prog.supervisor)}</strong> · ${esc(prog.sector||'')}).<br>` +
-    `Para continuar, registra la fecha en la cual ejecutaste las evaluaciones.`;
-  document.getElementById('dFechaReal').value = fechaEjecIngresada || '';
-  document.getElementById('dMotivo').value = '';
-  document.getElementById('dDetalle').value = '';
-  document.querySelectorAll('input[name="dReporto"]').forEach(x => { x.checked=false; x.closest('.radio-chip').classList.remove('selected'); });
-  actualizarTipoDestiempo();
-  document.getElementById('modalDestiempo').classList.add('open');
-}
-
-function actualizarTipoDestiempo() {
-  const banner = document.getElementById('dTipoBanner');
-  const texto = document.getElementById('dTipoTexto');
-  const f = document.getElementById('dFechaReal').value;
-  if(!f || !dProgActual) { banner.style.display='none'; return; }
-  const misma = dProgActual.fechasP.includes(f);
-  banner.style.display='flex';
-  if(misma) {
-    texto.innerHTML = '📌 Ejecutaste en la <strong>misma fecha programada</strong>, pero el registro es tardío. Indica <strong>por qué el destiempo</strong> en el registro.';
-    document.getElementById('dMotivoLabel').textContent = 'Motivo del destiempo (registro tardío) *';
-  } else {
-    texto.innerHTML = '🔄 Ejecutaste en una <strong>fecha distinta a la programada</strong>. Indica el <strong>motivo del retraso o cambio de fecha</strong>.';
-    document.getElementById('dMotivoLabel').textContent = 'Motivo del retraso / cambio de fecha *';
-  }
-}
-
-window.cerrarDestiempo = function() {
-  document.getElementById('modalDestiempo').classList.remove('open');
-  dProgActual = null;
-};
-
-window.confirmarDestiempo = function() {
-  if(!dProgActual) return;
-  const f = document.getElementById('dFechaReal').value;
-  const motivo = document.getElementById('dMotivo').value;
-  const detalle = document.getElementById('dDetalle').value.trim();
-  const rep = document.querySelector('input[name="dReporto"]:checked');
-  if(!f) { showToast('⚠️ Registra la fecha en la cual ejecutaste las evaluaciones.', true); return; }
-  const misma = dProgActual.fechasP.includes(f);
-  if(!motivo) {
-    showToast(misma ? '⚠️ Indica por qué el destiempo en el registro.' : '⚠️ Indica el motivo del retraso o cambio de fecha.', true);
-    return;
-  }
-  if(!rep) { showToast('⚠️ Marca SÍ o NO: ¿reportaste a tu coordinador?', true); return; }
-  destiempoInfo = {
-    progId: dProgActual.prog.id,
-    fechaProgramada: dProgActual.fechasP[0],
-    fechasProgramadas: dProgActual.fechasP,
-    esDestiempo: true,
-    tipoDestiempo: misma ? 'REGISTRO TARDÍO (MISMA FECHA)' : 'CAMBIO DE FECHA',
-    motivoDestiempo: motivo + (detalle ? ' — ' + detalle : ''),
-    reportadoCoordinador: rep.value
-  };
-  document.getElementById('fFechaEjecucion').value = f;
-  verificarRetrasoForm();
-  cerrarDestiempo();
-  guardarRegistro();
-};
 
 function verificarRetrasoForm() {
   const fechaE=document.getElementById('fFechaEjecucion').value;
@@ -448,66 +311,6 @@ function generarAreas() {
   }
   cont.innerHTML=html;
 }
-
-// ─── GRILLA DE NOTAS DE EVALUACIÓN (por ruta y sección) ──────
-function generarEvalGrid() {
-  const n = Math.min(parseInt(document.getElementById('evNumRutas').value)||0, 30);
-  const table = document.getElementById('evalGridTable');
-  const head = document.getElementById('evalGridHead');
-  const body = document.getElementById('evalGridBody');
-  if(n<1){ table.style.display='none'; head.innerHTML=''; body.innerHTML=''; return; }
-  table.style.display='table';
-  head.innerHTML = '<tr><th style="min-width:130px;">Ruta</th><th style="min-width:60px;">Cód.</th>' +
-    SECCIONES_EVAL.map(s=>`<th style="min-width:78px;font-size:9.5px;">${esc(s.nombre.replace(/^DE /,''))}<br><small>(máx ${s.peso})</small></th>`).join('') + '</tr>';
-  // Conservar valores ya escritos
-  const prev = obtenerEvalResultados(true);
-  let html='';
-  for(let i=0;i<n;i++){
-    const p = prev[i]||{};
-    html += `<tr>
-      <td><input type="text" class="ev-ruta" placeholder="Ej: LA GREDA" value="${esc(p.ruta||'')}" style="width:100%;min-width:120px;text-transform:uppercase;" /></td>
-      <td><input type="text" class="ev-cod" placeholder="Cód." value="${esc(p.cod||'')}" style="width:60px;" /></td>` +
-      SECCIONES_EVAL.map(s=>{
-        const v = p.notas && p.notas[s.key]!=null ? p.notas[s.key] : '';
-        return `<td><input type="number" class="ev-nota" data-sec="${s.key}" min="0" max="${s.peso}" step="0.01" placeholder="0-${s.peso}" value="${v}" style="width:70px;" /></td>`;
-      }).join('') + '</tr>';
-  }
-  body.innerHTML = html;
-}
-
-// Lee la grilla; incluirVacias=true conserva filas incompletas (para regenerar)
-function obtenerEvalResultados(incluirVacias) {
-  const filas=[];
-  document.querySelectorAll('#evalGridBody tr').forEach(tr => {
-    const ruta=(tr.querySelector('.ev-ruta')?.value||'').trim().toUpperCase();
-    const cod=(tr.querySelector('.ev-cod')?.value||'').trim();
-    const notas={};
-    let tiene=false;
-    tr.querySelectorAll('.ev-nota').forEach(inp => {
-      const v=inp.value==='' ? null : parseFloat(inp.value);
-      notas[inp.dataset.sec]=isNaN(v)?null:v;
-      if(notas[inp.dataset.sec]!=null) tiene=true;
-    });
-    if(ruta || cod || tiene || incluirVacias) filas.push({ruta,cod,notas});
-  });
-  return incluirVacias ? filas : filas.filter(f=>f.ruta||f.cod);
-}
-
-// Resumen: promedio por sección + total del grupo (los pesos suman 100)
-function calcularResumenEval(resultados) {
-  const porSeccion={};
-  SECCIONES_EVAL.forEach(s => {
-    const vals=resultados.map(r=>r.notas?r.notas[s.key]:null).filter(v=>v!=null);
-    porSeccion[s.key]=vals.length ? Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*100)/100 : null;
-  });
-  const conValor=SECCIONES_EVAL.filter(s=>porSeccion[s.key]!=null);
-  const total=conValor.reduce((a,s)=>a+porSeccion[s.key],0);
-  const pesoEval=conValor.reduce((a,s)=>a+s.peso,0);
-  const totalPct=pesoEval ? Math.round((total/pesoEval)*1000)/10 : null; // % sobre lo evaluado
-  return {porSeccion, totalPct};
-}
-
-function esVerdeSeccion(valor, peso){ return valor!=null && valor >= peso*UMBRAL_VERDE; }
 
 function obtenerRutas() {
   const tipo=document.querySelector('input[name="rutasModo"]:checked');
@@ -573,26 +376,6 @@ async function guardarRegistro() {
   const obs=document.getElementById('fObservaciones').value.trim();
   if(!supVal||varones===''||mujeres===''||!tema||!fechaE){showToast('Completa todos los campos obligatorios (*).',true);return;}
 
-  // ── Control de destiempo: solo EVALUACIONES DE CHECKLIST con programación ──
-  if(tema==='EVALUACIONES DE CHECKLIST' && !destiempoInfo) {
-    const [supChk, secChk] = supVal.split('|');
-    const progEval = buscarProgEvaluacion(supChk, secChk);
-    if(progEval) {
-      const fechasP = fechasDeProg(progEval);
-      const hoyStr = formatDate(new Date());
-      const enFecha = fechasP.includes(fechaE) && hoyStr <= fechasP[fechasP.length-1];
-      if(enFecha) {
-        destiempoInfo = {
-          progId: progEval.id, fechaProgramada: fechasP[0], fechasProgramadas: fechasP,
-          esDestiempo: false, tipoDestiempo: '', motivoDestiempo: '', reportadoCoordinador: ''
-        };
-      } else {
-        abrirDestiempo(progEval, fechasP, fechaE);
-        return; // el guardado continúa al confirmar el modal
-      }
-    }
-  }
-
   const tpEl=document.querySelector('input[name="tipoPersonal"]:checked');
   const tipoPersonal=tpEl?tpEl.value:'';
   const {fechaLimite,temporada}=calcularFechaLimite(fechaE);
@@ -606,21 +389,6 @@ async function guardarRegistro() {
     return;
   }
 
-  // Notas de evaluación por ruta/sección (solo evaluaciones)
-  let evalResultados=[];
-  if(tema==='EVALUACIONES DE CHECKLIST'){
-    evalResultados=obtenerEvalResultados(false);
-    for(const f of evalResultados){
-      for(const s of SECCIONES_EVAL){
-        const val=f.notas[s.key];
-        if(val!=null && (val<0 || val>s.peso)){
-          showToast(`⚠️ Ruta ${f.ruta||'?'}: la nota de "${s.nombre}" debe estar entre 0 y ${s.peso}.`,true);
-          return;
-        }
-      }
-    }
-  }
-
   const [supervisor,sector]=supVal.split('|');
   const v=parseInt(varones)||0, m=parseInt(mujeres)||0;
   const rutasData=tipoPersonal==='EMPLEADOS'?{tipo:'ninguna',rutas:[]}:obtenerRutas();
@@ -632,28 +400,18 @@ async function guardarRegistro() {
     tipoPersonal:tipoPersonal||'',
     rutasTipo:rutasData.tipo,rutas:rutasData.rutas,
     areas:areasData,
-    // Resultados de evaluación por ruta y sección
-    evalResultados,
-    // Control de destiempo (evaluaciones programadas)
-    fechaProgramada: destiempoInfo?destiempoInfo.fechaProgramada:null,
-    fechasProgramadas: destiempoInfo?destiempoInfo.fechasProgramadas:[],
-    esDestiempo: destiempoInfo?destiempoInfo.esDestiempo:false,
-    tipoDestiempo: destiempoInfo?destiempoInfo.tipoDestiempo:'',
-    motivoDestiempo: destiempoInfo?destiempoInfo.motivoDestiempo:'',
-    reportadoCoordinador: destiempoInfo?destiempoInfo.reportadoCoordinador:'',
     registradoPor:usuarioActual?usuarioActual.nombre:'',
     creadoEn:new Date().toISOString()
   };
   try {
     const refDoc = await addDoc(collection(db,COL),reg);
-    // Si viene de una programación (vinculada o detectada por destiempo), marcarla como ejecutada
-    const progId = document.getElementById('fProgId').value || (destiempoInfo?destiempoInfo.progId:'') || '';
+    // Si viene de una programación, marcarla como ejecutada
+    const progId = document.getElementById('fProgId').value;
     if(progId) {
       try { await updateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
       catch(e2) { console.error('Error al marcar programación:', e2); }
     }
-    if(reg.esDestiempo) showToast('✅ Registro guardado con control de DESTIEMPO justificado.', false);
-    else showToast(progId ? '✅ Registro guardado y programación marcada como ejecutada.' : '✅ Registro guardado correctamente.', false);
+    showToast(progId ? '✅ Registro guardado y programación marcada como ejecutada.' : '✅ Registro guardado correctamente.', false);
     limpiarFormulario();
     document.querySelector('[data-tab="dashboard"]').click();
   } catch(e) {
@@ -678,14 +436,6 @@ function limpiarFormulario() {
   document.querySelectorAll('.radio-chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('fProgId').value='';
   document.getElementById('progVinculadaBanner').style.display='none';
-  document.getElementById('evalProgBanner').style.display='none';
-  document.getElementById('bloqueEvalSecciones').style.display='none';
-  document.getElementById('evNumRutas').value='';
-  document.getElementById('evalGridTable').style.display='none';
-  document.getElementById('evalGridHead').innerHTML='';
-  document.getElementById('evalGridBody').innerHTML='';
-  destiempoInfo=null;
-  dProgActual=null;
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────
@@ -856,7 +606,7 @@ function renderTabla() {
       <td>${i+1}</td>
       <td><strong>${esc(r.supervisor)}</strong></td>
       <td style="font-size:10.5px;">${esc(r.sector||'')}</td>
-      <td style="font-size:10.5px;">${esc(r.tema)}${r.esDestiempo?'<br><span class="badge badge-rojo" style="font-size:9px;" title="Registro a destiempo · '+esc(r.tipoDestiempo||'')+'">⏰ Destiempo</span>':''}${(r.evalResultados&&r.evalResultados.length)?(()=>{const p=calcularResumenEval(r.evalResultados).totalPct;return p==null?'':'<br><span class="badge '+(p>=70?'badge-verde':'badge-rojo')+'" style="font-size:9px;" title="Resultado general de la evaluación">📊 '+p+'%</span>';})():''}</td>
+      <td style="font-size:10.5px;">${esc(r.tema)}</td>
       <td style="text-align:center;">${tipoIcon}</td>
       <td>${r.varones||0}</td>
       <td>${r.mujeres||0}</td>
@@ -891,18 +641,6 @@ window.verDetalle=function(id) {
   let areasHtml='';
   if(r.areas&&r.areas.length)areasHtml=`<div class="det-item full"><div class="det-label">Áreas (${r.areas.length})</div><div class="det-value" style="font-weight:400;font-size:11.5px;">${r.areas.map(x=>`<span class="badge badge-azul" style="margin:2px;">${esc(x.nombre)}: ${x.cantidad}</span>`).join('')}</div></div>`;
 
-  // Bloque de control de destiempo (evaluaciones programadas)
-  let destHtml='';
-  if(r.fechaProgramada||r.esDestiempo){
-    const fechasProgTxt=(r.fechasProgramadas&&r.fechasProgramadas.length)?r.fechasProgramadas.map(formatDateDisplay).join(', '):formatDateDisplay(r.fechaProgramada);
-    destHtml=`
-      <div class="det-item"><div class="det-label">Fecha(s) Programada(s) de Evaluación</div><div class="det-value">📅 ${fechasProgTxt}</div></div>
-      <div class="det-item"><div class="det-label">Registro a Destiempo</div><div class="det-value">${r.esDestiempo?`<span class="badge badge-rojo">⏰ SÍ</span> ${esc(r.tipoDestiempo||'')}`:'<span class="badge badge-verde">✅ NO (en fecha)</span>'}</div></div>
-      ${r.esDestiempo?`
-      <div class="det-item full"><div class="det-label">Motivo del Destiempo / Cambio de Fecha</div><div class="det-value" style="font-weight:400;">${esc(r.motivoDestiempo||'–')}</div></div>
-      <div class="det-item"><div class="det-label">¿Reportado al Coordinador?</div><div class="det-value">${r.reportadoCoordinador==='SI'?'<span class="badge badge-verde">✅ SÍ</span>':'<span class="badge badge-rojo">❌ NO</span>'}</div></div>`:''}`;
-  }
-
   document.getElementById('detalleContent').innerHTML=`
     <div class="det-grid">
       <div class="det-item"><div class="det-label">Supervisor</div><div class="det-value">${esc(r.supervisor)}</div></div>
@@ -917,230 +655,12 @@ window.verDetalle=function(id) {
       <div class="det-item"><div class="det-label">Temporada</div><div class="det-value">${r.temporada==='alta'?'🌡 Alta (Lun-Sáb)':'❄ Baja (Lun-Vie)'}</div></div>
       <div class="det-item"><div class="det-label">Estado</div><div class="det-value"><span class="badge ${meta.badge}">${meta.label}</span>${est.diasRetraso?` · ${est.diasRetraso} día(s)`:''}</div></div>
       <div class="det-item"><div class="det-label">Registrado por</div><div class="det-value">${esc(r.registradoPor||'–')}</div></div>
-      ${destHtml}${rutasHtml}${areasHtml}
+      ${rutasHtml}${areasHtml}
       ${r.observaciones?`<div class="det-item full"><div class="det-label">Observaciones</div><div class="det-value" style="font-weight:400;">${esc(r.observaciones)}</div></div>`:''}
-      ${(r.evalResultados&&r.evalResultados.length)?`
-      <div class="det-item full">
-        <div class="det-label">📊 Detalle de Resultados de la Evaluación</div>
-        <div style="margin-top:8px;">${buildCuadrosEvalHTML(r)}</div>
-        <div class="actions-row" style="margin-top:10px;">
-          <button class="btn btn-pdf btn-sm" onclick="exportEvalPDF('${r.id}')">📄 Informe PDF</button>
-          <button class="btn btn-excel btn-sm" onclick="exportEvalExcel('${r.id}')">📥 Excel</button>
-        </div>
-      </div>`:''}
     </div>`;
   document.getElementById('modalDetalle').classList.add('open');
 };
 window.cerrarDetalle=function(){document.getElementById('modalDetalle').classList.remove('open');};
-
-// ─── INFORME DETALLADO DE EVALUACIÓN (cuadros semáforo) ───────
-// Construye los 2 cuadros en HTML con estilos inline (pantalla + Excel)
-function buildCuadrosEvalHTML(r) {
-  const res=calcularResumenEval(r.evalResultados||[]);
-  const C=SEM_COLORES;
-  const th='padding:6px 8px;border:1px solid #888;font-size:11px;text-align:center;font-weight:700;';
-  const td='padding:5px 8px;border:1px solid #888;font-size:11px;';
-
-  // ── CUADRO 1: Resultados por sección (general del grupo) ──
-  let c1=`<table style="border-collapse:collapse;width:100%;margin-bottom:18px;">
-    <tr>
-      <th style="${th}background:${C.grisHead};">SECCIÓN</th>
-      <th style="${th}background:${C.grisHead};">RESULTADO</th>
-      <th style="${th}background:${C.rojoFuerte};color:#fff;">ROJO</th>
-      <th style="${th}background:${C.verdeFuerte};color:#fff;">VERDE</th>
-      <th style="${th}background:${C.amarillo};">%R</th>
-    </tr>`;
-  SECCIONES_EVAL.forEach(s=>{
-    const val=res.porSeccion[s.key];
-    const lim=Math.round(s.peso*UMBRAL_VERDE*100)/100;
-    const verde=esVerdeSeccion(val,s.peso);
-    const fondo=val==null?'#fff':(verde?C.verdeFuerte:C.rojoFuerte);
-    c1+=`<tr>
-      <td style="${td}background:${C.grisFila};font-weight:600;">${esc(s.nombre)}</td>
-      <td style="${td}text-align:center;font-weight:700;background:${fondo};color:${val==null?'#333':'#fff'};">${val==null?'':val}</td>
-      <td style="${td}text-align:center;">0 - ${(lim-0.01).toFixed(2)}%</td>
-      <td style="${td}text-align:center;">${lim} - ${s.peso}%</td>
-      <td style="${td}text-align:center;font-weight:700;">${s.peso}%</td>
-    </tr>`;
-  });
-  const tPct=res.totalPct;
-  const tVerde=tPct!=null && tPct>=70;
-  c1+=`<tr>
-    <td style="${td}background:#c9c9c9;font-weight:800;">GENERAL DEL GRUPO</td>
-    <td style="${td}text-align:center;font-weight:800;background:${tPct==null?'#fff':(tVerde?C.verdeFuerte:C.rojoFuerte)};color:${tPct==null?'#333':'#fff'};">${tPct==null?'':tPct+'%'}</td>
-    <td style="${td}text-align:center;font-weight:700;background:#c9c9c9;">0 - 69.9%</td>
-    <td style="${td}text-align:center;font-weight:700;background:#c9c9c9;">70 - 100%</td>
-    <td style="${td}text-align:center;font-weight:800;background:#c9c9c9;">100%</td>
-  </tr></table>`;
-
-  // ── CUADRO 2: Resultados por ruta ──
-  let c2=`<table style="border-collapse:collapse;width:100%;">
-    <tr>
-      <th style="${th}background:${C.grisHead};min-width:140px;">RUTA</th>
-      <th style="${th}background:${C.grisHead};">COD</th>` +
-    SECCIONES_EVAL.map(s=>`<th style="${th}background:${C.grisHead};font-size:9.5px;">${esc(s.nombre)}</th>`).join('') + '</tr>';
-  (r.evalResultados||[]).forEach(f=>{
-    c2+=`<tr>
-      <td style="${td}font-weight:600;">${esc(f.ruta||'–')}</td>
-      <td style="${td}text-align:center;">${esc(f.cod||'')}</td>` +
-      SECCIONES_EVAL.map(s=>{
-        const val=f.notas?f.notas[s.key]:null;
-        if(val==null) return `<td style="${td}"></td>`;
-        const verde=esVerdeSeccion(val,s.peso);
-        return `<td style="${td}text-align:center;font-weight:700;background:${verde?C.verdeClaro:C.rojoClaro};color:${verde?'#1a8040':'#cc0000'};">${val}</td>`;
-      }).join('') + '</tr>';
-  });
-  c2+=`<tr>
-    <td style="${td}background:#c9c9c9;font-weight:800;text-align:center;">GENERAL DEL GRUPO</td>
-    <td style="${td}background:#c9c9c9;"></td>` +
-    SECCIONES_EVAL.map(s=>{
-      const val=res.porSeccion[s.key];
-      if(val==null) return `<td style="${td}background:#c9c9c9;"></td>`;
-      const verde=esVerdeSeccion(val,s.peso);
-      return `<td style="${td}text-align:center;font-weight:800;background:${verde?C.verdeFuerte:C.rojoFuerte};color:#fff;">${Math.round(val*10)/10}</td>`;
-    }).join('') + '</tr></table>';
-
-  return `<div style="overflow-x:auto;">${c1}</div><div style="overflow-x:auto;">${c2}</div>`;
-}
-
-// Excel (.xls vía tabla HTML — conserva los colores del semáforo)
-window.exportEvalExcel=function(id){
-  const r=registros.find(x=>x.id===id);
-  if(!r||!(r.evalResultados||[]).length){showToast('Este registro no tiene resultados de evaluación.',true);return;}
-  const html=`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>
-    <h3>INFORME DE RESULTADOS — EVALUACIONES DE CHECKLIST</h3>
-    <p>Supervisor: ${esc(r.supervisor)} · Sector: ${esc(r.sector||'–')} · Fecha de Ejecución: ${formatDateDisplay(r.fechaEjecucion)} · Sistema ETI v5.0 · Verfrut</p>
-    ${buildCuadrosEvalHTML(r)}
-  </body></html>`;
-  const blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`Informe_Evaluacion_${(r.supervisor||'').replace(/\s+/g,'_')}_${r.fechaEjecucion}.xls`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  showToast('📥 Informe Excel de evaluación descargado');
-};
-
-// PDF (jsPDF horizontal con celdas coloreadas)
-window.exportEvalPDF=function(id){
-  const r=registros.find(x=>x.id===id);
-  if(!r||!(r.evalResultados||[]).length){showToast('Este registro no tiene resultados de evaluación.',true);return;}
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF('l','mm','a4');
-  const res=calcularResumenEval(r.evalResultados);
-  const verdeF=[31,157,68], verdeC=[214,245,223], rojoF=[224,0,0], rojoC=[255,217,217],
-        amarillo=[255,255,0], grisH=[217,217,217], grisF=[242,242,242], grisG=[201,201,201],
-        blanco=[255,255,255], negro=[40,40,40], blancoT=[255,255,255],
-        verdeT=[26,128,64], rojoT=[204,0,0];
-  let y=16;
-
-  pdf.setFontSize(15); pdf.setTextColor(0,26,94); pdf.setFont(undefined,'bold');
-  pdf.text('INFORME DE RESULTADOS — EVALUACIONES DE CHECKLIST',15,y); y+=6.5;
-  pdf.setFontSize(9.5); pdf.setTextColor(80,80,80); pdf.setFont(undefined,'normal');
-  pdf.text(`Supervisor: ${r.supervisor} · Sector: ${r.sector||'–'} · Fecha de Ejecución: ${formatDateDisplay(r.fechaEjecucion)} · Generado: ${formatDateDisplay(formatDate(new Date()))} · Sistema ETI v5.0`,15,y); y+=3.5;
-  pdf.setDrawColor(0,26,94); pdf.line(15,y,282,y); y+=8;
-
-  pdf.setLineWidth(0.2);
-  const drawRow=(x0,yy,cells,h)=>{
-    let x=x0;
-    cells.forEach(c=>{
-      pdf.setDrawColor(120,120,120);
-      pdf.setFillColor(c.fill[0],c.fill[1],c.fill[2]);
-      pdf.rect(x,yy,c.w,h,'FD');
-      pdf.setTextColor(c.tc[0],c.tc[1],c.tc[2]);
-      pdf.setFont(undefined,c.bold?'bold':'normal');
-      pdf.setFontSize(c.fs||8.5);
-      const lines=pdf.splitTextToSize(String(c.t==null?'':c.t),c.w-3);
-      let ty=yy+h/2+1.2-(lines.length-1)*1.8;
-      lines.forEach(l=>{
-        if(c.align==='left') pdf.text(l,x+2,ty);
-        else pdf.text(l,x+c.w/2,ty,{align:'center'});
-        ty+=3.6;
-      });
-      x+=c.w;
-    });
-  };
-
-  // ── CUADRO 1 ──
-  pdf.setFontSize(11.5); pdf.setTextColor(0,26,94); pdf.setFont(undefined,'bold');
-  pdf.text('1. RESULTADOS POR SECCIÓN — GENERAL DEL GRUPO',15,y); y+=4;
-  const w1={sec:100,resu:40,rojo:42,verde:42,pr:25};
-  drawRow(15,y,[
-    {t:'SECCIÓN',w:w1.sec,fill:grisH,tc:negro,bold:true,align:'left'},
-    {t:'RESULTADO',w:w1.resu,fill:grisH,tc:negro,bold:true},
-    {t:'ROJO',w:w1.rojo,fill:rojoF,tc:blancoT,bold:true},
-    {t:'VERDE',w:w1.verde,fill:verdeF,tc:blancoT,bold:true},
-    {t:'%R',w:w1.pr,fill:amarillo,tc:negro,bold:true}
-  ],8); y+=8;
-  SECCIONES_EVAL.forEach(s=>{
-    const val=res.porSeccion[s.key];
-    const lim=Math.round(s.peso*UMBRAL_VERDE*100)/100;
-    const verde=esVerdeSeccion(val,s.peso);
-    drawRow(15,y,[
-      {t:s.nombre,w:w1.sec,fill:grisF,tc:negro,bold:false,align:'left'},
-      {t:val==null?'':val,w:w1.resu,fill:val==null?blanco:(verde?verdeF:rojoF),tc:val==null?negro:blancoT,bold:true},
-      {t:`0 - ${(lim-0.01).toFixed(2)}%`,w:w1.rojo,fill:blanco,tc:negro},
-      {t:`${lim} - ${s.peso}%`,w:w1.verde,fill:blanco,tc:negro},
-      {t:s.peso+'%',w:w1.pr,fill:blanco,tc:negro,bold:true}
-    ],8); y+=8;
-  });
-  const tPct=res.totalPct, tVerde=tPct!=null&&tPct>=70;
-  drawRow(15,y,[
-    {t:'GENERAL DEL GRUPO',w:w1.sec,fill:grisG,tc:negro,bold:true,align:'left'},
-    {t:tPct==null?'':tPct+'%',w:w1.resu,fill:tPct==null?blanco:(tVerde?verdeF:rojoF),tc:tPct==null?negro:blancoT,bold:true},
-    {t:'0 - 69.9%',w:w1.rojo,fill:grisG,tc:negro,bold:true},
-    {t:'70 - 100%',w:w1.verde,fill:grisG,tc:negro,bold:true},
-    {t:'100%',w:w1.pr,fill:grisG,tc:negro,bold:true}
-  ],8); y+=15;
-
-  // ── CUADRO 2 ──
-  pdf.setFontSize(11.5); pdf.setTextColor(0,26,94); pdf.setFont(undefined,'bold');
-  pdf.text('2. RESULTADOS POR RUTA',15,y); y+=4;
-  const wRuta=60, wCod=18, wSec=31, rowH=9;
-  const headCells=[
-    {t:'RUTA',w:wRuta,fill:grisH,tc:negro,bold:true},
-    {t:'COD',w:wCod,fill:grisH,tc:negro,bold:true}
-  ].concat(SECCIONES_EVAL.map(s=>({t:s.nombre,w:wSec,fill:grisH,tc:negro,bold:true,fs:6.4})));
-  drawRow(15,y,headCells,10); y+=10;
-  r.evalResultados.forEach(f=>{
-    if(y>186){ pdf.addPage(); y=16; drawRow(15,y,headCells,10); y+=10; }
-    const cells=[
-      {t:f.ruta||'–',w:wRuta,fill:blanco,tc:negro,bold:true,align:'left',fs:7.8},
-      {t:f.cod||'',w:wCod,fill:blanco,tc:negro}
-    ].concat(SECCIONES_EVAL.map(s=>{
-      const val=f.notas?f.notas[s.key]:null;
-      if(val==null) return {t:'',w:wSec,fill:blanco,tc:negro};
-      const verde=esVerdeSeccion(val,s.peso);
-      return {t:val,w:wSec,fill:verde?verdeC:rojoC,tc:verde?verdeT:rojoT,bold:true};
-    }));
-    drawRow(15,y,cells,rowH); y+=rowH;
-  });
-  if(y>186){ pdf.addPage(); y=16; }
-  const genCells=[
-    {t:'GENERAL DEL GRUPO',w:wRuta,fill:grisG,tc:negro,bold:true},
-    {t:'',w:wCod,fill:grisG,tc:negro}
-  ].concat(SECCIONES_EVAL.map(s=>{
-    const val=res.porSeccion[s.key];
-    if(val==null) return {t:'',w:wSec,fill:grisG,tc:negro};
-    const verde=esVerdeSeccion(val,s.peso);
-    return {t:Math.round(val*10)/10,w:wSec,fill:verde?verdeF:rojoF,tc:blancoT,bold:true};
-  }));
-  drawRow(15,y,genCells,rowH); y+=rowH;
-
-  // Leyenda + firmas
-  y+=8;
-  if(y>175){ pdf.addPage(); y=20; }
-  pdf.setFontSize(8.5); pdf.setTextColor(90,90,90); pdf.setFont(undefined,'normal');
-  pdf.text('Criterio: VERDE = nota ≥ 70% del peso de la sección · ROJO = nota < 70% · General del grupo: promedio de rutas evaluadas.',15,y); y+=14;
-  pdf.setDrawColor(150,150,150);
-  pdf.line(30,y,100,y); pdf.line(180,y,250,y);
-  pdf.setFontSize(9); pdf.setTextColor(80,80,80);
-  pdf.text('Coordinador de Relaciones Laborales',38,y+5);
-  pdf.text('Jefatura de Gestión Humana',192,y+5);
-
-  pdf.save(`Informe_Evaluacion_${(r.supervisor||'').replace(/\s+/g,'_')}_${r.fechaEjecucion}.pdf`);
-  showToast('📄 Informe PDF de evaluación descargado');
-};
 
 // ─── ENVÍO DE ACTAS ───────────────────────────────────────────
 window.abrirEnvio=function(id) {
@@ -1208,12 +728,6 @@ function exportarExcel() {
       'Días Retraso':est.diasRetraso||0,'% Avance':est.estado==='proceso'?est.avance:est.estado==='cumplido'?100:0,
       'Rutas':r.rutasTipo==='varias'?'VARIAS':(r.rutas||[]).map(x=>x.codigo+' '+x.nombre).join('; '),
       'Áreas':(r.areas||[]).map(x=>x.nombre+': '+x.cantidad).join('; '),
-      'Resultado Evaluación (%)':(r.evalResultados&&r.evalResultados.length)?(calcularResumenEval(r.evalResultados).totalPct??''):'',
-      'Fecha(s) Programada(s)':(r.fechasProgramadas&&r.fechasProgramadas.length)?r.fechasProgramadas.join('; '):(r.fechaProgramada||''),
-      'Destiempo':r.esDestiempo?'SÍ':(r.fechaProgramada?'NO':''),
-      'Tipo Destiempo':r.tipoDestiempo||'',
-      'Motivo Destiempo':r.motivoDestiempo||'',
-      'Reportado a Coordinador':r.reportadoCoordinador||'',
       'Observaciones':r.observaciones||'','Registrado Por':r.registradoPor||''
     };
   });

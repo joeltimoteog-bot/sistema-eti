@@ -262,10 +262,6 @@
       <span class="alert-icon">🔗</span>
       <div><strong>Ejecutando programación vinculada</strong> — al guardar este registro, la programación se marcará automáticamente como ✅ Ejecutada. <a href="#" onclick="desvincularProg();return false;" style="color:var(--rojo);font-weight:700;">Desvincular</a></div>
     </div>
-    <div class="alert-card alert-amarillo" id="evalProgBanner" style="display:none;">
-      <span class="alert-icon">📅</span>
-      <div id="evalProgTexto">–</div>
-    </div>
     <form id="etiForm" onsubmit="return false;">
 
       <div class="section-block">
@@ -347,26 +343,6 @@
             <input type="number" id="fNumAreas" min="1" max="50" placeholder="Ej: 2" />
           </div>
           <div id="areasItemsCont"></div>
-        </div>
-      </div>
-
-      <div class="section-block" id="bloqueEvalSecciones" style="display:none;">
-        <h3 class="section-subtitle">📝 Resultados de la Evaluación por Ruta y Sección</h3>
-        <div class="obs-alert" style="margin-bottom:10px;">
-          📊 Ingresa la nota obtenida por cada ruta en cada sección. Nota máxima por sección:
-          Legislación Laboral <strong>18</strong> · Bienestar Social <strong>32</strong> · Ética Empresarial <strong>6</strong> ·
-          Seguridad y Salud <strong>12</strong> · Compromiso Medioambiental <strong>16</strong> · Sustentabilidad <strong>16</strong> (Total 100).
-          Celda <strong style="color:#1a8040;">VERDE</strong> si la nota es ≥ 70% de la sección; <strong style="color:#cc0000;">ROJA</strong> si es menor.
-        </div>
-        <div class="form-group" style="max-width:220px;margin-bottom:10px;">
-          <label for="evNumRutas">N° de Rutas Evaluadas (1-30)</label>
-          <input type="number" id="evNumRutas" min="1" max="30" placeholder="Ej: 5" />
-        </div>
-        <div class="table-scroll">
-          <table class="data-table" id="evalGridTable" style="display:none;">
-            <thead id="evalGridHead"></thead>
-            <tbody id="evalGridBody"></tbody>
-          </table>
         </div>
       </div>
 
@@ -626,57 +602,6 @@
     <div class="actions-row" style="justify-content:flex-end;margin-top:0;">
       <button class="btn btn-danger btn-sm" onclick="cerrarEnvio()">✕ Cancelar</button>
       <button class="btn btn-primary" onclick="guardarEnvio()">💾 Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL CONTROL DE DESTIEMPO (EVALUACIONES) -->
-<div class="modal-overlay" id="modalDestiempo">
-  <div class="modal-box" style="max-width:580px;">
-    <div class="modal-header">
-      <h3>⏰ Control de Destiempo — Evaluaciones</h3>
-      <button class="modal-close" onclick="cerrarDestiempo()">✕</button>
-    </div>
-    <div class="alert-card alert-rojo" style="margin-bottom:14px;">
-      <span class="alert-icon">🚨</span>
-      <div id="dMensajeProg">–</div>
-    </div>
-    <div class="form-group" style="margin-bottom:12px;">
-      <label>Para continuar, registra la fecha en la cual EJECUTASTE las evaluaciones *</label>
-      <input type="date" id="dFechaReal" />
-    </div>
-    <div class="alert-card alert-azul" id="dTipoBanner" style="display:none;margin-bottom:12px;">
-      <span class="alert-icon">📝</span>
-      <div id="dTipoTexto">–</div>
-    </div>
-    <div class="form-group" style="margin-bottom:12px;">
-      <label id="dMotivoLabel">Motivo *</label>
-      <select id="dMotivo">
-        <option value="">— Seleccionar motivo —</option>
-        <option value="LLUVIA / CLIMA">🌧 Lluvia / Clima</option>
-        <option value="PARO / BLOQUEO">🚧 Paro / Bloqueo</option>
-        <option value="LABORES ATRASADAS">🌾 Labores atrasadas en campo</option>
-        <option value="FALTA DE PERSONAL">👥 Falta de personal</option>
-        <option value="DECISION DE ADMINISTRACION">👔 Decisión de administración</option>
-        <option value="CRUCE CON OTRA ACTIVIDAD">📆 Cruce con otra actividad</option>
-        <option value="OLVIDO / CARGA LABORAL">📋 Olvido / Carga laboral</option>
-        <option value="OTRO">📝 Otro motivo</option>
-      </select>
-    </div>
-    <div class="form-group" style="margin-bottom:12px;">
-      <label>Detalle del motivo</label>
-      <textarea id="dDetalle" rows="2" placeholder="Describe brevemente la situación..."></textarea>
-    </div>
-    <div class="form-group" style="margin-bottom:14px;">
-      <label>¿Reportaste a tu coordinador el destiempo / cambio de fecha? *</label>
-      <div class="radio-row">
-        <label class="radio-chip"><input type="radio" name="dReporto" value="SI" /> ✅ SÍ, lo reporté</label>
-        <label class="radio-chip"><input type="radio" name="dReporto" value="NO" /> ❌ NO lo reporté</label>
-      </div>
-    </div>
-    <div class="actions-row" style="justify-content:flex-end;margin-top:0;">
-      <button class="btn btn-danger btn-sm" onclick="cerrarDestiempo()">✕ Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarDestiempo()">💾 Continuar y Guardar</button>
     </div>
   </div>
 </div>
