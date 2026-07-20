@@ -23,6 +23,12 @@ const COL_SUPS = 'supervisores_eti';
 const COL_PROG = 'programaciones_eti';
 const COL_USERS = 'usuarios_eti';
 
+// ─── ENLACE AL SISTEMA DE RR.LL. ──────────────────────────────
+// Cuando tengas la URL de tu sistema de Relaciones Laborales
+// (por ejemplo la web app de Apps Script), pégala entre las comillas.
+// Si está vacía, el botón "Sistema RR.LL" no se muestra.
+const URL_SISTEMA_RRLL = '';
+
 // Seed inicial de supervisores (solo si la colección está vacía)
 const SUPS_SEED = [
   {nombre:'POOL TAMAYO RODRIGUEZ', sector:'SECTOR EL PAPAYO'},
@@ -65,6 +71,7 @@ let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMe
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initLogin();
+  aplicarLinkRRLL();
   document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
 });
 
@@ -134,6 +141,17 @@ function pintarUsuarioUI(u) {
   setText('sfNombre', u.nombre);
   setText('sfRol', ROL_LABEL[u.rol]||u.rol);
   setText('userBadge', u.nombre.split(' ').slice(0,2).join(' '));
+  aplicarLinkRRLL();
+}
+
+// Muestra los botones "Sistema RR.LL" solo si hay URL configurada
+function aplicarLinkRRLL() {
+  ['linkRRLL','linkRRLLLogin'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(URL_SISTEMA_RRLL) { el.href = URL_SISTEMA_RRLL; el.style.display = 'inline-flex'; }
+    else el.style.display = 'none';
+  });
 }
 
 // Muestra u oculta la navegación según el rol del usuario
