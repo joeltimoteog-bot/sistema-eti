@@ -610,7 +610,7 @@
         <div class="form-group">
           <label for="uSupervisor">Supervisor vinculado *</label>
           <select id="uSupervisor"><option value="">— Seleccionar supervisor —</option></select>
-          <small>Debe existir en la lista de supervisores</small>
+          <small>¿No aparece en la lista? Agrégalo abajo en "Nuevo Integrante"</small>
         </div>
         <div class="form-group">
           <label for="uUsuario">Usuario *</label>
@@ -624,6 +624,32 @@
       <div class="actions-row">
         <button class="btn btn-primary btn-sm" id="btnUserGuardar"><svg class="ico sm"><use href="#i-check"/></svg> Crear Cuenta</button>
         <button class="btn btn-secondary btn-sm" id="btnUserSugerir"><svg class="ico sm"><use href="#i-refresh"/></svg> Sugerir usuario y contraseña</button>
+      </div>
+    </div>
+
+    <div class="section-block" style="border-color:var(--verde-line);background:var(--verde-light);">
+      <h3 class="section-subtitle" style="color:var(--verde);"><svg class="ico"><use href="#i-user-check"/></svg> Agregar Nuevo Integrante (supervisor nuevo en la empresa)</h3>
+      <p style="font-size:12px;color:var(--texto-2);margin-bottom:14px;line-height:1.6;">Usa esta opción cuando el supervisor <strong>recién ingresa a la empresa</strong> y no aparece en la lista de arriba. En un solo paso se registra el supervisor con su sector <strong>y</strong> se crea su cuenta de acceso.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="niNombre">Nombre Completo *</label>
+          <input type="text" id="niNombre" placeholder="Ej: CARLOS RAMIREZ SILVA" style="text-transform:uppercase;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="niSector">Sector Designado *</label>
+          <input type="text" id="niSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="niUsuario">Usuario * <span style="font-weight:400;color:var(--texto-3);">(se sugiere solo)</span></label>
+          <input type="text" id="niUsuario" placeholder="Ej: cramirez" style="text-transform:lowercase;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="niPassword">Contraseña *</label>
+          <input type="text" id="niPassword" placeholder="Ej: cramirez2026" autocomplete="off" />
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-success" id="btnNuevoIntegrante"><svg class="ico sm"><use href="#i-plus"/></svg> Crear Supervisor y Cuenta</button>
       </div>
     </div>
     <div class="toolbar">

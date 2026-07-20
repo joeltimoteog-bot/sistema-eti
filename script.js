@@ -2284,19 +2284,69 @@ function initUsuariosAdmin() {
   document.getElementById('btnUserGuardar')?.addEventListener('click', guardarUsuario);
   document.getElementById('btnUserSugerir')?.addEventListener('click', sugerirCredenciales);
   document.getElementById('btnUsersExcel')?.addEventListener('click', exportUsuariosExcel);
+  document.getElementById('btnNuevoIntegrante')?.addEventListener('click', crearNuevoIntegrante);
+  // Sugerir usuario y contraseña automáticamente al escribir el nombre del nuevo integrante
+  document.getElementById('niNombre')?.addEventListener('blur', function() {
+    const nombre = this.value.trim();
+    const uEl = document.getElementById('niUsuario');
+    const pEl = document.getElementById('niPassword');
+    if(!nombre || (uEl.value.trim() && pEl.value.trim())) return;
+    const cred = generarCredenciales(nombre);
+    if(!cred) return;
+    if(!uEl.value.trim()) uEl.value = cred.usuario;
+    if(!pEl.value.trim()) pEl.value = cred.password;
+  });
 }
 
-function sugerirCredenciales() {
-  const nombre = document.getElementById('uSupervisor').value;
-  if(!nombre) { showToast('Primero elige el supervisor.', true); return; }
+// ─── NUEVO INTEGRANTE: crea supervisor + cuenta en un solo paso ───
+async function crearNuevoIntegrante() {
+  if(usuarioActual?.rol !== 'admin') { showToast('Solo administradores.', true); return; }
+  const nombre = document.getElementById('niNombre').value.trim().toUpperCase();
+  let sector = document.getElementById('niSector').value.trim().toUpperCase();
+  const usuario = document.getElementById('niUsuario').value.trim().toLowerCase();
+  const password = document.getElementById('niPassword').value.trim();
+
+  if(!nombre || !sector || !usuario || !password) { showToast('Completa nombre, sector, usuario y contraseña.', true); return; }
+  if(password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', true); return; }
+  if(!sector.startsWith('SECTOR')) sector = 'SECTOR ' + sector;
+  if(usuariosCuentas.some(c => c.usuario===usuario) || USUARIOS.some(c => c.usuario===usuario)) {
+    showToast('⚠️ Ese nombre de usuario ya existe. Elige otro.', true); return;
+  }
+  if(supervisores.some(s => s.nombre===nombre && s.sector===sector && s.estado==='activo')) {
+    showToast('⚠️ Ese supervisor con ese sector ya existe. Créale solo la cuenta arriba.', true); return;
+  }
+  try {
+    // 1) Registrar el supervisor (aparece en todos los selectores)
+    await addDoc(collection(db, COL_SUPS), {nombre, sector, estado:'activo', creadoEn:new Date().toISOString()});
+    // 2) Crear su cuenta de acceso
+    await addDoc(collection(db, COL_USERS), {
+      usuario, password, supervisorNombre: nombre,
+      estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
+    });
+    ['niNombre','niSector','niUsuario','niPassword'].forEach(id => document.getElementById(id).value='');
+    showToast(`✅ ${nombre} registrado como supervisor de ${sector}. Usuario: ${usuario} · Contraseña: ${password}`);
+  } catch(e) { console.error(e); showToast('❌ Error al crear el nuevo integrante.', true); }
+}
+
+// Genera un usuario \u00fanico a partir del nombre (inicial + primer apellido)
+function generarCredenciales(nombre) {
   const partes = nombre.trim().toLowerCase().split(/\s+/);
+  if(!partes[0]) return null;
   let base = (partes[0][0]||'') + (partes[1]||partes[0]);
   base = base.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
   let usuario = base, n = 2;
   const existe = u => usuariosCuentas.some(c => c.usuario===u) || USUARIOS.some(c => c.usuario===u);
   while(existe(usuario)) { usuario = base + n; n++; }
-  document.getElementById('uUsuario').value = usuario;
-  document.getElementById('uPassword').value = usuario + new Date().getFullYear();
+  return { usuario, password: usuario + new Date().getFullYear() };
+}
+
+function sugerirCredenciales() {
+  const nombre = document.getElementById('uSupervisor').value;
+  if(!nombre) { showToast('Primero elige el supervisor.', true); return; }
+  const cred = generarCredenciales(nombre);
+  if(!cred) return;
+  document.getElementById('uUsuario').value = cred.usuario;
+  document.getElementById('uPassword').value = cred.password;
 }
 
 async function guardarUsuario() {
