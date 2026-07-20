@@ -27,7 +27,7 @@ const COL_USERS = 'usuarios_eti';
 // Cuando tengas la URL de tu sistema de Relaciones Laborales
 // (por ejemplo la web app de Apps Script), pégala entre las comillas.
 // Si está vacía, el botón "Sistema RR.LL" no se muestra.
-const URL_SISTEMA_RRLL = '';
+const URL_SISTEMA_RRLL = 'https://joeltimoteog-bot.github.io/sistema-rl-verfrut/index.html';
 
 // Seed inicial de supervisores (solo si la colección está vacía)
 const SUPS_SEED = [
