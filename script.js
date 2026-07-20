@@ -146,7 +146,7 @@ function pintarUsuarioUI(u) {
 
 // Muestra los botones "Sistema RR.LL" solo si hay URL configurada
 function aplicarLinkRRLL() {
-  ['linkRRLL','linkRRLLLogin'].forEach(id => {
+  ['linkRRLL','linkRRLLLogin','linkRRLLTop'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     if(URL_SISTEMA_RRLL) { el.href = URL_SISTEMA_RRLL; el.style.display = 'inline-flex'; }
