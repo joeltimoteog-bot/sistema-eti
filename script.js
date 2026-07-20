@@ -1,7 +1,9 @@
 // ════════════════════════════════════════════════
-//  SISTEMA ETI v5.0 — VERFRUT · RAPEL
+//  SISTEMA ETI v6.0 — VERFRUT · RAPEL
 //  Capacitaciones de Ética e Integridad
 //  Firebase Firestore · Chart.js · SheetJS · jsPDF
+//  v6: diseño corporativo, alertas de vencimiento,
+//      módulo de supervisores y sincronización Sheets
 // ════════════════════════════════════════════════
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -19,6 +21,7 @@ const db = getFirestore(app);
 const COL = 'capacitaciones';
 const COL_SUPS = 'supervisores_eti';
 const COL_PROG = 'programaciones_eti';
+const COL_USERS = 'usuarios_eti';
 
 // Seed inicial de supervisores (solo si la colección está vacía)
 const SUPS_SEED = [
@@ -46,10 +49,16 @@ const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','
 let registros = [];
 let supervisores = [];
 let programaciones = [];
+let usuariosCuentas = [];
 let usuarioActual = null;
 let unsubscribe = null;
 let unsubSups = null;
 let unsubProg = null;
+let unsubUsers = null;
+let uiInicializada = false;
+let resumenMostrado = false;
+let dataRegsCargada = false;
+let dataProgCargada = false;
 let chEstados=null, chTendencia=null;
 let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMensual=null, stTemporada=null, stPersonal=null;
 
@@ -66,34 +75,87 @@ function initLogin() {
   document.getElementById('loginUser').addEventListener('keypress', e => { if(e.key==='Enter') document.getElementById('loginPass').focus(); });
 }
 
-function intentarLogin() {
+async function intentarLogin() {
   const user = document.getElementById('loginUser').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value;
   const errDiv = document.getElementById('loginError');
-  const found = USUARIOS.find(u => u.usuario===user && u.password===pass);
-  if(!found) { errDiv.style.display='block'; return; }
+  let found = USUARIOS.find(u => u.usuario===user && u.password===pass);
+
+  // Cuentas de supervisores registradas en la nube
+  if(!found && user && pass) {
+    try {
+      const snap = await getDocs(collection(db, COL_USERS));
+      const cuentas = snap.docs.map(d => ({id:d.id, ...d.data()}));
+      const c = cuentas.find(u => (u.usuario||'').toLowerCase()===user && u.password===pass && u.estado!=='inactivo');
+      if(c) found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
+    } catch(e) { console.error('Error consultando cuentas:', e); }
+  }
+
+  if(!found) { errDiv.style.display='flex'; return; }
   errDiv.style.display='none';
   usuarioActual = found;
+  resumenMostrado = false;
+  dataRegsCargada = false;
+  dataProgCargada = false;
   document.getElementById('loginPage').style.display='none';
   document.getElementById('appPage').style.display='block';
-  document.getElementById('userBadge').textContent = '👤 '+found.nombre+(found.rol==='admin'?' · Admin':'');
+  pintarUsuarioUI(found);
   const btnClear=document.getElementById('btnClearAll');
   if(btnClear) btnClear.style.display=found.rol==='admin'?'inline-flex':'none';
   actualizarHeaderFecha();
-  initTabs();
-  initForm();
-  initFiltros();
-  initBotones();
-  initProgramacion();
+  if(!uiInicializada) {
+    initTabs();
+    initForm();
+    initFiltros();
+    initBotones();
+    initProgramacion();
+    initNotificaciones();
+    initPanelSupervisor();
+    initUsuariosAdmin();
+    uiInicializada = true;
+  }
+  aplicarRol();
   escucharFirebase();
   escucharSupervisores();
   escucharProgramaciones();
+  escucharUsuarios();
+}
+
+function iniciales(nombre) {
+  return (nombre||'').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '–';
+}
+
+const ROL_LABEL = { admin:'Administrador', usuario:'Equipo RRLL', supervisor:'Supervisor' };
+
+function pintarUsuarioUI(u) {
+  const ini = iniciales(u.nombre);
+  setText('sfAvatar', ini);
+  setText('chipAvatar', ini);
+  setText('sfNombre', u.nombre);
+  setText('sfRol', ROL_LABEL[u.rol]||u.rol);
+  setText('userBadge', u.nombre.split(' ').slice(0,2).join(' '));
+}
+
+// Muestra u oculta la navegación según el rol del usuario
+function aplicarRol() {
+  const rol = usuarioActual?.rol || 'usuario';
+  document.querySelectorAll('#sideNav [data-role]').forEach(el => {
+    const r = el.dataset.role;
+    const visible = rol==='supervisor' ? r==='supervisor'
+      : (r==='staff' || (r==='admin' && rol==='admin'));
+    el.style.display = visible ? '' : 'none';
+  });
+  const inicial = rol==='supervisor' ? 'mipanel' : 'dashboard';
+  const btn = document.querySelector(`.tab-btn[data-tab="${inicial}"]`);
+  if(btn) btn.click();
+  if(rol==='supervisor') setText('supHeroNombre', 'Hola, '+usuarioActual.nombre.split(' ').slice(0,2).join(' '));
 }
 
 function cerrarSesion() {
   if(unsubscribe) { unsubscribe(); unsubscribe=null; }
   if(unsubSups) { unsubSups(); unsubSups=null; }
   if(unsubProg) { unsubProg(); unsubProg=null; }
+  if(unsubUsers) { unsubUsers(); unsubUsers=null; }
   usuarioActual=null;
   document.getElementById('appPage').style.display='none';
   document.getElementById('loginPage').style.display='flex';
@@ -110,6 +172,7 @@ function escucharFirebase() {
       ...d.data(),
       ...calcularFechaLimite(d.data().fechaEjecucion)
     }));
+    dataRegsCargada = true;
     renderTodo();
   }, err => {
     console.error('Firebase error:', err);
@@ -122,6 +185,7 @@ function renderTodo() {
   renderTabla();
   renderRanking();
   renderEstadisticas();
+  renderPanelSupervisor();
 }
 
 // ─── TEMPORADA / DÍAS HÁBILES ─────────────────────────────────
@@ -186,10 +250,10 @@ function calcularEstado(reg) {
 }
 
 const ESTADO_META = {
-  cumplido: { label:'✅ Cumplido',        badge:'badge-verde',   color:'#1a8040' },
-  proceso:  { label:'⏳ En Proceso',      badge:'badge-azul',    color:'#0050c8' },
-  leve:     { label:'⚠️ Retraso Leve',    badge:'badge-amarillo',color:'#c89010' },
-  critico:  { label:'🚨 Retraso Crítico', badge:'badge-rojo',    color:'#cc0000' }
+  cumplido: { label:'Cumplido',        badge:'badge-verde',   color:'#157A46' },
+  proceso:  { label:'En Proceso',      badge:'badge-azul',    color:'#1B55D6' },
+  leve:     { label:'Retraso Leve',    badge:'badge-amarillo',color:'#B07B10' },
+  critico:  { label:'Retraso Crítico', badge:'badge-rojo',    color:'#C62828' }
 };
 
 // ─── HEADER ───────────────────────────────────────────────────
@@ -197,7 +261,7 @@ function actualizarHeaderFecha() {
   const hoy=new Date();
   const temporada=detectarTemporada(hoy);
   const badge=document.getElementById('seasonBadge');
-  badge.textContent=temporada==='alta'?'🌡 Temporada Alta':'❄ Temporada Baja';
+  badge.textContent=temporada==='alta'?'Temporada Alta':'Temporada Baja';
   badge.className='season-badge '+temporada;
   const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -211,7 +275,11 @@ function initTabs() {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+      const sec=document.getElementById('tab-'+btn.dataset.tab);
+      if(sec) sec.classList.add('active');
+      if(btn.dataset.title) setText('tbTitle', btn.dataset.title);
+      setText('tbSub', btn.dataset.sub||'');
+      window.scrollTo({top:0});
     });
   });
 }
@@ -358,11 +426,11 @@ function mostrarPreview() {
   const v=parseInt(document.getElementById('fVarones').value)||0;
   const m=parseInt(document.getElementById('fMujeres').value)||0;
   document.getElementById('previewGrid').innerHTML=`
-    <div class="preview-item"><div class="p-label">Temporada</div><div class="p-value">${temporada==='alta'?'🌡 Alta':'❄ Baja'}</div></div>
+    <div class="preview-item"><div class="p-label">Temporada</div><div class="p-value">${temporada==='alta'?'Alta':'Baja'}</div></div>
     <div class="preview-item"><div class="p-label">Días hábiles</div><div class="p-value">Lun–${temporada==='alta'?'Sáb':'Vie'}</div></div>
     <div class="preview-item highlight"><div class="p-label">Fecha Límite</div><div class="p-value">${formatDateDisplay(fechaLimite)}</div></div>
-    <div class="preview-item"><div class="p-label">Estado</div><div class="p-value">${restante>=0?'✅ En plazo':'🔴 Vencido'}</div></div>
-    <div class="preview-item"><div class="p-label">Total</div><div class="p-value">${v+m} (${v}♂ + ${m}♀)</div></div>`;
+    <div class="preview-item"><div class="p-label">Estado</div><div class="p-value" style="color:${restante>=0?'var(--verde)':'var(--rojo)'};">${restante>=0?'En plazo':'Vencido'}</div></div>
+    <div class="preview-item"><div class="p-label">Total</div><div class="p-value">${v+m} (${v} V + ${m} M)</div></div>`;
   document.getElementById('previewBox').style.display='block';
 }
 
@@ -400,6 +468,7 @@ async function guardarRegistro() {
     tipoPersonal:tipoPersonal||'',
     rutasTipo:rutasData.tipo,rutas:rutasData.rutas,
     areas:areasData,
+    codigosCapacitados:parseCodigos(document.getElementById('fCodigos')?.value||''),
     registradoPor:usuarioActual?usuarioActual.nombre:'',
     creadoEn:new Date().toISOString()
   };
@@ -418,6 +487,11 @@ async function guardarRegistro() {
     console.error(e);
     showToast('❌ Error al guardar. Verifica tu conexión.',true);
   }
+}
+
+// Convierte un texto libre en lista de códigos únicos
+function parseCodigos(txt) {
+  return [...new Set(String(txt||'').split(/[\s,;\n]+/).map(c=>c.trim()).filter(Boolean))];
 }
 
 function limpiarFormulario() {
@@ -466,9 +540,9 @@ function renderDashboard() {
   else{
     aDiv.innerHTML=alertas.slice(0,8).map(r=>{
       if(r.estado==='proceso')
-        return `<div class="alert-card alert-amarillo"><span class="alert-icon">⏰</span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.sector)}<br>Vence <strong>${formatDateDisplay(r.fechaLimite)}</strong> · Avance ${r.avance}% · ${esc(r.tema)}</div></div>`;
+        return `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-clock"/></svg></span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.sector)}<br>Vence <strong>${formatDateDisplay(r.fechaLimite)}</strong> · Avance ${r.avance}% · ${esc(r.tema)}</div></div>`;
       const meta=ESTADO_META[r.estado];
-      return `<div class="alert-card ${r.estado==='critico'?'alert-rojo':'alert-amarillo'}"><span class="alert-icon">${r.estado==='critico'?'🚨':'⚠️'}</span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.sector)}<br>${meta.label} · <strong>${r.diasRetraso} día(s) hábil(es)</strong> · Límite: ${formatDateDisplay(r.fechaLimite)}</div></div>`;
+      return `<div class="alert-card ${r.estado==='critico'?'alert-rojo':'alert-amarillo'}"><span class="alert-icon"><svg class="ico"><use href="#i-alert"/></svg></span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.sector)}<br>${meta.label} · <strong>${r.diasRetraso} día(s) hábil(es)</strong> · Límite: ${formatDateDisplay(r.fechaLimite)}</div></div>`;
     }).join('');
   }
 
@@ -478,7 +552,7 @@ function renderDashboard() {
   else{
     uDiv.innerHTML=conEstado.slice(0,6).map(r=>{
       const meta=ESTADO_META[r.estado];
-      return `<div class="alert-card alert-azul" style="cursor:pointer;" onclick="verDetalle('${r.id}')"><span class="alert-icon">📚</span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.tema)}<br>${formatDateDisplay(r.fechaEjecucion)} · ${r.total} trabajadores · <span class="badge ${meta.badge}">${meta.label}</span></div></div>`;
+      return `<div class="alert-card alert-azul" style="cursor:pointer;" onclick="verDetalle('${r.id}')"><span class="alert-icon"><svg class="ico"><use href="#i-list"/></svg></span><div><strong>${esc(r.supervisor)}</strong> — ${esc(r.tema)}<br>${formatDateDisplay(r.fechaEjecucion)} · ${r.total} trabajadores · <span class="badge ${meta.badge}">${meta.label}</span></div></div>`;
     }).join('');
   }
 
@@ -494,6 +568,9 @@ function renderDashboard() {
 
   // Charts
   renderChartsDashboard(cumplidos,proceso,conEstado);
+
+  // Campana de notificaciones + resumen al iniciar sesión
+  renderNotificaciones();
 }
 
 function renderAvanceSupervisores(conEstado) {
@@ -601,7 +678,7 @@ function renderTabla() {
     const pct=r.estado==='cumplido'?100:r.estado==='proceso'?r.avance:r.retraso;
     const fillClass=r.estado==='cumplido'?'pf-verde':r.estado==='proceso'?'pf-azul':r.estado==='leve'?'pf-amarillo':'pf-rojo';
     const pctLabel=r.estado==='proceso'?`${r.avance}% avance`:r.estado==='cumplido'?'100%':`${r.retraso}% retraso`;
-    const tipoIcon=r.tipoPersonal==='OBREROS'?'🌾':r.tipoPersonal==='EMPLEADOS'?'💼':'–';
+    const tipoIcon=r.tipoPersonal==='OBREROS'?'<span class="badge badge-verde">Obreros</span>':r.tipoPersonal==='EMPLEADOS'?'<span class="badge badge-azul">Empl.</span>':'–';
     return `<tr>
       <td>${i+1}</td>
       <td><strong>${esc(r.supervisor)}</strong></td>
@@ -621,9 +698,9 @@ function renderTabla() {
       <td><span class="badge ${meta.badge}">${meta.label}</span></td>
       <td style="max-width:130px;font-size:10px;">${esc((r.observaciones||'').substring(0,45))}${(r.observaciones||'').length>45?'…':''}</td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-secondary btn-sm" onclick="verDetalle('${r.id}')" title="Ver detalle">👁️</button>
-        ${!r.fechaEnvio?`<button class="btn btn-primary btn-sm" onclick="abrirEnvio('${r.id}')" title="Registrar envío">📤</button>`:''}
-        ${esAdmin?`<button class="btn btn-danger btn-sm" onclick="eliminarRegistro('${r.id}')" title="Eliminar">🗑</button>`:''}
+        <button class="btn btn-secondary btn-sm" onclick="verDetalle('${r.id}')" title="Ver detalle"><svg class="ico sm"><use href="#i-eye"/></svg></button>
+        ${!r.fechaEnvio?`<button class="btn btn-primary btn-sm" onclick="abrirEnvio('${r.id}')" title="Registrar envío"><svg class="ico sm"><use href="#i-send"/></svg></button>`:''}
+        ${esAdmin?`<button class="btn btn-danger btn-sm" onclick="eliminarRegistro('${r.id}')" title="Eliminar"><svg class="ico sm"><use href="#i-trash"/></svg></button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -636,8 +713,11 @@ window.verDetalle=function(id) {
   const est=calcularEstado(r);
   const meta=ESTADO_META[est.estado];
   let rutasHtml='';
-  if(r.rutasTipo==='varias')rutasHtml='<div class="det-item full"><div class="det-label">Rutas</div><div class="det-value">📦 Varias rutas (sin detalle)</div></div>';
+  if(r.rutasTipo==='varias')rutasHtml='<div class="det-item full"><div class="det-label">Rutas</div><div class="det-value">Varias rutas (sin detalle)</div></div>';
+  else if(r.rutasTexto)rutasHtml=`<div class="det-item full"><div class="det-label">Rutas</div><div class="det-value" style="font-weight:400;">${esc(r.rutasTexto)}</div></div>`;
   else if(r.rutas&&r.rutas.length)rutasHtml=`<div class="det-item full"><div class="det-label">Rutas (${r.rutas.length})</div><div class="det-value" style="font-weight:400;font-size:11.5px;">${r.rutas.map(x=>`<span class="badge badge-azul" style="margin:2px;">${esc(x.codigo)} ${esc(x.nombre)}</span>`).join('')}</div></div>`;
+  let codigosHtml='';
+  if(r.codigosCapacitados&&r.codigosCapacitados.length)codigosHtml=`<div class="det-item full"><div class="det-label">Códigos de capacitados (${r.codigosCapacitados.length})</div><div class="det-value" style="font-weight:400;font-size:11.5px;">${r.codigosCapacitados.map(c=>`<span class="badge badge-gris" style="margin:2px;">${esc(c)}</span>`).join('')}</div></div>`;
   let areasHtml='';
   if(r.areas&&r.areas.length)areasHtml=`<div class="det-item full"><div class="det-label">Áreas (${r.areas.length})</div><div class="det-value" style="font-weight:400;font-size:11.5px;">${r.areas.map(x=>`<span class="badge badge-azul" style="margin:2px;">${esc(x.nombre)}: ${x.cantidad}</span>`).join('')}</div></div>`;
 
@@ -646,16 +726,16 @@ window.verDetalle=function(id) {
       <div class="det-item"><div class="det-label">Supervisor</div><div class="det-value">${esc(r.supervisor)}</div></div>
       <div class="det-item"><div class="det-label">Sector</div><div class="det-value">${esc(r.sector||'–')}</div></div>
       <div class="det-item"><div class="det-label">Tema</div><div class="det-value">${esc(r.tema)}</div></div>
-      <div class="det-item"><div class="det-label">Tipo de Personal</div><div class="det-value">${r.tipoPersonal==='OBREROS'?'🌾 Obreros':r.tipoPersonal==='EMPLEADOS'?'💼 Empleados':'–'}</div></div>
-      <div class="det-item"><div class="det-label">Varones / Mujeres</div><div class="det-value">${r.varones||0} ♂ · ${r.mujeres||0} ♀</div></div>
+      <div class="det-item"><div class="det-label">Tipo de Personal</div><div class="det-value">${r.tipoPersonal==='OBREROS'?'Obreros (Campo)':r.tipoPersonal==='EMPLEADOS'?'Empleados (Adm.)':'–'}</div></div>
+      <div class="det-item"><div class="det-label">Varones / Mujeres</div><div class="det-value">${r.varones||0} varones · ${r.mujeres||0} mujeres</div></div>
       <div class="det-item"><div class="det-label">Total Capacitados</div><div class="det-value">${r.total||0} trabajadores</div></div>
       <div class="det-item"><div class="det-label">Fecha de Ejecución</div><div class="det-value">${formatDateDisplay(r.fechaEjecucion)}</div></div>
       <div class="det-item"><div class="det-label">Fecha Límite (3 días hábiles)</div><div class="det-value" style="color:var(--rojo);">${formatDateDisplay(r.fechaLimite)}</div></div>
       <div class="det-item"><div class="det-label">Fecha de Envío</div><div class="det-value">${r.fechaEnvio?formatDateDisplay(r.fechaEnvio):'Pendiente'}</div></div>
-      <div class="det-item"><div class="det-label">Temporada</div><div class="det-value">${r.temporada==='alta'?'🌡 Alta (Lun-Sáb)':'❄ Baja (Lun-Vie)'}</div></div>
+      <div class="det-item"><div class="det-label">Temporada</div><div class="det-value">${r.temporada==='alta'?'Alta (Lun-Sáb)':'Baja (Lun-Vie)'}</div></div>
       <div class="det-item"><div class="det-label">Estado</div><div class="det-value"><span class="badge ${meta.badge}">${meta.label}</span>${est.diasRetraso?` · ${est.diasRetraso} día(s)`:''}</div></div>
       <div class="det-item"><div class="det-label">Registrado por</div><div class="det-value">${esc(r.registradoPor||'–')}</div></div>
-      ${rutasHtml}${areasHtml}
+      ${rutasHtml}${areasHtml}${codigosHtml}
       ${r.observaciones?`<div class="det-item full"><div class="det-label">Observaciones</div><div class="det-value" style="font-weight:400;">${esc(r.observaciones)}</div></div>`:''}
     </div>`;
   document.getElementById('modalDetalle').classList.add('open');
@@ -724,10 +804,11 @@ function exportarExcel() {
       'Supervisor':r.supervisor,'Sector':r.sector||'','Tema':r.tema,
       'Tipo Personal':r.tipoPersonal||'','Varones':r.varones||0,'Mujeres':r.mujeres||0,'Total':r.total||0,
       'Fecha Ejecución':r.fechaEjecucion,'Fecha Límite':r.fechaLimite,'Fecha Envío':r.fechaEnvio||'PENDIENTE',
-      'Temporada':r.temporada,'Estado':ESTADO_META[est.estado].label.replace(/^[^\s]+\s/,''),
+      'Temporada':r.temporada,'Estado':ESTADO_META[est.estado].label,
       'Días Retraso':est.diasRetraso||0,'% Avance':est.estado==='proceso'?est.avance:est.estado==='cumplido'?100:0,
-      'Rutas':r.rutasTipo==='varias'?'VARIAS':(r.rutas||[]).map(x=>x.codigo+' '+x.nombre).join('; '),
+      'Rutas':r.rutasTipo==='varias'?'VARIAS':(r.rutasTexto||(r.rutas||[]).map(x=>x.codigo+' '+x.nombre).join('; ')),
       'Áreas':(r.areas||[]).map(x=>x.nombre+': '+x.cantidad).join('; '),
+      'Códigos Capacitados':(r.codigosCapacitados||[]).join(', '),
       'Observaciones':r.observaciones||'','Registrado Por':r.registradoPor||''
     };
   });
@@ -776,14 +857,14 @@ function renderRanking() {
   if(!ranking.length){div.innerHTML='<p class="empty-msg">Sin registros para rankear.</p>';return;}
   div.innerHTML=ranking.map((r,i)=>{
     const posClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
-    const posLabel=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+    const posLabel=`${i+1}°`;
     const color=r.cumplimiento>=80?'#1a8040':r.cumplimiento>=50?'#c89010':'#cc0000';
     const fillClass=r.cumplimiento>=80?'pf-verde':r.cumplimiento>=50?'pf-amarillo':'pf-rojo';
     return `<div class="rank-item">
       <div class="rank-pos ${posClass}">${posLabel}</div>
       <div class="rank-info">
         <div class="rank-name">${esc(r.nombre)}</div>
-        <div class="rank-sub">${r.total} capacitaciones · ${r.trabajadores.toLocaleString()} trabajadores (${r.varones}♂ ${r.mujeres}♀) · ✅${r.cumplidos} ⏳${r.proceso} 🚨${r.retrasos}</div>
+        <div class="rank-sub">${r.total} capacitaciones · ${r.trabajadores.toLocaleString()} trabajadores (${r.varones} V · ${r.mujeres} M) · Cumplidas ${r.cumplidos} · En proceso ${r.proceso} · Retrasos ${r.retrasos}</div>
       </div>
       <div class="rank-bar">
         <div class="progress-track"><div class="progress-fill ${fillClass}" style="width:${r.cumplimiento}%"></div></div>
@@ -1020,11 +1101,11 @@ function escucharSupervisores() {
 function poblarSelectsSupervisores() {
   const activos = supervisores.filter(s => s.estado === 'activo');
   const opts = activos.map(s => `<option value="${esc(s.nombre)}|${esc(s.sector)}">${esc(s.nombre)} – ${esc(s.sector.replace(/^SECTOR\s*/i,''))}</option>`).join('');
-  [['fSupervisor','— Seleccionar supervisor —'],['pSupervisor','— Seleccionar —'],['pFiltSup','Todos los supervisores']].forEach(([id,first]) => {
+  [['fSupervisor','— Seleccionar supervisor —'],['pSupervisor','— Seleccionar —'],['pFiltSup','Todos los supervisores'],['uSupervisor','— Seleccionar supervisor —']].forEach(([id,first]) => {
     const el = document.getElementById(id);
     if(!el) return;
     const cur = el.value;
-    el.innerHTML = `<option value="">${first}</option>` + (id==='pFiltSup'
+    el.innerHTML = `<option value="">${first}</option>` + ((id==='pFiltSup'||id==='uSupervisor')
       ? [...new Set(activos.map(s=>s.nombre))].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')
       : opts);
     el.value = cur;
@@ -1064,16 +1145,16 @@ function renderListaSups() {
   if(!supervisores.length) { div.innerHTML='<p class="empty-msg">Sin supervisores.</p>'; return; }
   const esAdmin = usuarioActual?.rol === 'admin';
   div.innerHTML = supervisores.map(s => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:${s.estado==='activo'?'var(--azul-bg)':'#f5f5f5'};border:1px solid var(--gris-border);border-radius:8px;margin-bottom:6px;${s.estado!=='activo'?'opacity:.55;':''}">
+    <div class="sup-item ${s.estado!=='activo'?'inactivo':''}">
       <div>
         <div style="font-weight:700;font-size:12px;">${esc(s.nombre)}</div>
         <div style="font-size:10px;color:var(--gris-text);">${esc(s.sector)} ${s.estado!=='activo'?'· <span style="color:var(--rojo);font-weight:700;">INACTIVO</span>':''}</div>
       </div>
       <div style="display:flex;gap:5px;">
         ${s.estado==='activo'
-          ? `<button class="btn btn-danger btn-sm" onclick="toggleSup('${s.id}','inactivo')" title="Desactivar">⛔</button>`
-          : `<button class="btn btn-success btn-sm" onclick="toggleSup('${s.id}','activo')" title="Reactivar">✅</button>`}
-        ${esAdmin?`<button class="btn btn-danger btn-sm" onclick="eliminarSup('${s.id}')" title="Eliminar">🗑</button>`:''}
+          ? `<button class="btn btn-danger btn-sm" onclick="toggleSup('${s.id}','inactivo')" title="Desactivar"><svg class="ico sm"><use href="#i-lock"/></svg></button>`
+          : `<button class="btn btn-success btn-sm" onclick="toggleSup('${s.id}','activo')" title="Reactivar"><svg class="ico sm"><use href="#i-check"/></svg></button>`}
+        ${esAdmin?`<button class="btn btn-danger btn-sm" onclick="eliminarSup('${s.id}')" title="Eliminar"><svg class="ico sm"><use href="#i-trash"/></svg></button>`:''}
       </div>
     </div>`).join('');
 }
@@ -1097,8 +1178,10 @@ function escucharProgramaciones() {
   const q = query(collection(db, COL_PROG), orderBy('fechaProgramada'));
   unsubProg = onSnapshot(q, snap => {
     programaciones = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    dataProgCargada = true;
     renderProgramaciones();
     renderDashboard(); // refresca alertas y KPIs
+    renderPanelSupervisor();
   }, err => console.error('Prog error:', err));
 }
 
@@ -1178,7 +1261,7 @@ async function guardarProgramacion() {
       creadoEn: new Date().toISOString()
     });
     limpiarProg();
-    showToast(`📅 Programado: ${diasDesignados} día(s) designado(s) para el sector`);
+    showToast(`📅 Programado: ${fechas.length} día(s) designado(s) para el sector`);
   } catch(e) { showToast('❌ Error al programar', true); }
 }
 
@@ -1229,7 +1312,7 @@ function limpiarProg() {
 
 // Estado calculado de una programación (soporta rango de días designados)
 function estadoProg(p) {
-  if(p.estado === 'ejecutada') return {key:'ejecutada', label:'✅ Ejecutada', badge:'badge-verde', dias:0};
+  if(p.estado === 'ejecutada') return {key:'ejecutada', label:'Ejecutada', badge:'badge-verde', dias:0};
   const {ini, fin, dias} = rangoProg(p);
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const fIni = new Date(ini + 'T12:00:00'); fIni.setHours(0,0,0,0);
@@ -1237,19 +1320,19 @@ function estadoProg(p) {
 
   // Hoy dentro del rango designado → EN CURSO (o "Para hoy" si es 1 solo día)
   if(hoy >= fIni && hoy <= fFin) {
-    if(fIni.getTime() === fFin.getTime()) return {key:'hoy', label:'📍 Para HOY', badge:'badge-amarillo', dias:0};
+    if(fIni.getTime() === fFin.getTime()) return {key:'hoy', label:'Para HOY', badge:'badge-amarillo', dias:0};
     const hoyStr = formatDate(hoy);
     const fechasP = fechasDeProg(p);
     const diaActual = Math.max(1, fechasP.filter(f => f <= hoyStr).length);
-    return {key:'curso', label:`🟠 En Curso (día ${diaActual} de ${dias})`, badge:'badge-naranja', dias:0, diaActual, diasTot:dias};
+    return {key:'curso', label:`En Curso (día ${diaActual} de ${dias})`, badge:'badge-naranja', dias:0, diaActual, diasTot:dias};
   }
   if(fIni > hoy) {
     const diasCal = Math.round((fIni - hoy) / 86400000);
-    return {key:'proxima', label:'🔵 Próxima', badge:'badge-azul', dias:diasCal};
+    return {key:'proxima', label:'Próxima', badge:'badge-azul', dias:diasCal};
   }
   // Vencida: días hábiles de atraso DESDE EL ÚLTIMO DÍA designado
   const dr = contarDiasHabiles(fFin, hoy);
-  return {key:'vencida', label:'🚨 Vencida', badge:'badge-rojo', dias:dr};
+  return {key:'vencida', label:'Vencida', badge:'badge-rojo', dias:dr};
 }
 
 function renderProgramaciones() {
@@ -1314,9 +1397,9 @@ function renderProgramaciones() {
       <td>${diasTxt}</td>
       <td style="max-width:140px;font-size:10px;">${esc((p.observaciones||'').substring(0,40))}${(p.observaciones||'').length>40?'…':''}</td>
       <td style="white-space:nowrap;">
-        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución">▶</button>` : ''}
-        ${p.estado!=='ejecutada' ? `<button class="btn btn-secondary btn-sm" onclick="abrirReprog('${p.id}')" title="Editar / Reprogramar fechas">✏️</button>` : ''}
-        ${esAdmin || p.estado!=='ejecutada' ? `<button class="btn btn-danger btn-sm" onclick="eliminarProg('${p.id}')" title="Eliminar">🗑</button>` : ''}
+        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución"><svg class="ico sm"><use href="#i-play"/></svg></button>` : ''}
+        ${p.estado!=='ejecutada' ? `<button class="btn btn-secondary btn-sm" onclick="abrirReprog('${p.id}')" title="Editar / Reprogramar fechas"><svg class="ico sm"><use href="#i-edit"/></svg></button>` : ''}
+        ${esAdmin || p.estado!=='ejecutada' ? `<button class="btn btn-danger btn-sm" onclick="eliminarProg('${p.id}')" title="Eliminar"><svg class="ico sm"><use href="#i-trash"/></svg></button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1362,7 +1445,7 @@ function exportProgExcel() {
       'Fecha Fin': p.fechaFin||p.fechaProgramada,
       'Fechas Designadas': fechasDeProg(p).join(', '),
       'Días Designados': rangoProg(p).dias,
-      'Estado': e.label.replace(/^[^\s]+\s/,''),
+      'Estado': e.label,
       'Días': e.key==='vencida' ? e.dias+' hábiles de atraso' : e.key==='proxima' ? 'faltan '+e.dias : '',
       'Reprogramaciones': p.vecesReprogramada||0,
       'Motivos de Cambio': (p.reprogramaciones||[]).map(r=>r.motivo).join('; '),
@@ -1498,20 +1581,20 @@ function renderAlertasProg() {
   vencidas.slice(0,5).forEach(p => {
     const rg = rangoProg(p);
     const fechasTxt = rg.ini===rg.fin ? `el <strong>${formatDateDisplay(rg.ini)}</strong>` : `del <strong>${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}</strong> (${rg.dias} días designados)`;
-    html += `<div class="alert-card alert-rojo"><span class="alert-icon">🚨</span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada ${fechasTxt} — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
+    html += `<div class="alert-card alert-rojo"><span class="alert-icon"><svg class="ico"><use href="#i-alert"/></svg></span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada ${fechasTxt} — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
   });
   enCurso.forEach(p => {
     const rg = rangoProg(p);
-    html += `<div class="alert-card alert-amarillo"><span class="alert-icon">🟠</span><div><strong>EN CURSO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — <strong>día ${p._est.diaActual} de ${p._est.diasTot} designados</strong> (${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}). Al terminar el último día, registra la ejecución.</div></div>`;
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-activity"/></svg></span><div><strong>EN CURSO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — <strong>día ${p._est.diaActual} de ${p._est.diasTot} designados</strong> (${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}). Al terminar el último día, registra la ejecución.</div></div>`;
   });
   paraHoy.forEach(p => {
-    html += `<div class="alert-card alert-amarillo"><span class="alert-icon">📍</span><div><strong>HOY — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-clock"/></svg></span><div><strong>HOY — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
   });
   proximas.slice(0,4).forEach(p => {
-    html += `<div class="alert-card alert-azul"><span class="alert-icon">🔜</span><div><strong>Próxima — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> (en ${p._est.dias} día(s))</div></div>`;
+    html += `<div class="alert-card alert-azul"><span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span><div><strong>Próxima — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> (en ${p._est.dias} día(s))</div></div>`;
   });
   if(vencidas.length) {
-    html += `<div style="margin-top:8px;"><button class="btn btn-pdf btn-sm" onclick="document.getElementById('btnIncumplPdf').click()">📄 Generar Informe de Incumplimientos</button></div>`;
+    html += `<div style="margin-top:8px;"><button class="btn btn-pdf btn-sm" onclick="document.getElementById('btnIncumplPdf').click()"><svg class="ico sm"><use href="#i-file"/></svg> Generar Informe de Incumplimientos</button></div>`;
   }
   div.innerHTML = html;
 }
@@ -1641,7 +1724,7 @@ function renderCalendario() {
       chips += `<span class="cal-chip ${cls}" title="${esc(p.supervisor)} · ${esc(p.tema)} · ${esc(p.sector||'')}${p._diasTot>1?` · Día ${p._nDia} de ${p._diasTot}`:''}" onclick="verProgDia('${fStr}')">${temaCorto}: ${esc(nombreCorto)}${diaTag}</span>`;
     });
     if(progs.length>3) chips += `<span class="cal-mas" onclick="verProgDia('${fStr}')">+${progs.length-3} más...</span>`;
-    html += `<div class="cal-dia ${esHoy?'hoy':''} ${!habil?'no-habil':''}"><div class="cal-dia-num">${d}${esHoy?' 📍':''}</div>${chips}</div>`;
+    html += `<div class="cal-dia ${esHoy?'hoy':''} ${!habil?'no-habil':''}"><div class="cal-dia-num">${d}${esHoy?' · HOY':''}</div>${chips}</div>`;
   }
   // Relleno siguiente mes
   const totalCeldas = inicio + ultimoDia.getDate();
@@ -1824,8 +1907,8 @@ function renderMotivosReprog() {
         const nueTxt = r.nuevaIni===r.nuevaFin ? formatDateDisplay(r.nuevaIni) : `${formatDateDisplay(r.nuevaIni)}–${formatDateDisplay(r.nuevaFin)}`;
         cambioTxt = `<span style="color:var(--gris-text);">${antTxt}</span> ➜ <strong>${nueTxt}</strong>`;
       }
-      return `<div class="alert-card alert-naranja" style="background:var(--naranja-light);border-left:4px solid var(--naranja);">
-        <span class="alert-icon">🔄</span>
+      return `<div class="alert-card alert-naranja">
+        <span class="alert-icon"><svg class="ico"><use href="#i-refresh"/></svg></span>
         <div style="font-size:11.5px;">
           <strong>${esc(r.supervisor)}</strong> · ${esc(r.sector||'')} · ${esc(r.tema)}<br>
           ${cambioTxt}<br>
@@ -1857,3 +1940,371 @@ window.quitarFechaP = function(i) {
   progFechasSel.splice(i, 1);
   renderPFechasChips();
 };
+
+// ════════════════════════════════════════════════
+//  CAMPANA DE NOTIFICACIONES Y RESUMEN DE VENCIMIENTOS
+// ════════════════════════════════════════════════
+function initNotificaciones() {
+  const btn = document.getElementById('btnNotif');
+  const panel = document.getElementById('notifPanel');
+  if(!btn || !panel) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    panel.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if(panel.classList.contains('open') && !panel.contains(e.target) && e.target!==btn) panel.classList.remove('open');
+  });
+}
+
+// Calcula todas las alertas de vencimiento vigentes
+function calcularAlertas() {
+  const esSup = usuarioActual?.rol === 'supervisor';
+  const miNombre = usuarioActual?.nombre;
+
+  let progs = programaciones.map(p => ({...p, _est: estadoProg(p)}));
+  let regs = registros.map(r => ({...r, ...calcularEstado(r)}));
+  if(esSup) {
+    progs = progs.filter(p => p.supervisor === miNombre);
+    regs = regs.filter(r => r.supervisor === miNombre);
+  }
+
+  const alertas = [];
+  // Programaciones vencidas (lo más urgente)
+  progs.filter(p => p._est.key==='vencida').sort((a,b)=>b._est.dias-a._est.dias).forEach(p => {
+    alertas.push({tipo:'rojo', icono:'i-alert', titulo:`Programación VENCIDA — ${p.supervisor}`,
+      detalle:`${p.tema} · ${p.sector||''}`, meta:`${p._est.dias} día(s) hábil(es) de atraso · fechas: ${fechasDeProg(p).map(f=>formatDateDisplay(f)).join(', ')}`, urgente:true});
+  });
+  // Para hoy / en curso
+  progs.filter(p => p._est.key==='hoy' || p._est.key==='curso').forEach(p => {
+    alertas.push({tipo:'ambar', icono:'i-clock', titulo:`${p._est.key==='hoy'?'Programada para HOY':'En curso'} — ${p.supervisor}`,
+      detalle:`${p.tema} · ${p.sector||''}`, meta: p._est.key==='curso'?`Día ${p._est.diaActual} de ${p._est.diasTot} designados`:'Ejecutar y registrar hoy', urgente:false});
+  });
+  // Próximas a vencer (3, 2, 1 días)
+  progs.filter(p => p._est.key==='proxima' && p._est.dias<=3).sort((a,b)=>a._est.dias-b._est.dias).forEach(p => {
+    alertas.push({tipo:'azul', icono:'i-calendar', titulo:`${p._est.dias===1?'Vence MAÑANA':'En '+p._est.dias+' días'} — ${p.supervisor}`,
+      detalle:`${p.tema} · ${p.sector||''}`, meta:`Programada para el ${formatDateDisplay(p.fechaProgramada)}`, urgente:false});
+  });
+  // Actas con retraso
+  regs.filter(r => r.estado==='leve'||r.estado==='critico').sort((a,b)=>b.diasRetraso-a.diasRetraso).forEach(r => {
+    alertas.push({tipo:'rojo', icono:'i-send', titulo:`Actas con retraso — ${r.supervisor}`,
+      detalle:`${r.tema} · ejecutada el ${formatDateDisplay(r.fechaEjecucion)}`, meta:`${r.diasRetraso} día(s) hábil(es) de retraso · límite era ${formatDateDisplay(r.fechaLimite)}`, urgente:true});
+  });
+  // Actas por vencer (avance >= 66%)
+  regs.filter(r => r.estado==='proceso' && r.avance>=66).forEach(r => {
+    alertas.push({tipo:'naranja', icono:'i-clock', titulo:`Actas por vencer — ${r.supervisor}`,
+      detalle:`${r.tema} · ${r.sector||''}`, meta:`Enviar actas antes del ${formatDateDisplay(r.fechaLimite)}`, urgente:false});
+  });
+  return alertas;
+}
+
+function renderNotificaciones() {
+  const dot = document.getElementById('notifDot');
+  const bell = document.getElementById('btnNotif');
+  const body = document.getElementById('notifBody');
+  if(!dot || !bell || !body) return;
+
+  const alertas = calcularAlertas();
+  const urgentes = alertas.filter(a => a.urgente).length;
+
+  // Contador en campana y en menú lateral
+  dot.style.display = alertas.length ? 'flex' : 'none';
+  dot.textContent = alertas.length > 99 ? '99+' : alertas.length;
+  bell.classList.toggle('has-alerts', alertas.length>0);
+  bell.classList.toggle('urgente', urgentes>0);
+  setText('notifResumen', alertas.length ? `${alertas.length} alerta(s) · ${urgentes} urgente(s)` : 'Todo al día');
+
+  const ncProg = document.getElementById('navCountProg');
+  if(ncProg) {
+    const nVenc = programaciones.filter(p => estadoProg(p).key==='vencida').length;
+    ncProg.style.display = nVenc ? 'inline-flex' : 'none';
+    ncProg.textContent = nVenc;
+  }
+
+  if(!alertas.length) {
+    body.innerHTML = `<div class="notif-empty"><svg class="ico"><use href="#i-check-circle"/></svg><br>Sin alertas de vencimiento.<br>Todo al día.</div>`;
+  } else {
+    body.innerHTML = alertas.slice(0,20).map(a => `
+      <div class="notif-item n-${a.tipo}">
+        <div class="n-icon"><svg class="ico sm"><use href="#${a.icono}"/></svg></div>
+        <div><strong>${esc(a.titulo)}</strong><br>${esc(a.detalle)}<div class="n-meta">${esc(a.meta)}</div></div>
+      </div>`).join('');
+  }
+
+  mostrarResumenSiCorresponde(alertas);
+}
+
+// Modal de resumen al iniciar sesión (una vez por sesión)
+function mostrarResumenSiCorresponde(alertas) {
+  if(resumenMostrado || !usuarioActual) return;
+  if(!dataRegsCargada || !dataProgCargada) return;
+  resumenMostrado = true;
+  if(!alertas.length) return;
+
+  const nVencidas = alertas.filter(a => a.icono==='i-alert').length;
+  const nHoy = alertas.filter(a => a.tipo==='ambar').length;
+  const nProx = alertas.filter(a => a.tipo==='azul').length;
+  const nActas = alertas.filter(a => a.icono==='i-send' || a.tipo==='naranja').length;
+
+  document.getElementById('resumenContent').innerHTML = `
+    <div class="resumen-alertas-head">
+      <div class="resumen-alertas-icon"><svg class="ico lg"><use href="#i-bell"/></svg></div>
+      <div style="font-size:13px;line-height:1.6;">Hola <strong>${esc(usuarioActual.nombre.split(' ')[0])}</strong>, tienes <strong>${alertas.length} alerta(s)</strong> de vencimiento que requieren tu atención.</div>
+    </div>
+    <div class="resumen-stats">
+      ${nVencidas?`<div class="resumen-stat rs-rojo"><div class="rs-num">${nVencidas}</div><div class="rs-label">Vencidas</div></div>`:''}
+      ${nHoy?`<div class="resumen-stat rs-ambar"><div class="rs-num">${nHoy}</div><div class="rs-label">Hoy / En curso</div></div>`:''}
+      ${nProx?`<div class="resumen-stat rs-azul"><div class="rs-num">${nProx}</div><div class="rs-label">Próximas ≤3 días</div></div>`:''}
+      ${nActas?`<div class="resumen-stat rs-naranja rs-ambar"><div class="rs-num">${nActas}</div><div class="rs-label">Actas</div></div>`:''}
+    </div>
+    <div style="max-height:220px;overflow-y:auto;">
+      ${alertas.slice(0,6).map(a=>`
+        <div class="notif-item n-${a.tipo}" style="border:1px solid var(--linea);">
+          <div class="n-icon"><svg class="ico sm"><use href="#${a.icono}"/></svg></div>
+          <div><strong>${esc(a.titulo)}</strong><div class="n-meta">${esc(a.meta)}</div></div>
+        </div>`).join('')}
+      ${alertas.length>6?`<p style="font-size:11px;color:var(--texto-3);text-align:center;margin-top:6px;">y ${alertas.length-6} alerta(s) más — revisa la campana de notificaciones</p>`:''}
+    </div>`;
+  document.getElementById('modalResumen').classList.add('open');
+}
+window.cerrarResumen = function() { document.getElementById('modalResumen').classList.remove('open'); };
+
+// ════════════════════════════════════════════════
+//  MI PANEL — MÓDULO DE REGISTRO PARA SUPERVISORES
+// ════════════════════════════════════════════════
+function initPanelSupervisor() {
+  const upd = () => {
+    const v=parseInt(document.getElementById('sVarones').value)||0;
+    const m=parseInt(document.getElementById('sMujeres').value)||0;
+    document.getElementById('sTotalCalc').value=(v+m)+' trabajadores';
+  };
+  ['sVarones','sMujeres'].forEach(id => document.getElementById(id)?.addEventListener('input', upd));
+  document.getElementById('sCodigos')?.addEventListener('input', function() {
+    setText('sCodigosCount', parseCodigos(this.value).length + ' códigos ingresados');
+  });
+  document.getElementById('btnSupGuardar')?.addEventListener('click', guardarRegistroSupervisor);
+  document.getElementById('btnSupCancelar')?.addEventListener('click', cerrarFormSup);
+}
+
+function cerrarFormSup() {
+  document.getElementById('supFormPanel').style.display='none';
+  ['sProgId','sFechaEjec','sVarones','sMujeres','sRutas','sCodigos','sObs'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  document.getElementById('sTotalCalc').value='0 trabajadores';
+  setText('sCodigosCount','0 códigos ingresados');
+}
+
+function renderPanelSupervisor() {
+  if(!usuarioActual || usuarioActual.rol!=='supervisor') return;
+  const nombre = usuarioActual.nombre;
+  const mias = programaciones.filter(p => p.supervisor===nombre).map(p => ({...p, _est: estadoProg(p)}));
+  const pendientes = mias.filter(p => p._est.key!=='ejecutada');
+  const vencidas = pendientes.filter(p => p._est.key==='vencida');
+  const proximas = pendientes.filter(p => p._est.key==='proxima' && p._est.dias<=3);
+  const misRegs = registros.filter(r => r.supervisor===nombre);
+
+  setText('skPendientes', pendientes.length);
+  setText('skProximas', proximas.length);
+  setText('skVencidas', vencidas.length);
+  setText('skEjecutadas', misRegs.length);
+
+  const ncSup = document.getElementById('navCountSup');
+  if(ncSup) {
+    const n = vencidas.length + pendientes.filter(p=>p._est.key==='hoy'||p._est.key==='curso').length;
+    ncSup.style.display = n ? 'inline-flex' : 'none';
+    ncSup.textContent = n;
+  }
+
+  // Lista de programaciones del supervisor
+  const div = document.getElementById('supProgramaciones');
+  if(div) {
+    const orden = {vencida:0, curso:1, hoy:1, proxima:2, ejecutada:3};
+    const lista = [...mias].sort((a,b) => orden[a._est.key]-orden[b._est.key] || (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
+    if(!lista.length) div.innerHTML = '<p class="empty-msg">No tienes capacitaciones programadas aún.</p>';
+    else div.innerHTML = lista.map(p => {
+      const rg = rangoProg(p);
+      const d = new Date(rg.ini+'T12:00:00');
+      const MESES=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+      const cls = p._est.key==='vencida'?'vencida':(p._est.key==='hoy'||p._est.key==='curso')?'hoy-curso':p._est.key==='ejecutada'?'ejecutada':'proxima';
+      const fechasTxt = rg.ini===rg.fin ? formatDateDisplay(rg.ini) : `${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)} (${rg.dias} días)`;
+      return `<div class="prog-card ${cls}">
+        <div class="prog-card-fecha"><div class="pcf-dia">${d.getDate()}</div><div class="pcf-mes">${MESES[d.getMonth()]}</div></div>
+        <div class="prog-card-info">
+          <div class="prog-card-tema">${esc(p.tema)}</div>
+          <div class="prog-card-meta">${esc(p.sector||'')} · Fechas: ${fechasTxt}${p.observaciones?`<br>Nota: ${esc(p.observaciones)}`:''}</div>
+        </div>
+        <span class="badge ${p._est.badge}">${p._est.label}${p._est.key==='vencida'?` · ${p._est.dias} día(s) de atraso`:p._est.key==='proxima'?` · en ${p._est.dias} día(s)`:''}</span>
+        ${p._est.key!=='ejecutada' ? `<button class="btn btn-primary btn-sm" onclick="abrirRegistroSup('${p.id}')"><svg class="ico sm"><use href="#i-plus"/></svg> Registrar</button>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // Mis registros enviados
+  const rDiv = document.getElementById('supMisRegistros');
+  if(rDiv) {
+    if(!misRegs.length) rDiv.innerHTML = '<p class="empty-msg">Aún no has registrado capacitaciones.</p>';
+    else rDiv.innerHTML = misRegs.slice(0,10).map(r => `
+      <div class="alert-card alert-verde">
+        <span class="alert-icon"><svg class="ico"><use href="#i-check-circle"/></svg></span>
+        <div><strong>${esc(r.tema)}</strong> · ${formatDateDisplay(r.fechaEjecucion)}<br>
+        ${r.total||0} trabajadores (${r.varones||0} V · ${r.mujeres||0} M)${(r.codigosCapacitados||[]).length?` · ${r.codigosCapacitados.length} códigos`:''}${r.rutasTexto?` · Rutas: ${esc(r.rutasTexto)}`:''}</div>
+      </div>`).join('');
+  }
+}
+
+window.abrirRegistroSup = function(id) {
+  const p = programaciones.find(x => x.id===id);
+  if(!p) return;
+  const rg = rangoProg(p);
+  document.getElementById('sProgId').value = id;
+  document.getElementById('sFechaEjec').value = rg.fin <= formatDate(new Date()) ? rg.fin : formatDate(new Date());
+  document.getElementById('supProgInfo').style.display='flex';
+  document.getElementById('supProgInfoTxt').innerHTML = `Registrando: <strong>${esc(p.tema)}</strong> · ${esc(p.sector||'')} · fechas designadas: <strong>${rg.fechas.map(f=>formatDateDisplay(f)).join(' · ')}</strong>`;
+  document.getElementById('supFormPanel').style.display='block';
+  document.getElementById('supFormPanel').scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+async function guardarRegistroSupervisor() {
+  const progId = document.getElementById('sProgId').value;
+  const p = programaciones.find(x => x.id===progId);
+  if(!p) { showToast('Selecciona una programación de la lista (botón Registrar).', true); return; }
+  const fechaE = document.getElementById('sFechaEjec').value;
+  const vTxt = document.getElementById('sVarones').value;
+  const mTxt = document.getElementById('sMujeres').value;
+  if(!fechaE || vTxt==='' || mTxt==='') { showToast('Completa fecha, varones y mujeres.', true); return; }
+  const v = parseInt(vTxt)||0, m = parseInt(mTxt)||0;
+  if(v+m<=0) { showToast('El total de capacitados debe ser mayor a 0.', true); return; }
+  const rutasTxt = document.getElementById('sRutas').value.trim();
+  const codigos = parseCodigos(document.getElementById('sCodigos').value);
+  const obs = document.getElementById('sObs').value.trim();
+  const {fechaLimite, temporada} = calcularFechaLimite(fechaE);
+
+  const reg = {
+    supervisor: p.supervisor, sector: p.sector||'', varones:v, mujeres:m, total:v+m,
+    tema: p.tema, fechaEjecucion: fechaE, fechaLimite, temporada,
+    fechaEnvio: null, observaciones: obs,
+    tipoPersonal:'', rutasTipo: rutasTxt?'texto':'ninguna', rutas:[], rutasTexto: rutasTxt,
+    areas:[], codigosCapacitados: codigos,
+    registradoPor: usuarioActual.nombre, viaSupervisor: true,
+    creadoEn: new Date().toISOString()
+  };
+  try {
+    const refDoc = await addDoc(collection(db, COL), reg);
+    try { await updateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+    catch(e2) { console.error('Error al marcar programación:', e2); }
+    cerrarFormSup();
+    showToast('✅ Capacitación registrada. ¡Gracias! Relaciones Laborales ya puede verla.');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al guardar. Verifica tu conexión.', true);
+  }
+}
+
+// ════════════════════════════════════════════════
+//  GESTIÓN DE CUENTAS DE USUARIOS (ADMIN)
+// ════════════════════════════════════════════════
+function escucharUsuarios() {
+  if(usuarioActual?.rol !== 'admin') return;
+  const q = query(collection(db, COL_USERS), orderBy('supervisorNombre'));
+  unsubUsers = onSnapshot(q, snap => {
+    usuariosCuentas = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    renderListaUsuarios();
+  }, err => console.error('Users error:', err));
+}
+
+function initUsuariosAdmin() {
+  document.getElementById('btnUserGuardar')?.addEventListener('click', guardarUsuario);
+  document.getElementById('btnUserSugerir')?.addEventListener('click', sugerirCredenciales);
+  document.getElementById('btnUsersExcel')?.addEventListener('click', exportUsuariosExcel);
+}
+
+function sugerirCredenciales() {
+  const nombre = document.getElementById('uSupervisor').value;
+  if(!nombre) { showToast('Primero elige el supervisor.', true); return; }
+  const partes = nombre.trim().toLowerCase().split(/\s+/);
+  let base = (partes[0][0]||'') + (partes[1]||partes[0]);
+  base = base.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  let usuario = base, n = 2;
+  const existe = u => usuariosCuentas.some(c => c.usuario===u) || USUARIOS.some(c => c.usuario===u);
+  while(existe(usuario)) { usuario = base + n; n++; }
+  document.getElementById('uUsuario').value = usuario;
+  document.getElementById('uPassword').value = usuario + new Date().getFullYear();
+}
+
+async function guardarUsuario() {
+  if(usuarioActual?.rol !== 'admin') { showToast('Solo administradores.', true); return; }
+  const supervisorNombre = document.getElementById('uSupervisor').value;
+  const usuario = document.getElementById('uUsuario').value.trim().toLowerCase();
+  const password = document.getElementById('uPassword').value.trim();
+  if(!supervisorNombre || !usuario || !password) { showToast('Completa supervisor, usuario y contraseña.', true); return; }
+  if(password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', true); return; }
+  if(usuariosCuentas.some(c => c.usuario===usuario) || USUARIOS.some(c => c.usuario===usuario)) {
+    showToast('⚠️ Ese nombre de usuario ya existe. Elige otro.', true); return;
+  }
+  try {
+    await addDoc(collection(db, COL_USERS), {
+      usuario, password, supervisorNombre,
+      estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
+    });
+    document.getElementById('uSupervisor').value='';
+    document.getElementById('uUsuario').value='';
+    document.getElementById('uPassword').value='';
+    showToast(`✅ Cuenta creada para ${supervisorNombre} (usuario: ${usuario})`);
+  } catch(e) { console.error(e); showToast('❌ Error al crear la cuenta.', true); }
+}
+
+function renderListaUsuarios() {
+  const div = document.getElementById('listaUsuarios');
+  if(!div) return;
+  if(!usuariosCuentas.length) { div.innerHTML='<p class="empty-msg">Sin cuentas registradas aún. Crea la primera arriba.</p>'; return; }
+  div.innerHTML = usuariosCuentas.map(c => `
+    <div class="user-row ${c.estado==='inactivo'?'inactivo':''}">
+      <div class="user-row-avatar">${iniciales(c.supervisorNombre)}</div>
+      <div class="user-row-info">
+        <div class="user-row-nombre">${esc(c.supervisorNombre)} ${c.estado==='inactivo'?'<span style="color:var(--rojo);font-size:10px;font-weight:700;">· INACTIVA</span>':''}</div>
+        <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>${esc(c.password)}</code></div>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-secondary btn-sm" onclick="resetPassUsuario('${c.id}')" title="Cambiar contraseña"><svg class="ico sm"><use href="#i-key"/></svg></button>
+        ${c.estado==='inactivo'
+          ? `<button class="btn btn-success btn-sm" onclick="toggleUsuario('${c.id}','activo')" title="Reactivar"><svg class="ico sm"><use href="#i-check"/></svg></button>`
+          : `<button class="btn btn-danger btn-sm" onclick="toggleUsuario('${c.id}','inactivo')" title="Desactivar acceso"><svg class="ico sm"><use href="#i-lock"/></svg></button>`}
+        <button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${c.id}')" title="Eliminar cuenta"><svg class="ico sm"><use href="#i-trash"/></svg></button>
+      </div>
+    </div>`).join('');
+}
+
+window.toggleUsuario = async function(id, estado) {
+  if(usuarioActual?.rol !== 'admin') return;
+  try { await updateDoc(doc(db, COL_USERS, id), {estado}); showToast(estado==='activo'?'✅ Cuenta reactivada':'⛔ Cuenta desactivada — ya no podrá iniciar sesión'); }
+  catch(e) { showToast('Error', true); }
+};
+
+window.resetPassUsuario = async function(id) {
+  if(usuarioActual?.rol !== 'admin') return;
+  const c = usuariosCuentas.find(x => x.id===id);
+  if(!c) return;
+  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, c.password);
+  if(!nueva || nueva.trim().length < 6) { if(nueva!==null) showToast('Mínimo 6 caracteres.', true); return; }
+  try { await updateDoc(doc(db, COL_USERS, id), {password: nueva.trim()}); showToast('🔑 Contraseña actualizada'); }
+  catch(e) { showToast('Error', true); }
+};
+
+window.eliminarUsuario = async function(id) {
+  if(usuarioActual?.rol !== 'admin') return;
+  if(!confirm('¿Eliminar esta cuenta de acceso? El supervisor y su historial se conservan.')) return;
+  try { await deleteDoc(doc(db, COL_USERS, id)); showToast('🗑 Cuenta eliminada'); }
+  catch(e) { showToast('Error', true); }
+};
+
+function exportUsuariosExcel() {
+  if(!usuariosCuentas.length) { showToast('Sin cuentas para exportar', true); return; }
+  const data = usuariosCuentas.map(c => ({
+    'Supervisor': c.supervisorNombre, 'Usuario': c.usuario, 'Contraseña': c.password,
+    'Estado': c.estado||'activo', 'Creada': (c.creadoEn||'').substring(0,10)
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Credenciales ETI');
+  XLSX.writeFile(wb, `ETI_Credenciales_${formatDate(new Date())}.xlsx`);
+  showToast('📥 Credenciales exportadas. Entrégalas de forma segura a cada supervisor.');
+}

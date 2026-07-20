@@ -3,34 +3,97 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema ETI v5.0 – Capacitaciones · Verfrut</title>
+  <title>Sistema ETI v6.0 – Capacitaciones · Verfrut</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Biblioteca de iconos SVG reutilizables -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="i-plus-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 2 5"/><path d="M17 6h3a2 2 0 0 1-2 5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="20"/><line x1="7.5" y1="20" x2="7.5" y2="13"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="16.5" y1="20" x2="16.5" y2="10"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-user-check" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 3v6h6"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><polyline points="12 7 12 12 16 14"/></symbol>
+  </svg>
 </head>
 <body>
 
 <!-- ══════════════ LOGIN ══════════════ -->
 <div id="loginPage" class="login-page">
-  <div class="login-card">
-    <div class="login-card-inner">
-      <div class="login-logo-wrap"><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACwAMMDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAcBAgUGCAMECf/EAEYQAAEDAwIDBQYCBgcGBwAAAAEAAgMEBREGIQcSMQgTQVFhFCIycYGRFaEjQlJykrEWJTNDU2KiFxgmNnOClLLBwsPS4f/EABsBAQABBQEAAAAAAAAAAAAAAAADAQIEBQYH/8QANhEAAQMCAwUGBAYCAwAAAAAAAQACAwQRBSExBhJBUWETMnGBkaEUIrHBBxVC0fDxI1IzcuH/2gAMAwEAAhEDEQA/AOy0REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREVHHBWu6h1xpDTrXG96mtdC5v6klS3n/hBJP2VzWuebNF1QkDVbGih+9do3hnb3ubBcK+4kDb2Wjdg/V/KFqFb2rrG1zhQ6TuE/l31XHHn7cxWYzDat+jD55fVQuqoW6uXR6Ll53alvEpPsug2OHhmse7+Uas/wB53VIOToCLH/WmH/xqX8nq/wDX3H7qz4yLn7LqRFy8ztU3GJwFZoRjQOuK5zT+caylD2rtPPe0VulrnACdzFUxSY+/KqHCKwfo9x+6CshP6l0aiiCz9ozhlXvDJ7hX27I61VE8NH1ZzBb7p3W+kNQhv4LqW11zndI46lvP/CTn8liSUs0ffYR5KZszHaELYkVGkEKqgUiIiIiIiIiIiIiIiIiIiIiKhVVrGsarVsk8Vr0rRUsL5W5mulc7MNMDke7GDzSybdPdaNsk9Fc1u8bKjjYXX36o1JYtM291xv8AdqW20rf7yeQN5j5NHVx9BkqOKriXrXUpMXDbQVXUU5+G63oGlpz6tYcPcPt8ls+nOG1ioLk2+Xh8+o7/AONyuZEj2ekbPgiHo0D5lbuAPJTh8Meg3j109NfU+Sjs9/G31/n8uoOq+FnEzVwLtc8TpqaB+C6hs8JjjHoXe7n6gr77J2cOGdA4SVdJcbpL1c6rrHe98wzlCmNFea+otZrrDpl9FT4ePiL+Oa0u1cLOHVsdzUejLK1w/WkpWyH7uytipbDY6XHs1mt0GOnd0rG4+wWSRY7pZHd5xPmpAxrdArI444xhkbWj0bhXoijVy8pqeCYcs0McgPg5gP8ANY2q0zpyqBFVYLVOD1ElHG7+YWXRXBxGhVCAVolz4RcNLg5zqnRlpa49XQw90fuwhajeOzXw3rXGSibdbZJnIdT1fMAflIHKaUU7K2oZ3Xn1UboI3atCgmm4U8T9IgHQ3FCWogZkiiu8JkjPpnLgPoAsnScSuIOmT3XETh3VGmb8d0sR9qhaPN0Y95o+v0Ux4HkqYHkrzWGT/laHddD6j73Vog3e4SFgNH6x01q6jNVp69Ute1n9oyN+JIj5PYcOafmFn2nIWpao4e6Wvte25y0LqC7R7x3O3yGnqoz587fi+TsjzBVltn1dYKqKhu+dRW57wxlxp4gyphycDvohs8b7vZj1b4qJzI3ZxnyP76H28FeHOHeW4oqNzjcKqgUiIiIiIiIiK15IVy8K2My08kbX8hcwtDvIkdUQKD+IHaEo7Hf5rVYbSLqKeQxS1MtR3cZeOrWYBJwds9FvHCTibauIVFP7PTyUNwpMe00kjg4tB6OafFuds4C43v8AaLhYr1WWi6QuirKZ5ZK1wOTj9YftB3xZ8cqYuyFaLjPq64X5rXNtsNGaYvxhr5HOaeUfINyfmFoaaunkqA12h4cl6zjmyuE0uDunhyc0Ah1yd7TrbPhb6LqRu4yqqjNghW+Xkyqitzv1TKIrkVpKZ26oiuVriQdimVD/AGnddVumNO0lns9QYLldXODpWn34oGj3iPIkkAH5+OFFNM2Fhe7QLOw3D5cRqmU0WrvYak+QzUg3zWukrHM6G7aktdHM34opapoePm3OQvhpuJWgal36LWVk/wC6tY3H3IXD1voqm63Sno6WF1TV1UzY42h2XSSO23+Z8fRTnp7s53sXW31F8u1rkoRMx9ZTwh5dyjctaSMHPT5ErVxV9RKf8bLhd5X7IYRhjB8XVEOIvoM7chn7ldM00sc8DJoZGyxvAcx7TkOBGxBXovKMMjY1kYa1rRgNaMADyVwdt1C3K81Nr5K9FbkoCcIiuwEwPJUyrXE52RFc7bxwvF9RFHMyF8zGySZ5GlwDnY3OB44C5i4l8fdTPu1fadNMo7fS0874RV/2kzw1xbzDI5W5xkbZX3dlWG5ah1redVXmsq6+WkphTsmqZC8iSR2XYz091o2Hn6rXjEGPlEUYuuul2PqqWgfXVbgwAXA1JJ0HIa9fBdKs6dVVUZ0VVsFyKIiIihPtJVnErTVE3VGjr9UMtcbQ2vpBTRv9nx0maS3PL4OHhsemVHfA7j5fX6vZate3RtVb68tihqnxMiNLKTsXcoA5DnBz0OOm66rqYYp4XwTxskikaWPY9uWuadiCOhBC4k7RHCuXQN9FwtkT36cr5D7M7r7K/wAYXHy/ZJ6jbqFvsNdT1LDTytAdwNs/7/njr6lskbu0YcuS7C1FpTTeonRvvlit9wfH8DqiBrnN9MlR/wAeOItv4X6RitWnoaSG81cZZQU8cbQymZ0MpaNsDoBjBPoCo84McfaK0cPay26tklmuFpg/q85y6uZ0bET4OacDP7O/UHMFXm46j4i66fVytkr7xdZwyKJnQE7NjaPBoH5Ak+KpRYLaoc6YfK33/wDOfopKjE5HwNja4kcBc2HlzUjaE4ncZdX6hitFv1Z3LA0y1NVLSwCOkgbu+WQ8mwA+5wPFZriV2ibyWCyaIqnCmgaIpLzUxNM9U4bF7GY5WAnJzjPkAvHi/YYOE3CK26Po5GPu+ope9vFWw4MkcQB7pvkzmc0AeOHeagRrXPkDGNc57jgADck+i28FNT1J7UMG7wy16n7X+6175JIhuXN1v9isvFfiTJNW291+vDA7lkqJa1zIQ7ry5c4N28h0yFh9Q0muNDXttBdprzZq1rRKwCseAW5wHNc1xDhsRt4qR9L8edcabsFFYrVoy1Q0dFC2KNpo6jJAG7jh3UnJJ8SSVp/FfXOqeJFwoK28WFlJJRROij9kpZQHBxBOebPkpYjP2u65jQz3VrhHu3BO8vjvfFHX15ttDQV+pbg5tEXmOWKV0Ur+bHxuZjnxjbOeq8tJ8QtSWPUVHdqm73W4CkJkbTT3CUxvfynl5wXbtDiCR4gFajjHukYxtjCmDssaApdZa2mr7vTiotNnY2V8T25ZNM4+4x3mBhziPHA8CVLUNgghc5zRYdFbGZJHgA5rS9QXjX+qq78autRfarvpAWStZK2Fmc7MDfdaBvjHl9Uray41hYLnV1tTJE0xj2qVz3MHi0c24GfBfoDWTQW+3S1MuGQU0TpHYGA1rQT+QC4AvVxmu16rbvOS6Wuq31BJ/wA7ifyzj6LzXaWv+KEbQN0C+Q8s17R+GFIIzUvtc/L8x88h73z5Lzo/bI6lk1AKls0Tg9r6cOD2nzDm7g+qyL9Q6nY8sk1Bfo3AYLXV0zT9i7K6A7HtlFPp286gkbvVVLaaJ7uvJGMuP1c4/wAKgfiLenai15e7xzZZUVj+69I2+6z/AEtC558BihbJvd7gu7pcUbXYlPSdmC2K3za5nha3jx4L69La91BYb3HdZLpcq91NHI6OGorZXxd4WkMLwXYLQTnHiR4DKx2ob/qe8VpuN6ul2fLOS5rpXvY1w/yDZoAyNgFI3Zi0RS6m1NU3y607ai3Wnl7uKQZbLO7cZHiGgZwfEtX29ru7Cp1tarLE/wBygoTI4A7NfI44H8LB91eYpPhu1c7LgOaxhiFL+dfBQwgv3fmdyAFwLW6i+mo5KIIr5fWACK73WM7BrGV0p5iT0GD49Pqu6tCW2e0aMtFtqp5p6iCkjbNLK8ue9+AXEk7nfK4w4SWb8f4k2C2FmY31TJZmjwZH+kd/5cLs7Xd7i05o663uV3L7JSPlYPEvx7rR6l2As7CRutfI7Qf2uX/EF4lmp6KIfMc/U7o+65I4ta1vVx4k32e33y5QUcdU6np2QVkkbOWP3MgA43LSfqtXGotUuY54v97cxowXCvmIaT0yc4H/AKrDlznyOfK4Oe4l73Z6nILj9SVJ1biwdnShp8clRqe7OqHDzgh2b9CWt/iWs3nSuc8nmV3LooKCKCBkYNy1g05ZnTgAT1UYlztiHOcD0PQOz1Ofmf5rJ2qp1FRwFtnqLvBHNhwFIZWNkd4H3NjnzWOpqeSrqoqWDJnqJGRM26uLuVv5lfoFpq2QWbT9BaYGtEdHTshaAP2WgKaiozUE2NrLXbUbQswZkYMe+X3yvbS2eh59F5aOoJbXpW2W6eaaaanpY2SySvLnveGjmJJ3JzlZZOiLqGiwAXhEkhkeXu1JuiIiqrEWJ1bYbZqaw1djvFMKiiq4+SRvQjycD4EHBB8CAssiq1xabjVUIBFivz24saCumgNWzWStD56d/v0NTyECpjzgH94dHDwPzC6Z7MvCb+h1sGpr/TgagrY/0cbxvRxH9X0e7q7y+HzzLd9sFmvU9BNdLbT1cluqBVUjpG5MMgBAcPv09B5BZQBbaqxeSeARac+qw4qNschf6LnntoaUr7nYLVqihhdNHajJHWBu5ZG8tIfjyDm7+WfLK5bsNynst8oLvStY+ehqY6mNrvhLmODhn0JA8uq/SmVjHscx7Wua4YIcMgjyUZ37gTwxu9S+ql06KSZ55nGinfACf3QeXx8lPh+LMhi7GUZdFZUUZkfvsKj6btUWcWvmi0pcTX8u8bp4xEHfv9SM/wCUFaC7tM8QyZmmmsXLKHcg9meDGD5EP3I9eqmyHs5cL43AuoLlKPAPuEmPyIWwxcHuG0NnqLRFpWjZTVHJ3xDnd6/lOQDJnnxkeB3VG1OGR92Mnx/tDFVO1dZcEEkuLnkkk5J8SV2h2QLB+E8J2XGWPlmu9VJUkkYJYMMZ9PdJ/wC5ZYcBuFOP+Vmf+Mn/APupEsVsobLaKW02ynFPRUkTYYIgSQxgGAMnf7piWKx1MXZxg68UpaR0T95xWj9oy8my8Jbu5j+Sasa2ijPrI4B3+nmXFoIYST+oCdugA/8AzBXfOstJ2HVtJDR6gofbaeGTvWRmV7AHYIz7pGdj/NaqOCnDIHbTEW3nUSn/ANy4yuoZaiTeaRZeo7LbU0GD0ZhlY4uJJNgLaAAZkLFUAPD7s0NlLRHVx2kyHfB7+fcfXmePsuRIhgN3B2GN8ZHn+Y+y7+1Ppqzaksxs15o/aaAua4w945gJbu34SDsVqX+xPhlg/wDDMX0qZvL99Uq6CSUtDCLAWV+z211Hh7Zn1DXGSR5cbAWtwGZHElfN2Z7L+E8JbdM9oE1xe+tecftHDf8AS1q577RArBxgvzq5hb78RhJH9yI2gEenXp45XZdso6agt8FDSRCKnp42xRMByGtaAAPsFr+udBaV1n3X49a2VE0QxHOxxjlYPLmaQcenRTVFEZKdsTTmFrMH2mjpMXlrp2ktkvpqATcfSy4p0lqC56V1JSX2zmNlZT83L3jedrg5pBaRtkEHwOfstq4hcQNc68sJnu0Laex087GObSwuZA+Yg8rXFxJc7bOM7fMAroW28CuG1FOJjZ56rlOzKirkez6tzg/VbPqHQek79aaO0XGzQSW+hfz09NE50TIzjGwYQsOPDqgRlhdYcs10lXtrhD6qOdsBc4fqIFwOmevmLX9eE4opJ52QRRu76V4Y1oyeZxOAPuQFLXaZoTZK/SunWMLaa3WRscYaQA53Nh5+eWgqe7fwf4dW+vp66k05HHUU8rZY3d/KeVzSC04LsHBA6rO6z0bpvWNGyn1BbY6tsWe6fzFj489eVzSCFWPC5GxuaSLm3tmo6rbuklroJmsduM3r3te5FgRmdM+PFcOaeujrJqS3XZlPHPJRVTKhsT88ryxwIBP08F1vwO4jXTiJ+L1FXbaS309E6KOMQyue5znBxOSQB4BfM3gBw3DyTQXAjPwmvkx/NbvovR+ntH0MtHp63ikimf3kv6Rz3PdjGSXEnopaGjngdmRbj6eCwdqNo8IxWmtFG4yjIEi1he50d5aLYGnIVVQDAVVt154iIiIiIiIiIiIrX5yoe4i8TL5YNUXW30s9kpI6B1I2GmrWPNRWiZwD5IyHAcrMkdDuD02zMeAfBeM9JSzvD5qaGVwGA57ASBnON/VWSNLhYGyz8OqYKaUvnj3xbTzHQ8Bbzvqo14mcQrjpS+19uYyja59oZPaGzRvc6rqzKWGIYPvbcpwMHfPRavqrihqaK03GqkpKCK3zur6WjbDJJHUxS0uMue4OwQ7Dtm4I23O6nV8MT3Nc+Njiw5aSAcHzC83UlK4YdTQkZJwWDqep+qjdG8k2cs+kxOhhazfpg4jU318MsswDx48CoQ0TqPU9NVGChdRVdVebpdKt8tV3sjxDSuawRABwHMSWhuMAAbgndeNx4laj1DFYaawV1FSzudbDWSsjk5IqyWVzZKaQZyW4Aywe96qd2U1OwtLII2lueUhgGM9funs1P/gx/Hz/AAj4vP5+qp2LrW3lOcbpTKZXU4J4Z9TqLZ5WFstL8VDlq1BquK6u9vukFTRya0/DWMaZGyR4aS9oIfgx7e6wg43znwzVx11douJNVYRU2WlgpZ4YYqGpZIayvD4ucyQlpxgH3fhIyDlwUldxB/gx/Hz/AAj4vP5+qOp4HTtndDGZWjDXlo5gPIFXCNwGTljPxSmkeXPgHdI4DPLPTkCOed73UER8X9TG0V1WxtiqphbfbRFDHJ/V0ntDIxT1OXbuIcf2TkHbCzM2u9bW681dNcP6Pz09svNHbqruYJWOmbU8hDm5eQwt5x1zn0Ut+x0mJR7LDiU5k/Rj3z5nzVJaWnLi4wR5c4PceQbkdCfUK0RSf7KZ+LUBJ3aUAHr/ANenABw876hQhS8XNStmkeI7JdXAXEfhtGyQVUHs/OY5JPfI5XcoGw8Rg5yFWHitqd8dVFTV+mLpKxltMc9JFJ3TX1M5jexw7wnLRjofn4gS3pLTdt05bTRUDXvb3sshll5TIe8kdI4EgDbLjssk2goWjDaOnA22ETfA5Hh57qnZSW7ymlxbDA8hlMCLixvrY30tllll5kqI67iXqWx0FRcLtS0FZT2271VprnUcDwXyCIPp3saXktDnEMcCT1BClTTLrpJYKGS+Ngbc3wNdVNgaRG2Qj3mtBJOAduvgvk1Jpu3Xv2KOr7xkNLWx1xijw1s0jN295t7wBwceYCzUeOXbzUrGOBzK1lfV0s8TBDGGuub/AG+pv03RwVyYCIpFqkRERERERERERERERERERERERERERERERERERETA8kREQbdERERMDyRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERF//2Q==" alt="Verfrut" class="login-logo" /></div>
-      <div class="login-divider"></div>
-      <h1 class="login-title">Sistema ETI</h1>
-      <p class="login-sub">Capacitaciones de Ética e Integridad</p>
-      <p class="login-sub2">Relaciones Laborales · Verfrut · RAPEL</p>
+  <div class="login-hero">
+    <div class="hero-brand">
+      <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACwAMMDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAcBAgUGCAMECf/EAEYQAAEDAwIDBQYCBgcGBwAAAAEAAgMEBREGIQcSMQgTQVFhFCIycYGRFaEjQlJykrEWJTNDU2KiFxgmNnOClLLBwsPS4f/EABsBAQABBQEAAAAAAAAAAAAAAAADAQIEBQYH/8QANhEAAQMCAwUGBAYCAwAAAAAAAQACAwQRBSExBhJBUWETMnGBkaEUIrHBBxVC0fDxI1IzcuH/2gAMAwEAAhEDEQA/AOy0REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREVHHBWu6h1xpDTrXG96mtdC5v6klS3n/hBJP2VzWuebNF1QkDVbGih+9do3hnb3ubBcK+4kDb2Wjdg/V/KFqFb2rrG1zhQ6TuE/l31XHHn7cxWYzDat+jD55fVQuqoW6uXR6Ll53alvEpPsug2OHhmse7+Uas/wB53VIOToCLH/WmH/xqX8nq/wDX3H7qz4yLn7LqRFy8ztU3GJwFZoRjQOuK5zT+caylD2rtPPe0VulrnACdzFUxSY+/KqHCKwfo9x+6CshP6l0aiiCz9ozhlXvDJ7hX27I61VE8NH1ZzBb7p3W+kNQhv4LqW11zndI46lvP/CTn8liSUs0ffYR5KZszHaELYkVGkEKqgUiIiIiIiIiIiIiIiIiIiIiKhVVrGsarVsk8Vr0rRUsL5W5mulc7MNMDke7GDzSybdPdaNsk9Fc1u8bKjjYXX36o1JYtM291xv8AdqW20rf7yeQN5j5NHVx9BkqOKriXrXUpMXDbQVXUU5+G63oGlpz6tYcPcPt8ls+nOG1ioLk2+Xh8+o7/AONyuZEj2ekbPgiHo0D5lbuAPJTh8Meg3j109NfU+Sjs9/G31/n8uoOq+FnEzVwLtc8TpqaB+C6hs8JjjHoXe7n6gr77J2cOGdA4SVdJcbpL1c6rrHe98wzlCmNFea+otZrrDpl9FT4ePiL+Oa0u1cLOHVsdzUejLK1w/WkpWyH7uytipbDY6XHs1mt0GOnd0rG4+wWSRY7pZHd5xPmpAxrdArI444xhkbWj0bhXoijVy8pqeCYcs0McgPg5gP8ANY2q0zpyqBFVYLVOD1ElHG7+YWXRXBxGhVCAVolz4RcNLg5zqnRlpa49XQw90fuwhajeOzXw3rXGSibdbZJnIdT1fMAflIHKaUU7K2oZ3Xn1UboI3atCgmm4U8T9IgHQ3FCWogZkiiu8JkjPpnLgPoAsnScSuIOmT3XETh3VGmb8d0sR9qhaPN0Y95o+v0Ux4HkqYHkrzWGT/laHddD6j73Vog3e4SFgNH6x01q6jNVp69Ute1n9oyN+JIj5PYcOafmFn2nIWpao4e6Wvte25y0LqC7R7x3O3yGnqoz587fi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ZPaGzRvc6rqzKWGIYPvbcpwMHfPRavqrihqaK03GqkpKCK3zur6WjbDJJHUxS0uMue4OwQ7Dtm4I23O6nV8MT3Nc+Njiw5aSAcHzC83UlK4YdTQkZJwWDqep+qjdG8k2cs+kxOhhazfpg4jU318MsswDx48CoQ0TqPU9NVGChdRVdVebpdKt8tV3sjxDSuawRABwHMSWhuMAAbgndeNx4laj1DFYaawV1FSzudbDWSsjk5IqyWVzZKaQZyW4Aywe96qd2U1OwtLII2lueUhgGM9funs1P/gx/Hz/AAj4vP5+qp2LrW3lOcbpTKZXU4J4Z9TqLZ5WFstL8VDlq1BquK6u9vukFTRya0/DWMaZGyR4aS9oIfgx7e6wg43znwzVx11douJNVYRU2WlgpZ4YYqGpZIayvD4ucyQlpxgH3fhIyDlwUldxB/gx/Hz/AAj4vP5+qOp4HTtndDGZWjDXlo5gPIFXCNwGTljPxSmkeXPgHdI4DPLPTkCOed73UER8X9TG0V1WxtiqphbfbRFDHJ/V0ntDIxT1OXbuIcf2TkHbCzM2u9bW681dNcP6Pz09svNHbqruYJWOmbU8hDm5eQwt5x1zn0Ut+x0mJR7LDiU5k/Rj3z5nzVJaWnLi4wR5c4PceQbkdCfUK0RSf7KZ+LUBJ3aUAHr/ANenABw876hQhS8XNStmkeI7JdXAXEfhtGyQVUHs/OY5JPfI5XcoGw8Rg5yFWHitqd8dVFTV+mLpKxltMc9JFJ3TX1M5jexw7wnLRjofn4gS3pLTdt05bTRUDXvb3sshll5TIe8kdI4EgDbLjssk2goWjDaOnA22ETfA5Hh57qnZSW7ymlxbDA8hlMCLixvrY30tllll5kqI67iXqWx0FRcLtS0FZT2271VprnUcDwXyCIPp3saXktDnEMcCT1BClTTLrpJYKGS+Ngbc3wNdVNgaRG2Qj3mtBJOAduvgvk1Jpu3Xv2KOr7xkNLWx1xijw1s0jN295t7wBwceYCzUeOXbzUrGOBzK1lfV0s8TBDGGuub/AG+pv03RwVyYCIpFqkRERERERERERERERERERERERERERERERERERETA8kREQbdERERMDyRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERF//2Q==" alt="Verfrut" />
+      <span class="hero-brand-name">Verfrut · Rapel</span>
+    </div>
+    <div class="hero-center">
+      <h2>Gestión integral de<br /><em>Capacitaciones de Ética e Integridad</em></h2>
+      <p>Programación, ejecución, seguimiento de actas e indicadores de cumplimiento del equipo de Relaciones Laborales, en una sola plataforma.</p>
+      <div class="hero-badges">
+        <span class="hero-badge"><svg class="ico sm"><use href="#i-calendar"/></svg> Programación y calendario</span>
+        <span class="hero-badge"><svg class="ico sm"><use href="#i-bell"/></svg> Alertas de vencimiento</span>
+        <span class="hero-badge"><svg class="ico sm"><use href="#i-chart"/></svg> Indicadores en tiempo real</span>
+      </div>
+    </div>
+    <div class="hero-foot">
+      <strong>Sistema ETI v6.0</strong> · Desarrollado por Joel A. Timoteo Gonza<br />Relaciones Laborales · Verfrut © 2026
+    </div>
+  </div>
+  <div class="login-side">
+    <div class="login-card">
+      <div class="login-eyebrow">Acceso al sistema</div>
+      <h1 class="login-title">Bienvenido de nuevo</h1>
+      <p class="login-sub">Ingresa tus credenciales para acceder al Sistema de Capacitaciones ETI.</p>
       <div class="login-form">
         <div class="login-group">
           <label>Usuario</label>
-          <input type="text" id="loginUser" placeholder="Ingresa tu usuario" autocomplete="username" />
+          <div class="login-input-wrap">
+            <svg class="ico"><use href="#i-user"/></svg>
+            <input type="text" id="loginUser" placeholder="Ingresa tu usuario" autocomplete="username" />
+          </div>
         </div>
         <div class="login-group">
           <label>Contraseña</label>
-          <input type="password" id="loginPass" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
+          <div class="login-input-wrap">
+            <svg class="ico"><use href="#i-lock"/></svg>
+            <input type="password" id="loginPass" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
+          </div>
         </div>
-        <div id="loginError" class="login-error" style="display:none;">❌ Usuario o contraseña incorrectos</div>
-        <button class="btn-login" id="btnLogin">🔐 Iniciar Sesión</button>
+        <div id="loginError" class="login-error" style="display:none;"><svg class="ico sm"><use href="#i-alert"/></svg> Usuario o contraseña incorrectos</div>
+        <button class="btn-login" id="btnLogin"><svg class="ico"><use href="#i-shield"/></svg> Iniciar Sesión</button>
       </div>
       <div class="login-footer-credit">
         <strong>Joel A. Timoteo Gonza</strong>
@@ -42,33 +105,71 @@
 
 <!-- ══════════════ APP ══════════════ -->
 <div id="appPage" style="display:none;">
+<div class="app-shell">
 
-<header class="site-header">
-  <div class="header-inner">
-    <div class="header-brand">
-      <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACwAMMDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAcBAgUGCAMECf/EAEYQAAEDAwIDBQYCBgcGBwAAAAEAAgMEBREGIQcSMQgTQVFhFCIycYGRFaEjQlJykrEWJTNDU2KiFxgmNnOClLLBwsPS4f/EABsBAQABBQEAAAAAAAAAAAAAAAADAQIEBQYH/8QANhEAAQMCAwUGBAYCAwAAAAAAAQACAwQRBSExBhJBUWETMnGBkaEUIrHBBxVC0fDxI1IzcuH/2gAMAwEAAhEDEQA/AOy0REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREVHHBWu6h1xpDTrXG96mtdC5v6klS3n/hBJP2VzWuebNF1QkDVbGih+9do3hnb3ubBcK+4kDb2Wjdg/V/KFqFb2rrG1zhQ6TuE/l31XHHn7cxWYzDat+jD55fVQuqoW6uXR6Ll53alvEpPsug2OHhmse7+Uas/wB53VIOToCLH/WmH/xqX8nq/wDX3H7qz4yLn7LqRFy8ztU3GJwFZoRjQOuK5zT+caylD2rtPPe0VulrnACdzFUxSY+/KqHCKwfo9x+6CshP6l0aiiCz9ozhlXvDJ7hX27I61VE8NH1ZzBb7p3W+kNQhv4LqW11zndI46lvP/CTn8liSUs0ffYR5KZszHaELYkVGkEKqgUiIiIiIiIiIiIiIiIiIiIiKhVVrGsarVsk8Vr0rRUsL5W5mulc7MNMDke7GDzSybdPdaNsk9Fc1u8bKjjYXX36o1JYtM291xv8AdqW20rf7yeQN5j5NHVx9BkqOKriXrXUpMXDbQVXUU5+G63oGlpz6tYcPcPt8ls+nOG1ioLk2+Xh8+o7/AONyuZEj2ekbPgiHo0D5lbuAPJTh8Meg3j109NfU+Sjs9/G31/n8uoOq+FnEzVwLtc8TpqaB+C6hs8JjjHoXe7n6gr77J2cOGdA4SVdJcbpL1c6rrHe98wzlCmNFea+otZrrDpl9FT4ePiL+Oa0u1cLOHVsdzUejLK1w/WkpWyH7uytipbDY6XHs1mt0GOnd0rG4+wWSRY7pZHd5xPmpAxrdArI444xhkbWj0bhXoijVy8pqeCYcs0McgPg5gP8ANY2q0zpyqBFVYLVOD1ElHG7+YWXRXBxGhVCAVolz4RcNLg5zqnRlpa49XQw90fuwhajeOzXw3rXGSibdbZJnIdT1fMAflIHKaUU7K2oZ3Xn1UboI3atCgmm4U8T9IgHQ3FCWogZkiiu8JkjPpnLgPoAsnScSuIOmT3XETh3VGmb8d0sR9qhaPN0Y95o+v0Ux4HkqYHkrzWGT/laHddD6j73Vog3e4SFgNH6x01q6jNVp69Ute1n9oyN+JIj5PYcOafmFn2nIWpao4e6Wvte25y0LqC7R7x3O3yGnqoz587fi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ZPaGzRvc6rqzKWGIYPvbcpwMHfPRavqrihqaK03GqkpKCK3zur6WjbDJJHUxS0uMue4OwQ7Dtm4I23O6nV8MT3Nc+Njiw5aSAcHzC83UlK4YdTQkZJwWDqep+qjdG8k2cs+kxOhhazfpg4jU318MsswDx48CoQ0TqPU9NVGChdRVdVebpdKt8tV3sjxDSuawRABwHMSWhuMAAbgndeNx4laj1DFYaawV1FSzudbDWSsjk5IqyWVzZKaQZyW4Aywe96qd2U1OwtLII2lueUhgGM9funs1P/gx/Hz/AAj4vP5+qp2LrW3lOcbpTKZXU4J4Z9TqLZ5WFstL8VDlq1BquK6u9vukFTRya0/DWMaZGyR4aS9oIfgx7e6wg43znwzVx11douJNVYRU2WlgpZ4YYqGpZIayvD4ucyQlpxgH3fhIyDlwUldxB/gx/Hz/AAj4vP5+qOp4HTtndDGZWjDXlo5gPIFXCNwGTljPxSmkeXPgHdI4DPLPTkCOed73UER8X9TG0V1WxtiqphbfbRFDHJ/V0ntDIxT1OXbuIcf2TkHbCzM2u9bW681dNcP6Pz09svNHbqruYJWOmbU8hDm5eQwt5x1zn0Ut+x0mJR7LDiU5k/Rj3z5nzVJaWnLi4wR5c4PceQbkdCfUK0RSf7KZ+LUBJ3aUAHr/ANenABw876hQhS8XNStmkeI7JdXAXEfhtGyQVUHs/OY5JPfI5XcoGw8Rg5yFWHitqd8dVFTV+mLpKxltMc9JFJ3TX1M5jexw7wnLRjofn4gS3pLTdt05bTRUDXvb3sshll5TIe8kdI4EgDbLjssk2goWjDaOnA22ETfA5Hh57qnZSW7ymlxbDA8hlMCLixvrY30tllll5kqI67iXqWx0FRcLtS0FZT2271VprnUcDwXyCIPp3saXktDnEMcCT1BClTTLrpJYKGS+Ngbc3wNdVNgaRG2Qj3mtBJOAduvgvk1Jpu3Xv2KOr7xkNLWx1xijw1s0jN295t7wBwceYCzUeOXbzUrGOBzK1lfV0s8TBDGGuub/AG+pv03RwVyYCIpFqkRERERERERERERERERERERERERERERERERERETA8kREQbdERERMDyRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERF//2Q==" alt="Verfrut" class="header-logo" />
-      <div class="brand-text">
-        <span class="brand-title">Sistema de Capacitaciones ETI</span>
-        <span class="brand-sub">Ética e Integridad · Relaciones Laborales · Verfrut</span>
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACwAMMDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAcBAgUGCAMECf/EAEYQAAEDAwIDBQYCBgcGBwAAAAEAAgMEBREGIQcSMQgTQVFhFCIycYGRFaEjQlJykrEWJTNDU2KiFxgmNnOClLLBwsPS4f/EABsBAQABBQEAAAAAAAAAAAAAAAADAQIEBQYH/8QANhEAAQMCAwUGBAYCAwAAAAAAAQACAwQRBSExBhJBUWETMnGBkaEUIrHBBxVC0fDxI1IzcuH/2gAMAwEAAhEDEQA/AOy0REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREVHHBWu6h1xpDTrXG96mtdC5v6klS3n/hBJP2VzWuebNF1QkDVbGih+9do3hnb3ubBcK+4kDb2Wjdg/V/KFqFb2rrG1zhQ6TuE/l31XHHn7cxWYzDat+jD55fVQuqoW6uXR6Ll53alvEpPsug2OHhmse7+Uas/wB53VIOToCLH/WmH/xqX8nq/wDX3H7qz4yLn7LqRFy8ztU3GJwFZoRjQOuK5zT+caylD2rtPPe0VulrnACdzFUxSY+/KqHCKwfo9x+6CshP6l0aiiCz9ozhlXvDJ7hX27I61VE8NH1ZzBb7p3W+kNQhv4LqW11zndI46lvP/CTn8liSUs0ffYR5KZszHaELYkVGkEKqgUiIiIiIiIiIiIiIiIiIiIiKhVVrGsarVsk8Vr0rRUsL5W5mulc7MNMDke7GDzSybdPdaNsk9Fc1u8bKjjYXX36o1JYtM291xv8AdqW20rf7yeQN5j5NHVx9BkqOKriXrXUpMXDbQVXUU5+G63oGlpz6tYcPcPt8ls+nOG1ioLk2+Xh8+o7/AONyuZEj2ekbPgiHo0D5lbuAPJTh8Meg3j109NfU+Sjs9/G31/n8uoOq+FnEzVwLtc8TpqaB+C6hs8JjjHoXe7n6gr77J2cOGdA4SVdJcbpL1c6rrHe98wzlCmNFea+otZrrDpl9FT4ePiL+Oa0u1cLOHVsdzUejLK1w/WkpWyH7uytipbDY6XHs1mt0GOnd0rG4+wWSRY7pZHd5xPmpAxrdArI444xhkbWj0bhXoijVy8pqeCYcs0McgPg5gP8ANY2q0zpyqBFVYLVOD1ElHG7+YWXRXBxGhVCAVolz4RcNLg5zqnRlpa49XQw90fuwhajeOzXw3rXGSibdbZJnIdT1fMAflIHKaUU7K2oZ3Xn1UboI3atCgmm4U8T9IgHQ3FCWogZkiiu8JkjPpnLgPoAsnScSuIOmT3XETh3VGmb8d0sR9qhaPN0Y95o+v0Ux4HkqYHkrzWGT/laHddD6j73Vog3e4SFgNH6x01q6jNVp69Ute1n9oyN+JIj5PYcOafmFn2nIWpao4e6Wvte25y0LqC7R7x3O3yGnqoz587fi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ZPaGzRvc6rqzKWGIYPvbcpwMHfPRavqrihqaK03GqkpKCK3zur6WjbDJJHUxS0uMue4OwQ7Dtm4I23O6nV8MT3Nc+Njiw5aSAcHzC83UlK4YdTQkZJwWDqep+qjdG8k2cs+kxOhhazfpg4jU318MsswDx48CoQ0TqPU9NVGChdRVdVebpdKt8tV3sjxDSuawRABwHMSWhuMAAbgndeNx4laj1DFYaawV1FSzudbDWSsjk5IqyWVzZKaQZyW4Aywe96qd2U1OwtLII2lueUhgGM9funs1P/gx/Hz/AAj4vP5+qp2LrW3lOcbpTKZXU4J4Z9TqLZ5WFstL8VDlq1BquK6u9vukFTRya0/DWMaZGyR4aS9oIfgx7e6wg43znwzVx11douJNVYRU2WlgpZ4YYqGpZIayvD4ucyQlpxgH3fhIyDlwUldxB/gx/Hz/AAj4vP5+qOp4HTtndDGZWjDXlo5gPIFXCNwGTljPxSmkeXPgHdI4DPLPTkCOed73UER8X9TG0V1WxtiqphbfbRFDHJ/V0ntDIxT1OXbuIcf2TkHbCzM2u9bW681dNcP6Pz09svNHbqruYJWOmbU8hDm5eQwt5x1zn0Ut+x0mJR7LDiU5k/Rj3z5nzVJaWnLi4wR5c4PceQbkdCfUK0RSf7KZ+LUBJ3aUAHr/ANenABw876hQhS8XNStmkeI7JdXAXEfhtGyQVUHs/OY5JPfI5XcoGw8Rg5yFWHitqd8dVFTV+mLpKxltMc9JFJ3TX1M5jexw7wnLRjofn4gS3pLTdt05bTRUDXvb3sshll5TIe8kdI4EgDbLjssk2goWjDaOnA22ETfA5Hh57qnZSW7ymlxbDA8hlMCLixvrY30tllll5kqI67iXqWx0FRcLtS0FZT2271VprnUcDwXyCIPp3saXktDnEMcCT1BClTTLrpJYKGS+Ngbc3wNdVNgaRG2Qj3mtBJOAduvgvk1Jpu3Xv2KOr7xkNLWx1xijw1s0jN295t7wBwceYCzUeOXbzUrGOBzK1lfV0s8TBDGGuub/AG+pv03RwVyYCIpFqkRERERERERERERERERERERERERERERERERERETA8kREQbdERERMDyRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERF//2Q==" alt="Verfrut" />
+      <div class="sb-name">
+        <span class="sb-title">Sistema ETI</span>
+        <span class="sb-sub">Verfrut · Rapel</span>
       </div>
     </div>
-    <div class="header-meta">
-      <div class="season-badge" id="seasonBadge">–</div>
-      <div class="current-date" id="currentDate">–</div>
-      <div class="user-badge" id="userBadge">–</div>
-      <button class="btn-logout" id="btnLogout">⏻ Salir</button>
+    <nav class="side-nav" id="sideNav">
+      <div class="nav-label" data-role="staff">Gestión</div>
+      <button class="tab-btn active" data-tab="dashboard" data-role="staff" data-title="Dashboard" data-sub="Indicadores generales del sistema"><svg class="ico"><use href="#i-grid"/></svg> Dashboard</button>
+      <button class="tab-btn" data-tab="programacion" data-role="staff" data-title="Programación" data-sub="Calendario de proyección de capacitaciones"><svg class="ico"><use href="#i-calendar"/></svg> Programación <span class="nav-count" id="navCountProg" style="display:none;">0</span></button>
+      <button class="tab-btn" data-tab="registro" data-role="staff" data-title="Registrar Capacitación" data-sub="Nueva capacitación ETI ejecutada"><svg class="ico"><use href="#i-plus-circle"/></svg> Registrar</button>
+      <button class="tab-btn" data-tab="tabla" data-role="staff" data-title="Registros" data-sub="Historial completo de capacitaciones"><svg class="ico"><use href="#i-list"/></svg> Registros</button>
+      <div class="nav-label" data-role="staff">Análisis</div>
+      <button class="tab-btn" data-tab="ranking" data-role="staff" data-title="Ranking" data-sub="Desempeño por supervisor"><svg class="ico"><use href="#i-trophy"/></svg> Ranking</button>
+      <button class="tab-btn" data-tab="estadisticas" data-role="staff" data-title="Estadísticas" data-sub="Análisis histórico y reportes"><svg class="ico"><use href="#i-chart"/></svg> Estadísticas</button>
+      <div class="nav-label" data-role="admin">Administración</div>
+      <button class="tab-btn" data-tab="usuarios" data-role="admin" data-title="Usuarios" data-sub="Cuentas de acceso de supervisores"><svg class="ico"><use href="#i-users"/></svg> Usuarios</button>
+      <button class="tab-btn" data-tab="mipanel" data-role="supervisor" data-title="Mi Panel" data-sub="Mis capacitaciones programadas y registros" style="display:none;"><svg class="ico"><use href="#i-user-check"/></svg> Mi Panel <span class="nav-count" id="navCountSup" style="display:none;">0</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="sf-user">
+        <div class="sf-avatar" id="sfAvatar">–</div>
+        <div class="sf-info">
+          <div class="sf-nombre" id="sfNombre">–</div>
+          <div class="sf-rol" id="sfRol">–</div>
+        </div>
+      </div>
+      <button class="btn-logout" id="btnLogout"><svg class="ico sm"><use href="#i-logout"/></svg> Cerrar sesión</button>
     </div>
-  </div>
-</header>
+  </aside>
 
-<nav class="tab-nav">
-  <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
-  <button class="tab-btn" data-tab="programacion">📅 Programación</button>
-  <button class="tab-btn" data-tab="registro">➕ Registrar</button>
-  <button class="tab-btn" data-tab="tabla">📋 Registros</button>
-  <button class="tab-btn" data-tab="ranking">🏆 Ranking</button>
-  <button class="tab-btn" data-tab="estadisticas">📈 Estadísticas</button>
-</nav>
+  <!-- ══ ÁREA PRINCIPAL ══ -->
+  <div class="main-area">
+    <header class="topbar">
+      <div class="tb-left">
+        <div class="tb-title" id="tbTitle">Dashboard</div>
+        <div class="tb-sub" id="tbSub">Indicadores generales del sistema</div>
+      </div>
+      <div class="tb-right">
+        <div class="season-badge" id="seasonBadge">–</div>
+        <div class="current-date"><svg class="ico sm"><use href="#i-calendar"/></svg><span id="currentDate">–</span></div>
+        <div class="tb-divider"></div>
+        <div class="notif-wrap">
+          <button class="notif-bell" id="btnNotif" title="Alertas de vencimiento">
+            <svg class="ico"><use href="#i-bell"/></svg>
+            <span class="notif-dot" id="notifDot" style="display:none;">0</span>
+          </button>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-head">
+              <h4>Alertas de vencimiento</h4>
+              <span id="notifResumen">–</span>
+            </div>
+            <div class="notif-body" id="notifBody"></div>
+          </div>
+        </div>
+        <div class="user-chip"><div class="sf-avatar" id="chipAvatar">–</div><span id="userBadge">–</span></div>
+      </div>
+    </header>
+
+    <main>
 
 <!-- ══ TAB: DASHBOARD ══ -->
 <section class="tab-content active" id="tab-dashboard">
@@ -83,64 +184,64 @@
   </div>
 
   <div class="kpi-row">
-    <div class="kpi-card"><div class="kpi-icon">📚</div><div class="kpi-val" id="kTotal">0</div><div class="kpi-label">Capacitaciones</div><div class="kpi-trend" id="tTotal"></div></div>
-    <div class="kpi-card gold"><div class="kpi-icon">👥</div><div class="kpi-val" id="kTrabajadores">0</div><div class="kpi-label">Trabajadores<br>Capacitados</div><div class="kpi-trend" id="tTrabajadores"></div></div>
-    <div class="kpi-card"><div class="kpi-icon">👨</div><div class="kpi-val" id="kVarones">0</div><div class="kpi-label">Varones</div></div>
-    <div class="kpi-card naranja"><div class="kpi-icon">👩</div><div class="kpi-val" id="kMujeres">0</div><div class="kpi-label">Mujeres</div></div>
-    <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="kCumplidos">0</div><div class="kpi-label">Cumplidos</div><div class="kpi-trend" id="tCumplidos"></div></div>
-    <div class="kpi-card amarillo"><div class="kpi-icon">⏳</div><div class="kpi-val" id="kProceso">0</div><div class="kpi-label">En Proceso</div></div>
-    <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="kRetrasos">0</div><div class="kpi-label">Con Retraso</div><div class="kpi-trend" id="tRetrasos"></div></div>
-    <div class="kpi-card verde"><div class="kpi-icon">🎯</div><div class="kpi-val" id="kCumplimiento">0%</div><div class="kpi-label">% Cumplimiento</div></div>
-    <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-val" id="kEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
+    <div class="kpi-card"><div class="kpi-icon"><svg class="ico"><use href="#i-list"/></svg></div><div class="kpi-val" id="kTotal">0</div><div class="kpi-label">Capacitaciones</div><div class="kpi-trend" id="tTotal"></div></div>
+    <div class="kpi-card gold"><div class="kpi-icon"><svg class="ico"><use href="#i-users"/></svg></div><div class="kpi-val" id="kTrabajadores">0</div><div class="kpi-label">Trabajadores<br>Capacitados</div><div class="kpi-trend" id="tTrabajadores"></div></div>
+    <div class="kpi-card"><div class="kpi-icon"><svg class="ico"><use href="#i-user"/></svg></div><div class="kpi-val" id="kVarones">0</div><div class="kpi-label">Varones</div></div>
+    <div class="kpi-card naranja"><div class="kpi-icon"><svg class="ico"><use href="#i-user"/></svg></div><div class="kpi-val" id="kMujeres">0</div><div class="kpi-label">Mujeres</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-check-circle"/></svg></div><div class="kpi-val" id="kCumplidos">0</div><div class="kpi-label">Cumplidos</div><div class="kpi-trend" id="tCumplidos"></div></div>
+    <div class="kpi-card amarillo"><div class="kpi-icon"><svg class="ico"><use href="#i-clock"/></svg></div><div class="kpi-val" id="kProceso">0</div><div class="kpi-label">En Proceso</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon"><svg class="ico"><use href="#i-alert"/></svg></div><div class="kpi-val" id="kRetrasos">0</div><div class="kpi-label">Con Retraso</div><div class="kpi-trend" id="tRetrasos"></div></div>
+    <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-target"/></svg></div><div class="kpi-val" id="kCumplimiento">0%</div><div class="kpi-label">% Cumplimiento</div></div>
+    <div class="kpi-card"><div class="kpi-icon"><svg class="ico"><use href="#i-calendar"/></svg></div><div class="kpi-val" id="kEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
   </div>
 
-  <div class="panel-grid">
+  <div class="panel-grid-3">
     <div class="panel">
-      <div class="panel-title">📅 Alertas de Programación</div>
+      <div class="panel-title"><svg class="ico"><use href="#i-calendar"/></svg> Alertas de Programación</div>
       <div id="dashAlertasProg"><p class="empty-msg">Sin programaciones próximas ni vencidas.</p></div>
     </div>
     <div class="panel">
-      <div class="panel-title">🚨 Alertas de Actas (Envíos)</div>
+      <div class="panel-title"><svg class="ico"><use href="#i-alert"/></svg> Alertas de Actas (Envíos)</div>
       <div id="dashAlertas"><p class="empty-msg">Sin alertas activas.</p></div>
     </div>
     <div class="panel">
-      <div class="panel-title">📌 Últimos Registros</div>
+      <div class="panel-title"><svg class="ico"><use href="#i-clock"/></svg> Últimos Registros</div>
       <div id="dashUltimos"><p class="empty-msg">Sin registros aún.</p></div>
     </div>
   </div>
 
   <div class="panel">
-    <div class="panel-title">👤 Avance por Supervisor</div>
+    <div class="panel-title"><svg class="ico"><use href="#i-user-check"/></svg> Avance por Supervisor</div>
     <div id="dashSupervisores"><p class="empty-msg">Sin datos.</p></div>
   </div>
 
   <div class="charts-row">
-    <div class="chart-card"><div class="chart-title">📊 Estado de Capacitaciones</div><canvas id="chEstados"></canvas></div>
-    <div class="chart-card"><div class="chart-title">📈 Tendencia Mensual</div><canvas id="chTendencia"></canvas></div>
+    <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-activity"/></svg> Estado de Capacitaciones</div><canvas id="chEstados"></canvas></div>
+    <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-chart"/></svg> Tendencia Mensual</div><canvas id="chTendencia"></canvas></div>
   </div>
 </section>
 
 <!-- ══ TAB: PROGRAMACIÓN ══ -->
 <section class="tab-content" id="tab-programacion">
   <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
-    <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-val" id="pkTotal">0</div><div class="kpi-label">Programadas</div></div>
-    <div class="kpi-card azul"><div class="kpi-icon">🔜</div><div class="kpi-val" id="pkProximas">0</div><div class="kpi-label">Próximas (≤3 días)</div></div>
-    <div class="kpi-card amarillo"><div class="kpi-icon">📍</div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">En Curso / Hoy</div></div>
-    <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
-    <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
-    <div class="kpi-card gold"><div class="kpi-icon">🎯</div><div class="kpi-val" id="pkEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
-    <div class="kpi-card naranja"><div class="kpi-icon">🔄</div><div class="kpi-val" id="pkReprog">0</div><div class="kpi-label">Reprogramadas</div></div>
+    <div class="kpi-card"><div class="kpi-icon"><svg class="ico"><use href="#i-calendar"/></svg></div><div class="kpi-val" id="pkTotal">0</div><div class="kpi-label">Programadas</div></div>
+    <div class="kpi-card azul"><div class="kpi-icon"><svg class="ico"><use href="#i-clock"/></svg></div><div class="kpi-val" id="pkProximas">0</div><div class="kpi-label">Próximas (≤3 días)</div></div>
+    <div class="kpi-card amarillo"><div class="kpi-icon"><svg class="ico"><use href="#i-activity"/></svg></div><div class="kpi-val" id="pkHoy">0</div><div class="kpi-label">En Curso / Hoy</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon"><svg class="ico"><use href="#i-alert"/></svg></div><div class="kpi-val" id="pkVencidas">0</div><div class="kpi-label">Vencidas / Incumplidas</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-check-circle"/></svg></div><div class="kpi-val" id="pkEjecutadas">0</div><div class="kpi-label">Ejecutadas</div></div>
+    <div class="kpi-card gold"><div class="kpi-icon"><svg class="ico"><use href="#i-target"/></svg></div><div class="kpi-val" id="pkEficacia">–</div><div class="kpi-label">Eficacia de<br>Programación</div></div>
+    <div class="kpi-card naranja"><div class="kpi-icon"><svg class="ico"><use href="#i-refresh"/></svg></div><div class="kpi-val" id="pkReprog">0</div><div class="kpi-label">Reprogramadas</div></div>
   </div>
 
   <div class="panel">
-    <div class="panel-title">📅 Programar Capacitación (Calendario de Proyección)</div>
+    <div class="panel-title"><svg class="ico"><use href="#i-calendar"/></svg> Programar Capacitación (Calendario de Proyección)</div>
     <div class="section-block">
       <div class="form-grid-3">
         <div class="form-group">
           <label for="pSupervisor">Supervisor *</label>
           <div style="display:flex;gap:6px;align-items:center;">
             <select id="pSupervisor" style="flex:1;"><option value="">— Seleccionar —</option></select>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores">➕</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores"><svg class="ico sm"><use href="#i-plus"/></svg></button>
           </div>
         </div>
         <div class="form-group">
@@ -175,7 +276,7 @@
           <div id="pFechasChips" class="fechas-chips"><span class="empty-chip">Elige fecha inicio (y fin) para generar las fechas, o agrégalas una por una aquí abajo</span></div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:7px;flex-wrap:wrap;">
             <input type="date" id="pFechaExtra" class="filter-input" style="min-width:160px;" />
-            <button type="button" class="btn btn-secondary btn-sm" id="btnAddFecha">➕ Agregar fecha</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAddFecha"><svg class="ico sm"><use href="#i-plus"/></svg> Agregar fecha</button>
           </div>
         </div>
         <div class="form-group" style="grid-column:1/-1;">
@@ -184,27 +285,27 @@
         </div>
       </div>
       <div class="actions-row">
-        <button class="btn btn-primary" id="btnProgGuardar">📅 Programar</button>
-        <button class="btn btn-danger btn-sm" id="btnProgLimpiar">🗑 Limpiar</button>
+        <button class="btn btn-primary" id="btnProgGuardar"><svg class="ico sm"><use href="#i-calendar"/></svg> Programar</button>
+        <button class="btn btn-danger btn-sm" id="btnProgLimpiar"><svg class="ico sm"><use href="#i-trash"/></svg> Limpiar</button>
       </div>
     </div>
   </div>
 
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">📆 Vista Calendario Mensual</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;"><svg class="ico"><use href="#i-calendar"/></svg> Vista Calendario Mensual</div>
       <div class="filters-bar">
         <button class="btn btn-secondary btn-sm" id="btnCalPrev">← Anterior</button>
         <span id="calTitulo" style="font-weight:700;font-size:13px;color:var(--azul-deep);min-width:150px;text-align:center;">–</span>
         <button class="btn btn-secondary btn-sm" id="btnCalNext">Siguiente →</button>
-        <button class="btn btn-secondary btn-sm" id="btnCalHoy">📍 Hoy</button>
+        <button class="btn btn-secondary btn-sm" id="btnCalHoy">Hoy</button>
       </div>
     </div>
     <div class="cal-leyenda">
-      <span class="badge badge-azul">🔵 Próxima</span>
-      <span class="badge badge-amarillo">📍 Hoy</span>
-      <span class="badge badge-rojo">🚨 Vencida</span>
-      <span class="badge badge-verde">✅ Ejecutada</span>
+      <span class="badge badge-azul">Próxima</span>
+      <span class="badge badge-amarillo">Hoy / En curso</span>
+      <span class="badge badge-rojo">Vencida</span>
+      <span class="badge badge-verde">Ejecutada</span>
     </div>
     <div class="cal-grid-header">
       <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
@@ -214,19 +315,19 @@
 
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">🗓 Lista de Programaciones</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;"><svg class="ico"><use href="#i-list"/></svg> Lista de Programaciones</div>
       <div class="filters-bar">
         <select class="filter-select" id="pFiltSup"><option value="">Todos los supervisores</option></select>
         <select class="filter-select" id="pFiltEstado">
           <option value="">Todos los estados</option>
-          <option value="proxima">🔵 Próxima</option>
-          <option value="curso">🟠 En curso</option>
-          <option value="hoy">📍 Para hoy</option>
-          <option value="vencida">🚨 Vencida</option>
-          <option value="ejecutada">✅ Ejecutada</option>
+          <option value="proxima">Próxima</option>
+          <option value="curso">En curso</option>
+          <option value="hoy">Para hoy</option>
+          <option value="vencida">Vencida</option>
+          <option value="ejecutada">Ejecutada</option>
         </select>
-        <button class="btn btn-pdf btn-sm" id="btnIncumplPdf">📄 Informe de Incumplimientos</button>
-        <button class="btn btn-excel btn-sm" id="btnProgExcel">📥 Excel</button>
+        <button class="btn btn-pdf btn-sm" id="btnIncumplPdf"><svg class="ico sm"><use href="#i-file"/></svg> Informe de Incumplimientos</button>
+        <button class="btn btn-excel btn-sm" id="btnProgExcel"><svg class="ico sm"><use href="#i-download"/></svg> Excel</button>
       </div>
     </div>
     <div class="table-scroll">
@@ -241,14 +342,14 @@
 
   <div class="panel-grid">
     <div class="panel">
-      <div class="panel-title">🔄 Indicador: Motivos de Reprogramación</div>
-      <div class="chart-card" style="box-shadow:none;padding:0;">
+      <div class="panel-title"><svg class="ico"><use href="#i-refresh"/></svg> Indicador: Motivos de Reprogramación</div>
+      <div class="chart-card" style="box-shadow:none;padding:0;border:none;">
         <canvas id="chartMotivos" style="max-height:190px;"></canvas>
       </div>
       <div id="listaMotivos" style="margin-top:12px;"></div>
     </div>
     <div class="panel">
-      <div class="panel-title">📜 Historial de Cambios de Fecha</div>
+      <div class="panel-title"><svg class="ico"><use href="#i-history"/></svg> Historial de Cambios de Fecha</div>
       <div id="histReprog" style="max-height:290px;overflow-y:auto;"><p class="empty-msg">Sin reprogramaciones registradas.</p></div>
     </div>
   </div>
@@ -257,15 +358,15 @@
 <!-- ══ TAB: REGISTRAR ══ -->
 <section class="tab-content" id="tab-registro">
   <div class="panel">
-    <div class="panel-title">➕ Nueva Capacitación ETI</div>
+    <div class="panel-title"><svg class="ico"><use href="#i-plus-circle"/></svg> Nueva Capacitación ETI</div>
     <div class="alert-card alert-azul" id="progVinculadaBanner" style="display:none;">
-      <span class="alert-icon">🔗</span>
-      <div><strong>Ejecutando programación vinculada</strong> — al guardar este registro, la programación se marcará automáticamente como ✅ Ejecutada. <a href="#" onclick="desvincularProg();return false;" style="color:var(--rojo);font-weight:700;">Desvincular</a></div>
+      <span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span>
+      <div><strong>Ejecutando programación vinculada</strong> — al guardar este registro, la programación se marcará automáticamente como Ejecutada. <a href="#" onclick="desvincularProg();return false;" style="color:var(--rojo);font-weight:700;">Desvincular</a></div>
     </div>
     <form id="etiForm" onsubmit="return false;">
 
       <div class="section-block">
-        <h3 class="section-subtitle">👤 Supervisor Responsable</h3>
+        <h3 class="section-subtitle"><svg class="ico"><use href="#i-user"/></svg> Supervisor Responsable</h3>
         <div class="form-grid">
           <div class="form-group">
             <label for="fSupervisor">Supervisor de Gestión Humana *</label>
@@ -273,7 +374,7 @@
               <select id="fSupervisor" required style="flex:1;">
                 <option value="">— Seleccionar supervisor —</option>
               </select>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores">➕</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalSups()" title="Gestionar supervisores"><svg class="ico sm"><use href="#i-plus"/></svg></button>
             </div>
             <input type="hidden" id="fProgId" value="" />
           </div>
@@ -285,7 +386,7 @@
       </div>
 
       <div class="section-block">
-        <h3 class="section-subtitle">📚 Datos de la Capacitación</h3>
+        <h3 class="section-subtitle"><svg class="ico"><use href="#i-list"/></svg> Datos de la Capacitación</h3>
         <div class="form-grid-3">
           <div class="form-group">
             <label for="fTema">Tema de Capacitación *</label>
@@ -309,10 +410,10 @@
       </div>
 
       <div class="section-block" id="bloqueTipoPersonal" style="display:none;">
-        <h3 class="section-subtitle">🧑‍🌾 Tipo de Personal Capacitado</h3>
+        <h3 class="section-subtitle"><svg class="ico"><use href="#i-users"/></svg> Tipo de Personal Capacitado</h3>
         <div class="radio-row">
-          <label class="radio-chip" id="chipObreros"><input type="radio" name="tipoPersonal" value="OBREROS" /> 🌾 OBREROS (Campo)</label>
-          <label class="radio-chip" id="chipEmpleados"><input type="radio" name="tipoPersonal" value="EMPLEADOS" /> 💼 EMPLEADOS (Administrativos)</label>
+          <label class="radio-chip" id="chipObreros"><input type="radio" name="tipoPersonal" value="OBREROS" /> <svg class="ico sm"><use href="#i-leaf"/></svg> OBREROS (Campo)</label>
+          <label class="radio-chip" id="chipEmpleados"><input type="radio" name="tipoPersonal" value="EMPLEADOS" /> <svg class="ico sm"><use href="#i-briefcase"/></svg> EMPLEADOS (Administrativos)</label>
         </div>
 
         <!-- RUTAS (obreros) -->
@@ -320,8 +421,8 @@
           <div class="form-group" style="margin-bottom:10px;">
             <label>¿Cómo deseas registrar las rutas?</label>
             <div class="radio-row">
-              <label class="radio-chip"><input type="radio" name="rutasModo" value="numero" /> 🔢 Detallar rutas</label>
-              <label class="radio-chip"><input type="radio" name="rutasModo" value="varias" /> 📦 Varias rutas (sin detalle)</label>
+              <label class="radio-chip"><input type="radio" name="rutasModo" value="numero" /> Detallar rutas</label>
+              <label class="radio-chip"><input type="radio" name="rutasModo" value="varias" /> Varias rutas (sin detalle)</label>
             </div>
           </div>
           <div id="rutasNumeroCont" style="display:none;">
@@ -332,7 +433,7 @@
             <div id="rutasItemsCont"></div>
           </div>
           <div id="rutasVariasCont" style="display:none;">
-            <div class="obs-alert">📦 Se registrará como "VARIAS RUTAS" sin detalle individual.</div>
+            <div class="obs-alert">Se registrará como "VARIAS RUTAS" sin detalle individual.</div>
           </div>
         </div>
 
@@ -347,7 +448,7 @@
       </div>
 
       <div class="section-block">
-        <h3 class="section-subtitle">👥 Trabajadores Capacitados</h3>
+        <h3 class="section-subtitle"><svg class="ico"><use href="#i-users"/></svg> Trabajadores Capacitados</h3>
         <div class="form-grid-3">
           <div class="form-group">
             <label for="fVarones">N° Varones Capacitados *</label>
@@ -362,25 +463,30 @@
             <input type="text" id="fTotal" readonly class="input-readonly input-calc" value="0 trabajadores" />
           </div>
         </div>
+        <div class="form-group full" style="margin-top:12px;">
+          <label for="fCodigos">Códigos de los trabajadores capacitados (opcional)</label>
+          <textarea id="fCodigos" rows="2" placeholder="Ej: 10234, 10567, 11890 — separados por coma, espacio o salto de línea"></textarea>
+          <small>Se guardan como listado para trazabilidad de asistentes.</small>
+        </div>
       </div>
 
       <div class="section-block">
-        <h3 class="section-subtitle">💬 Observaciones</h3>
+        <h3 class="section-subtitle"><svg class="ico"><use href="#i-edit"/></svg> Observaciones</h3>
         <div class="form-group full">
           <label for="fObservaciones">Observaciones / Motivo de retraso</label>
           <textarea id="fObservaciones" rows="3" placeholder="Escribe aquí las observaciones. OBLIGATORIO si hay retraso en el envío de actas."></textarea>
-          <div class="obs-alert" id="obsAlert" style="display:none;">⚠️ Se detectó RETRASO — debes indicar el motivo en Observaciones antes de guardar.</div>
+          <div class="obs-alert" id="obsAlert" style="display:none;">⚠ Se detectó RETRASO — debes indicar el motivo en Observaciones antes de guardar.</div>
         </div>
       </div>
 
       <div class="actions-row">
-        <button class="btn btn-secondary" id="btnPreview">👁️ Vista Previa</button>
-        <button class="btn btn-primary" id="btnGuardar">💾 Guardar Registro</button>
-        <button class="btn btn-danger btn-sm" id="btnLimpiarForm">🗑 Limpiar</button>
+        <button class="btn btn-secondary" id="btnPreview"><svg class="ico sm"><use href="#i-eye"/></svg> Vista Previa</button>
+        <button class="btn btn-primary" id="btnGuardar"><svg class="ico sm"><use href="#i-check"/></svg> Guardar Registro</button>
+        <button class="btn btn-danger btn-sm" id="btnLimpiarForm"><svg class="ico sm"><use href="#i-trash"/></svg> Limpiar</button>
       </div>
 
       <div class="preview-box" id="previewBox" style="display:none;">
-        <div class="section-subtitle" style="margin-bottom:10px;">👁️ Vista Previa del Registro</div>
+        <div class="section-subtitle" style="margin-bottom:10px;"><svg class="ico"><use href="#i-eye"/></svg> Vista Previa del Registro</div>
         <div class="preview-grid" id="previewGrid"></div>
       </div>
     </form>
@@ -391,16 +497,16 @@
 <section class="tab-content" id="tab-tabla">
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">📋 Registros de Capacitaciones</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;"><svg class="ico"><use href="#i-list"/></svg> Registros de Capacitaciones</div>
       <div class="filters-bar">
-        <input type="text" class="filter-input" id="filtBusqueda" placeholder="🔍 Buscar supervisor, sector, tema..." />
+        <input type="text" class="filter-input" id="filtBusqueda" placeholder="Buscar supervisor, sector, tema..." />
         <select class="filter-select" id="filtSupervisor"><option value="">Todos los supervisores</option></select>
         <select class="filter-select" id="filtEstado">
           <option value="">Todos los estados</option>
-          <option value="cumplido">✅ Cumplido</option>
-          <option value="proceso">⏳ En Proceso</option>
-          <option value="leve">⚠️ Retraso Leve</option>
-          <option value="critico">🚨 Retraso Crítico</option>
+          <option value="cumplido">Cumplido</option>
+          <option value="proceso">En Proceso</option>
+          <option value="leve">Retraso Leve</option>
+          <option value="critico">Retraso Crítico</option>
         </select>
         <select class="filter-select" id="filtTema">
           <option value="">Todos los temas</option>
@@ -411,17 +517,17 @@
         <select class="filter-select" id="filtMes">
           <option value="">Todos los meses</option>
         </select>
-        <button class="btn btn-excel btn-sm" id="btnExportarExcel">📥 Excel</button>
-        <button class="btn btn-danger btn-sm" id="btnClearAll" style="display:none;">🗑 Borrar todo</button>
+        <button class="btn btn-excel btn-sm" id="btnExportarExcel"><svg class="ico sm"><use href="#i-download"/></svg> Excel</button>
+        <button class="btn btn-danger btn-sm" id="btnClearAll" style="display:none;"><svg class="ico sm"><use href="#i-trash"/></svg> Borrar todo</button>
       </div>
     </div>
-    <div id="resumenFiltro" style="font-size:11px;color:var(--gris-text);font-weight:700;margin-bottom:10px;"></div>
+    <div id="resumenFiltro" style="font-size:11px;color:var(--texto-3);font-weight:600;margin-bottom:10px;"></div>
     <div class="table-scroll">
       <table class="data-table">
         <thead>
           <tr>
             <th>#</th><th>Supervisor</th><th>Sector</th><th>Tema</th><th>Personal</th>
-            <th>👨</th><th>👩</th><th>Total</th>
+            <th>Var.</th><th>Muj.</th><th>Total</th>
             <th>F. Ejecución</th><th>F. Límite</th><th>F. Envío</th>
             <th>Avance</th><th>Estado</th><th>Obs.</th><th>Acc.</th>
           </tr>
@@ -437,20 +543,20 @@
 <!-- ══ TAB: RANKING ══ -->
 <section class="tab-content" id="tab-ranking">
   <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
-    <div class="kpi-card gold"><div class="kpi-icon">🥇</div><div class="kpi-val" id="rkMejor" style="font-size:15px;">–</div><div class="kpi-label">Mejor Supervisor</div></div>
-    <div class="kpi-card verde"><div class="kpi-icon">🎯</div><div class="kpi-val" id="rkPromedio">0%</div><div class="kpi-label">Cumplimiento Promedio</div></div>
-    <div class="kpi-card rojo"><div class="kpi-icon">📉</div><div class="kpi-val" id="rkPeor" style="font-size:15px;">–</div><div class="kpi-label">Requiere Atención</div></div>
+    <div class="kpi-card gold"><div class="kpi-icon"><svg class="ico"><use href="#i-trophy"/></svg></div><div class="kpi-val" id="rkMejor" style="font-size:15px;">–</div><div class="kpi-label">Mejor Supervisor</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-target"/></svg></div><div class="kpi-val" id="rkPromedio">0%</div><div class="kpi-label">Cumplimiento Promedio</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon"><svg class="ico"><use href="#i-alert"/></svg></div><div class="kpi-val" id="rkPeor" style="font-size:15px;">–</div><div class="kpi-label">Requiere Atención</div></div>
   </div>
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">🏆 Ranking de Supervisores</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;"><svg class="ico"><use href="#i-trophy"/></svg> Ranking de Supervisores</div>
       <div class="filters-bar">
         <select class="filter-select" id="rankOrden">
           <option value="cumplimiento">Ordenar por % cumplimiento</option>
           <option value="total">Ordenar por N° capacitaciones</option>
           <option value="trabajadores">Ordenar por trabajadores</option>
         </select>
-        <button class="btn btn-pdf btn-sm" id="btnRankPdf">📄 PDF</button>
+        <button class="btn btn-pdf btn-sm" id="btnRankPdf"><svg class="ico sm"><use href="#i-file"/></svg> PDF</button>
       </div>
     </div>
     <div id="rankingLista"><p class="empty-msg">Sin registros para rankear.</p></div>
@@ -461,58 +567,184 @@
 <section class="tab-content" id="tab-estadisticas">
   <div class="panel">
     <div class="toolbar">
-      <div class="panel-title" style="margin:0;border:0;padding:0;">📈 Estadísticas Generales</div>
+      <div class="panel-title" style="margin:0;border:0;padding:0;"><svg class="ico"><use href="#i-chart"/></svg> Estadísticas Generales</div>
       <div class="filters-bar">
         <select class="filter-select" id="statAnio"></select>
-        <button class="btn btn-pdf btn-sm" id="btnStatsPdf">📄 Reporte PDF</button>
+        <button class="btn btn-pdf btn-sm" id="btnStatsPdf"><svg class="ico sm"><use href="#i-file"/></svg> Reporte PDF</button>
       </div>
     </div>
     <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
-      <div class="kpi-card"><div class="kpi-icon">📚</div><div class="kpi-val" id="sTotal">0</div><div class="kpi-label">Total Capacitaciones</div></div>
-      <div class="kpi-card gold"><div class="kpi-icon">👥</div><div class="kpi-val" id="sTrabajadores">0</div><div class="kpi-label">Trabajadores</div></div>
-      <div class="kpi-card verde"><div class="kpi-icon">✅</div><div class="kpi-val" id="sCumplimiento">0%</div><div class="kpi-label">% Cumplimiento</div></div>
-      <div class="kpi-card amarillo"><div class="kpi-icon">📊</div><div class="kpi-val" id="sPromedio">0</div><div class="kpi-label">Promedio/Mes</div></div>
-      <div class="kpi-card rojo"><div class="kpi-icon">🚨</div><div class="kpi-val" id="sRetrasos">0</div><div class="kpi-label">Retrasos</div></div>
-      <div class="kpi-card naranja"><div class="kpi-icon">⏱</div><div class="kpi-val" id="sDiasProm">0</div><div class="kpi-label">Días Prom. Envío</div></div>
+      <div class="kpi-card"><div class="kpi-icon"><svg class="ico"><use href="#i-list"/></svg></div><div class="kpi-val" id="sTotal">0</div><div class="kpi-label">Total Capacitaciones</div></div>
+      <div class="kpi-card gold"><div class="kpi-icon"><svg class="ico"><use href="#i-users"/></svg></div><div class="kpi-val" id="sTrabajadores">0</div><div class="kpi-label">Trabajadores</div></div>
+      <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-check-circle"/></svg></div><div class="kpi-val" id="sCumplimiento">0%</div><div class="kpi-label">% Cumplimiento</div></div>
+      <div class="kpi-card amarillo"><div class="kpi-icon"><svg class="ico"><use href="#i-chart"/></svg></div><div class="kpi-val" id="sPromedio">0</div><div class="kpi-label">Promedio/Mes</div></div>
+      <div class="kpi-card rojo"><div class="kpi-icon"><svg class="ico"><use href="#i-alert"/></svg></div><div class="kpi-val" id="sRetrasos">0</div><div class="kpi-label">Retrasos</div></div>
+      <div class="kpi-card naranja"><div class="kpi-icon"><svg class="ico"><use href="#i-clock"/></svg></div><div class="kpi-val" id="sDiasProm">0</div><div class="kpi-label">Días Prom. Envío</div></div>
     </div>
     <div class="charts-row">
-      <div class="chart-card"><div class="chart-title">🎯 Estado General</div><canvas id="stEstados"></canvas></div>
-      <div class="chart-card"><div class="chart-title">📚 Por Tema</div><canvas id="stTemas"></canvas></div>
-      <div class="chart-card"><div class="chart-title">👤 Capacitaciones por Supervisor</div><canvas id="stSupervisores"></canvas></div>
-      <div class="chart-card"><div class="chart-title">👥 Trabajadores por Supervisor</div><canvas id="stTrabajadores"></canvas></div>
-      <div class="chart-card wide"><div class="chart-title">📈 Evolución Mensual (Capacitaciones y Trabajadores)</div><canvas id="stMensual"></canvas></div>
-      <div class="chart-card"><div class="chart-title">🌡 Por Temporada</div><canvas id="stTemporada"></canvas></div>
-      <div class="chart-card"><div class="chart-title">🧑‍🌾 Obreros vs Empleados</div><canvas id="stPersonal"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-target"/></svg> Estado General</div><canvas id="stEstados"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-list"/></svg> Por Tema</div><canvas id="stTemas"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-user"/></svg> Capacitaciones por Supervisor</div><canvas id="stSupervisores"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-users"/></svg> Trabajadores por Supervisor</div><canvas id="stTrabajadores"></canvas></div>
+      <div class="chart-card wide"><div class="chart-title"><svg class="ico"><use href="#i-chart"/></svg> Evolución Mensual (Capacitaciones y Trabajadores)</div><canvas id="stMensual"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-activity"/></svg> Por Temporada</div><canvas id="stTemporada"></canvas></div>
+      <div class="chart-card"><div class="chart-title"><svg class="ico"><use href="#i-briefcase"/></svg> Obreros vs Empleados</div><canvas id="stPersonal"></canvas></div>
     </div>
   </div>
 </section>
 
-<footer class="site-footer">
-  <strong>Sistema ETI v5.0</strong> — Capacitaciones de Ética e Integridad<br>
-  Desarrollado por <strong>Joel A. Timoteo Gonza</strong> · Relaciones Laborales · Verfrut © 2026
-</footer>
+<!-- ══ TAB: USUARIOS (solo admin) ══ -->
+<section class="tab-content" id="tab-usuarios">
+  <div class="panel">
+    <div class="panel-title"><svg class="ico"><use href="#i-users"/></svg> Cuentas de Acceso para Supervisores</div>
+    <div class="alert-card alert-azul">
+      <span class="alert-icon"><svg class="ico"><use href="#i-key"/></svg></span>
+      <div>Crea una cuenta por cada supervisor. Con su usuario y contraseña, el supervisor entra al sistema y ve únicamente <strong>Mi Panel</strong>: sus capacitaciones programadas por ti y el formulario para registrar la ejecución (capacitados, rutas, códigos y observaciones).</div>
+    </div>
+    <div class="section-block">
+      <h3 class="section-subtitle"><svg class="ico"><use href="#i-plus"/></svg> Nueva Cuenta</h3>
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="uSupervisor">Supervisor vinculado *</label>
+          <select id="uSupervisor"><option value="">— Seleccionar supervisor —</option></select>
+          <small>Debe existir en la lista de supervisores</small>
+        </div>
+        <div class="form-group">
+          <label for="uUsuario">Usuario *</label>
+          <input type="text" id="uUsuario" placeholder="Ej: ptamayo" style="text-transform:lowercase;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="uPassword">Contraseña *</label>
+          <input type="text" id="uPassword" placeholder="Ej: ptamayo2026" autocomplete="off" />
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary btn-sm" id="btnUserGuardar"><svg class="ico sm"><use href="#i-check"/></svg> Crear Cuenta</button>
+        <button class="btn btn-secondary btn-sm" id="btnUserSugerir"><svg class="ico sm"><use href="#i-refresh"/></svg> Sugerir usuario y contraseña</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <h3 class="section-subtitle" style="margin:0;"><svg class="ico"><use href="#i-users"/></svg> Cuentas Registradas</h3>
+      <button class="btn btn-excel btn-sm" id="btnUsersExcel"><svg class="ico sm"><use href="#i-download"/></svg> Exportar credenciales</button>
+    </div>
+    <div id="listaUsuarios"><p class="empty-msg">Sin cuentas registradas aún.</p></div>
+  </div>
+</section>
 
+<!-- ══ TAB: MI PANEL (solo supervisores) ══ -->
+<section class="tab-content" id="tab-mipanel">
+  <div class="sup-hero">
+    <h2 id="supHeroNombre">Mi Panel</h2>
+    <p>Aquí ves las capacitaciones que Relaciones Laborales programó para ti. Cuando ejecutes una, regístrala con la cantidad de capacitados, rutas, códigos y observaciones.</p>
+  </div>
+
+  <div class="kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+    <div class="kpi-card azul"><div class="kpi-icon"><svg class="ico"><use href="#i-calendar"/></svg></div><div class="kpi-val" id="skPendientes">0</div><div class="kpi-label">Programadas Pendientes</div></div>
+    <div class="kpi-card amarillo"><div class="kpi-icon"><svg class="ico"><use href="#i-clock"/></svg></div><div class="kpi-val" id="skProximas">0</div><div class="kpi-label">Próximas (≤3 días)</div></div>
+    <div class="kpi-card rojo"><div class="kpi-icon"><svg class="ico"><use href="#i-alert"/></svg></div><div class="kpi-val" id="skVencidas">0</div><div class="kpi-label">Vencidas</div></div>
+    <div class="kpi-card verde"><div class="kpi-icon"><svg class="ico"><use href="#i-check-circle"/></svg></div><div class="kpi-val" id="skEjecutadas">0</div><div class="kpi-label">Registradas</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><svg class="ico"><use href="#i-calendar"/></svg> Mis Capacitaciones Programadas</div>
+    <div id="supProgramaciones"><p class="empty-msg">No tienes capacitaciones programadas pendientes.</p></div>
+  </div>
+
+  <div class="panel" id="supFormPanel" style="display:none;">
+    <div class="panel-title"><svg class="ico"><use href="#i-plus-circle"/></svg> Registrar Ejecución de Capacitación</div>
+    <div class="alert-card alert-azul" id="supProgInfo" style="display:none;">
+      <span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span>
+      <div id="supProgInfoTxt">–</div>
+    </div>
+    <input type="hidden" id="sProgId" value="" />
+    <div class="section-block">
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="sFechaEjec">Fecha de Ejecución *</label>
+          <input type="date" id="sFechaEjec" />
+        </div>
+        <div class="form-group">
+          <label for="sVarones">N° Varones Capacitados *</label>
+          <input type="number" id="sVarones" min="0" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label for="sMujeres">N° Mujeres Capacitadas *</label>
+          <input type="number" id="sMujeres" min="0" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>Total (automático)</label>
+          <input type="text" id="sTotalCalc" readonly class="input-readonly input-calc" value="0 trabajadores" />
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label for="sRutas">Rutas capacitadas</label>
+          <input type="text" id="sRutas" placeholder="Ej: RT-01 Ruta Norte, RT-02 Ruta Sur — separadas por coma" />
+        </div>
+        <div class="form-group full">
+          <label for="sCodigos">Códigos de los trabajadores capacitados</label>
+          <textarea id="sCodigos" rows="3" placeholder="Ej: 10234, 10567, 11890 — separados por coma, espacio o salto de línea"></textarea>
+          <small id="sCodigosCount">0 códigos ingresados</small>
+        </div>
+        <div class="form-group full">
+          <label for="sObs">Observaciones</label>
+          <textarea id="sObs" rows="2" placeholder="Novedades de la capacitación, incidencias, etc."></textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" id="btnSupGuardar"><svg class="ico sm"><use href="#i-check"/></svg> Guardar Registro</button>
+        <button class="btn btn-danger btn-sm" id="btnSupCancelar">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><svg class="ico"><use href="#i-list"/></svg> Mis Registros Enviados</div>
+    <div id="supMisRegistros"><p class="empty-msg">Aún no has registrado capacitaciones.</p></div>
+  </div>
+</section>
+
+    </main>
+
+    <footer class="site-footer">
+      <strong>Sistema ETI v6.0</strong> — Capacitaciones de Ética e Integridad ·
+      Desarrollado por <strong>Joel A. Timoteo Gonza</strong> · Relaciones Laborales · Verfrut © 2026
+    </footer>
+  </div><!-- /main-area -->
+</div><!-- /app-shell -->
 </div><!-- /appPage -->
+
+<!-- MODAL RESUMEN DE ALERTAS AL INICIAR SESIÓN -->
+<div class="modal-overlay" id="modalResumen">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-header">
+      <h3><svg class="ico"><use href="#i-bell"/></svg> Resumen de Vencimientos</h3>
+      <button class="modal-close" onclick="cerrarResumen()">✕</button>
+    </div>
+    <div id="resumenContent"></div>
+    <div class="actions-row" style="justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-primary" onclick="cerrarResumen()"><svg class="ico sm"><use href="#i-check"/></svg> Entendido</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL REPROGRAMAR -->
 <div class="modal-overlay" id="modalReprog">
   <div class="modal-box" style="max-width:520px;">
     <div class="modal-header">
-      <h3>🔄 Editar / Reprogramar Capacitación</h3>
+      <h3><svg class="ico"><use href="#i-refresh"/></svg> Editar / Reprogramar Capacitación</h3>
       <button class="modal-close" onclick="cerrarReprog()">✕</button>
     </div>
     <input type="hidden" id="eProgId" />
     <div class="alert-card alert-azul" style="margin-bottom:14px;">
-      <span class="alert-icon">📅</span>
+      <span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span>
       <div id="eProgInfo">–</div>
     </div>
     <div class="form-grid" style="margin-bottom:12px;">
       <div class="form-group full">
-        <label>Fechas Designadas — cambia solo la(s) fecha(s) afectada(s), quita ✕ o agrega ➕</label>
+        <label>Fechas Designadas — cambia solo la(s) fecha(s) afectada(s), quita ✕ o agrega</label>
         <div id="eFechasList"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:7px;flex-wrap:wrap;">
           <input type="date" id="eFechaExtra" class="filter-input" style="min-width:160px;" />
-          <button type="button" class="btn btn-secondary btn-sm" id="btnAddFechaE">➕ Agregar fecha</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnAddFechaE"><svg class="ico sm"><use href="#i-plus"/></svg> Agregar fecha</button>
         </div>
       </div>
       <div class="form-group full">
@@ -523,13 +755,13 @@
         <label>Motivo del Cambio de Fecha *</label>
         <select id="eMotivo">
           <option value="">— Seleccionar motivo —</option>
-          <option value="LLUVIA / CLIMA">🌧 Lluvia / Clima</option>
-          <option value="PARO / BLOQUEO">🚧 Paro / Bloqueo</option>
-          <option value="LABORES ATRASADAS">🌾 Labores atrasadas en campo</option>
-          <option value="FALTA DE PERSONAL">👥 Falta de personal</option>
-          <option value="DECISION DE ADMINISTRACION">👔 Decisión de administración</option>
-          <option value="CRUCE CON OTRA ACTIVIDAD">📆 Cruce con otra actividad</option>
-          <option value="OTRO">📝 Otro motivo</option>
+          <option value="LLUVIA / CLIMA">Lluvia / Clima</option>
+          <option value="PARO / BLOQUEO">Paro / Bloqueo</option>
+          <option value="LABORES ATRASADAS">Labores atrasadas en campo</option>
+          <option value="FALTA DE PERSONAL">Falta de personal</option>
+          <option value="DECISION DE ADMINISTRACION">Decisión de administración</option>
+          <option value="CRUCE CON OTRA ACTIVIDAD">Cruce con otra actividad</option>
+          <option value="OTRO">Otro motivo</option>
         </select>
       </div>
       <div class="form-group full">
@@ -539,7 +771,7 @@
     </div>
     <div class="actions-row" style="justify-content:flex-end;margin-top:0;">
       <button class="btn btn-danger btn-sm" onclick="cerrarReprog()">✕ Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarReprog()">💾 Guardar Reprogramación</button>
+      <button class="btn btn-primary" onclick="guardarReprog()"><svg class="ico sm"><use href="#i-check"/></svg> Guardar Reprogramación</button>
     </div>
   </div>
 </div>
@@ -548,11 +780,11 @@
 <div class="modal-overlay" id="modalSups">
   <div class="modal-box" style="max-width:560px;">
     <div class="modal-header">
-      <h3>👤 Gestión de Supervisores</h3>
+      <h3><svg class="ico"><use href="#i-user"/></svg> Gestión de Supervisores</h3>
       <button class="modal-close" onclick="cerrarModalSups()">✕</button>
     </div>
     <div class="section-block" style="margin-bottom:14px;">
-      <h3 class="section-subtitle">➕ Registrar Nuevo Supervisor</h3>
+      <h3 class="section-subtitle"><svg class="ico"><use href="#i-plus"/></svg> Registrar Nuevo Supervisor</h3>
       <div class="form-grid">
         <div class="form-group">
           <label>Nombre Completo *</label>
@@ -564,10 +796,10 @@
         </div>
       </div>
       <div class="actions-row" style="margin-top:12px;">
-        <button class="btn btn-primary btn-sm" onclick="guardarNuevoSup()">💾 Guardar Supervisor</button>
+        <button class="btn btn-primary btn-sm" onclick="guardarNuevoSup()"><svg class="ico sm"><use href="#i-check"/></svg> Guardar Supervisor</button>
       </div>
     </div>
-    <h3 class="section-subtitle">📋 Supervisores Registrados</h3>
+    <h3 class="section-subtitle"><svg class="ico"><use href="#i-list"/></svg> Supervisores Registrados</h3>
     <div id="listaSups" style="max-height:280px;overflow-y:auto;"></div>
   </div>
 </div>
@@ -576,7 +808,7 @@
 <div class="modal-overlay" id="modalDetalle">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>📄 Detalle del Registro</h3>
+      <h3><svg class="ico"><use href="#i-file"/></svg> Detalle del Registro</h3>
       <button class="modal-close" onclick="cerrarDetalle()">✕</button>
     </div>
     <div id="detalleContent"></div>
@@ -587,7 +819,7 @@
 <div class="modal-overlay" id="modalEnvio">
   <div class="modal-box" style="max-width:440px;">
     <div class="modal-header">
-      <h3>📤 Registrar Envío de Actas</h3>
+      <h3><svg class="ico"><use href="#i-send"/></svg> Registrar Envío de Actas</h3>
       <button class="modal-close" onclick="cerrarEnvio()">✕</button>
     </div>
     <input type="hidden" id="envioRegId" />
@@ -601,7 +833,7 @@
     </div>
     <div class="actions-row" style="justify-content:flex-end;margin-top:0;">
       <button class="btn btn-danger btn-sm" onclick="cerrarEnvio()">✕ Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarEnvio()">💾 Guardar</button>
+      <button class="btn btn-primary" onclick="guardarEnvio()"><svg class="ico sm"><use href="#i-check"/></svg> Guardar</button>
     </div>
   </div>
 </div>
