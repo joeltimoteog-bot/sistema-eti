@@ -47,7 +47,9 @@ const USUARIOS = [
   { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza',   password:'jtimoteo2026',  rol:'admin'   },
   { usuario:'ovilela',   nombre:'Olga Vilela Ludeña',      password:'ovilela2026',   rol:'usuario' },
   { usuario:'jchavez',   nombre:'Jorge Chavez Cordova',    password:'jchavez2026',   rol:'usuario' },
-  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', password:'gcastillo2026', rol:'usuario' }
+  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', password:'gcastillo2026', rol:'usuario' },
+  { usuario:'lcastillo', nombre:'L. Castillo',             password:'lcastillo2026', rol:'usuario' },
+  { usuario:'tmendoza',  nombre:'T. Mendoza',              password:'tmendoza2026',  rol:'usuario' }
 ];
 
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
@@ -63,6 +65,7 @@ let unsubProg = null;
 let unsubUsers = null;
 let uiInicializada = false;
 let resumenMostrado = false;
+let avisoSupMostrado = false;
 let dataRegsCargada = false;
 let dataProgCargada = false;
 let chEstados=null, chTendencia=null;
@@ -102,6 +105,7 @@ async function intentarLogin() {
   errDiv.style.display='none';
   usuarioActual = found;
   resumenMostrado = false;
+  avisoSupMostrado = false;
   dataRegsCargada = false;
   dataProgCargada = false;
   document.getElementById('loginPage').style.display='none';
@@ -2053,8 +2057,11 @@ function renderNotificaciones() {
 }
 
 // Modal de resumen al iniciar sesión (una vez por sesión)
+// Para supervisores NO se muestra: ellos reciben el aviso automático
+// con su formulario de registro abierto (ver avisoAutomaticoSupervisor)
 function mostrarResumenSiCorresponde(alertas) {
   if(resumenMostrado || !usuarioActual) return;
+  if(usuarioActual.rol === 'supervisor') { resumenMostrado = true; return; }
   if(!dataRegsCargada || !dataProgCargada) return;
   resumenMostrado = true;
   if(!alertas.length) return;
@@ -2166,6 +2173,50 @@ function renderPanelSupervisor() {
         <div><strong>${esc(r.tema)}</strong> · ${formatDateDisplay(r.fechaEjecucion)}<br>
         ${r.total||0} trabajadores (${r.varones||0} V · ${r.mujeres||0} M)${(r.codigosCapacitados||[]).length?` · ${r.codigosCapacitados.length} códigos`:''}${r.rutasTexto?` · Rutas: ${esc(r.rutasTexto)}`:''}</div>
       </div>`).join('');
+  }
+
+  // Aviso permanente + apertura automática del formulario
+  renderAvisoSupervisor(pendientes);
+}
+
+// Elige la programación pendiente más urgente del supervisor
+function progMasUrgente(pendientes) {
+  const orden = {vencida:0, curso:1, hoy:1, proxima:2};
+  const lista = [...pendientes].sort((a,b) => {
+    const d = orden[a._est.key]-orden[b._est.key];
+    if(d!==0) return d;
+    if(a._est.key==='vencida') return b._est.dias-a._est.dias; // más atrasada primero
+    return (a._est.dias||0)-(b._est.dias||0); // más cercana primero
+  });
+  return lista[0] || null;
+}
+
+// Banner de aviso al supervisor + abrir su formulario automáticamente al entrar
+function renderAvisoSupervisor(pendientes) {
+  const banner = document.getElementById('supAvisoBanner');
+  if(!banner) return;
+  const urgente = progMasUrgente(pendientes);
+  if(!urgente) { banner.style.display='none'; return; }
+
+  const rg = rangoProg(urgente);
+  const fechasTxt = rg.fechas.map(f=>formatDateDisplay(f)).join(', ');
+  const esVencida = urgente._est.key==='vencida';
+  banner.className = 'alert-card ' + (esVencida ? 'alert-rojo' : 'alert-amarillo');
+  banner.style.display = 'flex';
+  banner.innerHTML = `
+    <span class="alert-icon"><svg class="ico"><use href="#i-bell"/></svg></span>
+    <div style="line-height:1.65;">
+      <strong style="font-size:13px;">${esVencida ? '🚨 Tienes una capacitación programada VENCIDA' : '📋 Tienes una capacitación programada'}</strong><br>
+      <strong>${esc(urgente.tema)}</strong> · ${esc(urgente.sector||'')} — fecha(s): <strong>${fechasTxt}</strong>${esVencida?` · <strong style="color:var(--rojo);">${urgente._est.dias} día(s) hábil(es) de atraso</strong>`:''}.<br>
+      Por favor registra los datos solicitados en el formulario. Si aún no la has realizado, recuerda que
+      <strong>se está evaluando el cumplimiento y la responsabilidad de las actividades programadas</strong>.
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="abrirRegistroSup('${urgente.id}')"><svg class="ico sm"><use href="#i-plus"/></svg> Registrar ahora</button></div>
+    </div>`;
+
+  // Al iniciar sesión: abrir el formulario automáticamente (una sola vez)
+  if(!avisoSupMostrado && dataProgCargada) {
+    avisoSupMostrado = true;
+    setTimeout(() => abrirRegistroSup(urgente.id), 600);
   }
 }
 
