@@ -6,7 +6,7 @@
 //      módulo de supervisores y sincronización Sheets
 // ════════════════════════════════════════════════
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAv-1VcbT8VCerClNAeVtVXzOxhSffeDpc",
@@ -43,13 +43,21 @@ const SUPS_SEED = [
 ];
 
 // ─── USUARIOS ─────────────────────────────────────────────────
+// SEGURIDAD: las contraseñas NO se guardan en texto plano. "ph" es la huella
+// SHA-256 de (usuario|contraseña|sal); no se puede recuperar la clave desde ella.
+const ETI_SALT = 'ETI-VERFRUT-2026';
+async function etiHash(user, pwd) {
+  const data = new TextEncoder().encode(String(user) + '|' + String(pwd) + '|' + ETI_SALT);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 const USUARIOS = [
-  { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza',   password:'jtimoteo2026',  rol:'admin'   },
-  { usuario:'ovilela',   nombre:'Olga Vilela Ludeña',      password:'ovilela2026',   rol:'usuario' },
-  { usuario:'jchavez',   nombre:'Jorge Chavez Cordova',    password:'jchavez2026',   rol:'usuario' },
-  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', password:'gcastillo2026', rol:'usuario' },
-  { usuario:'lcastillo', nombre:'L. Castillo',             password:'lcastillo2026', rol:'usuario' },
-  { usuario:'tmendoza',  nombre:'T. Mendoza',              password:'tmendoza2026',  rol:'usuario' }
+  { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza',   ph:'4144313f138f53a9a7a81c5f855a70e754df61c61eb6a8c1d5bcf90b296ee068', rol:'admin'   },
+  { usuario:'ovilela',   nombre:'Olga Vilela Ludeña',      ph:'a4058bf9d3a7e75eed5f35bd673969e4e022bb092e3f92340090594d18d31ea6', rol:'usuario' },
+  { usuario:'jchavez',   nombre:'Jorge Chavez Cordova',    ph:'d7817f54685be778b1523c966ea6d47c3d1fa321a2a19130b163b99ac0cdbaee', rol:'usuario' },
+  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', ph:'2f699f266bd2b7a16460622e28c55a63a1e48f2c8071d7f2e8622a5ff0692e03', rol:'usuario' },
+  { usuario:'lcastillo', nombre:'L. Castillo',             ph:'52c593614509a45cae2ebbeaa3a1b5c3f53efbac7eb2c8074fbaac9acab3bfbb', rol:'usuario' },
+  { usuario:'tmendoza',  nombre:'T. Mendoza',              ph:'70b22897ebab5a7c25f9aff0d0d5175bd80adde36b44df6ac914d076900950e4', rol:'usuario' }
 ];
 
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
@@ -89,15 +97,26 @@ async function intentarLogin() {
   const user = document.getElementById('loginUser').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value;
   const errDiv = document.getElementById('loginError');
-  let found = USUARIOS.find(u => u.usuario===user && u.password===pass);
+  let hash = '';
+  try { hash = await etiHash(user, pass); } catch(e) { console.error('hash', e); }
+  let found = USUARIOS.find(u => u.usuario===user && u.ph===hash);
 
-  // Cuentas de supervisores registradas en la nube
+  // Cuentas de supervisores registradas en la nube.
+  // Se comparan por huella cifrada; las cuentas antiguas (contraseña en texto
+  // plano) siguen entrando y se migran solas a huella en ese momento.
   if(!found && user && pass) {
     try {
       const snap = await getDocs(collection(db, COL_USERS));
       const cuentas = snap.docs.map(d => ({id:d.id, ...d.data()}));
-      const c = cuentas.find(u => (u.usuario||'').toLowerCase()===user && u.password===pass && u.estado!=='inactivo');
-      if(c) found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
+      const c = cuentas.find(u => (u.usuario||'').toLowerCase()===user && u.estado!=='inactivo' &&
+        ((u.password_hash && u.password_hash===hash) || (u.password && u.password===pass)));
+      if(c) {
+        found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
+        if(!c.password_hash && hash) {
+          try { await updateDoc(doc(db, COL_USERS, c.id), {password_hash: hash, password: deleteField()}); }
+          catch(eM) { console.warn('No se pudo migrar la cuenta a huella cifrada:', eM); }
+        }
+      }
     } catch(e) { console.error('Error consultando cuentas:', e); }
   }
 
@@ -131,6 +150,31 @@ async function intentarLogin() {
   escucharProgramaciones();
   escucharUsuarios();
   rlPresenciaIniciar();   // presencia + chat (canal compartido con Sistema RR.LL)
+  if(found.rol==='admin') migrarCuentasAHuella();
+}
+
+// ── MIGRACIÓN DE SEGURIDAD (una sola vez, silenciosa) ──
+// Cuando entra el administrador, toda cuenta antigua con contraseña en texto
+// plano se convierte a huella cifrada y el texto plano se elimina de la nube.
+let _migracionHecha = false;
+async function migrarCuentasAHuella() {
+  if(_migracionHecha) return;
+  _migracionHecha = true;
+  try {
+    const snap = await getDocs(collection(db, COL_USERS));
+    let n = 0;
+    for(const d of snap.docs) {
+      const c = d.data();
+      if(c.password && !c.password_hash && c.usuario) {
+        try {
+          await updateDoc(doc(db, COL_USERS, d.id),
+            {password_hash: await etiHash(String(c.usuario).toLowerCase(), c.password), password: deleteField()});
+          n++;
+        } catch(e) { console.warn('migración', c.usuario, e); }
+      }
+    }
+    if(n) showToast(`🔐 Seguridad: ${n} cuenta(s) migrada(s) a contraseña cifrada.`);
+  } catch(e) { console.warn('migración de cuentas:', e); }
 }
 
 function iniciales(nombre) {
@@ -2320,13 +2364,13 @@ async function crearNuevoIntegrante() {
   try {
     // 1) Registrar el supervisor (aparece en todos los selectores)
     await addDoc(collection(db, COL_SUPS), {nombre, sector, estado:'activo', creadoEn:new Date().toISOString()});
-    // 2) Crear su cuenta de acceso
+    // 2) Crear su cuenta de acceso (solo se guarda la huella cifrada)
     await addDoc(collection(db, COL_USERS), {
-      usuario, password, supervisorNombre: nombre,
+      usuario, password_hash: await etiHash(usuario, password), supervisorNombre: nombre,
       estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
     });
     ['niNombre','niSector','niUsuario','niPassword'].forEach(id => document.getElementById(id).value='');
-    showToast(`✅ ${nombre} registrado como supervisor de ${sector}. Usuario: ${usuario} · Contraseña: ${password}`);
+    showToast(`✅ ${nombre} registrado como supervisor de ${sector}. Usuario: ${usuario} · Contraseña: ${password} — anótala ahora: por seguridad no volverá a mostrarse.`);
   } catch(e) { console.error(e); showToast('❌ Error al crear el nuevo integrante.', true); }
 }
 
@@ -2363,13 +2407,13 @@ async function guardarUsuario() {
   }
   try {
     await addDoc(collection(db, COL_USERS), {
-      usuario, password, supervisorNombre,
+      usuario, password_hash: await etiHash(usuario, password), supervisorNombre,
       estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
     });
     document.getElementById('uSupervisor').value='';
     document.getElementById('uUsuario').value='';
     document.getElementById('uPassword').value='';
-    showToast(`✅ Cuenta creada para ${supervisorNombre} (usuario: ${usuario})`);
+    showToast(`✅ Cuenta creada para ${supervisorNombre} (usuario: ${usuario} · contraseña: ${password}) — anótala ahora: por seguridad no volverá a mostrarse.`);
   } catch(e) { console.error(e); showToast('❌ Error al crear la cuenta.', true); }
 }
 
@@ -2382,7 +2426,7 @@ function renderListaUsuarios() {
       <div class="user-row-avatar">${iniciales(c.supervisorNombre)}</div>
       <div class="user-row-info">
         <div class="user-row-nombre">${esc(c.supervisorNombre)} ${c.estado==='inactivo'?'<span style="color:var(--rojo);font-size:10px;font-weight:700;">· INACTIVA</span>':''}</div>
-        <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>${esc(c.password)}</code></div>
+        <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>${c.password?esc(c.password):'🔒 protegida'}</code></div>
       </div>
       <div style="display:flex;gap:5px;">
         <button class="btn btn-secondary btn-sm" onclick="resetPassUsuario('${c.id}')" title="Cambiar contraseña"><svg class="ico sm"><use href="#i-key"/></svg></button>
@@ -2404,9 +2448,12 @@ window.resetPassUsuario = async function(id) {
   if(usuarioActual?.rol !== 'admin') return;
   const c = usuariosCuentas.find(x => x.id===id);
   if(!c) return;
-  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, c.password);
+  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, c.password || (c.usuario + new Date().getFullYear()));
   if(!nueva || nueva.trim().length < 6) { if(nueva!==null) showToast('Mínimo 6 caracteres.', true); return; }
-  try { await updateDoc(doc(db, COL_USERS, id), {password: nueva.trim()}); showToast('🔑 Contraseña actualizada'); }
+  try {
+    await updateDoc(doc(db, COL_USERS, id), {password_hash: await etiHash(c.usuario, nueva.trim()), password: deleteField()});
+    showToast(`🔑 Contraseña actualizada: ${nueva.trim()} — entrégala al supervisor; por seguridad no volverá a mostrarse.`);
+  }
   catch(e) { showToast('Error', true); }
 };
 
@@ -2420,7 +2467,8 @@ window.eliminarUsuario = async function(id) {
 function exportUsuariosExcel() {
   if(!usuariosCuentas.length) { showToast('Sin cuentas para exportar', true); return; }
   const data = usuariosCuentas.map(c => ({
-    'Supervisor': c.supervisorNombre, 'Usuario': c.usuario, 'Contraseña': c.password,
+    'Supervisor': c.supervisorNombre, 'Usuario': c.usuario,
+    'Contraseña': c.password || '🔒 Protegida (usa "Cambiar contraseña" para asignar una nueva)',
     'Estado': c.estado||'activo', 'Creada': (c.creadoEn||'').substring(0,10)
   }));
   const ws = XLSX.utils.json_to_sheet(data);
