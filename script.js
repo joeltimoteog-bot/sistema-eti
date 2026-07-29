@@ -84,7 +84,36 @@ document.addEventListener('DOMContentLoaded', () => {
   initLogin();
   aplicarLinkRRLL();
   document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
+  ssoDesdeRRLL();   // ingreso directo si viene con pase del Sistema RR.LL
 });
+
+// ── SSO desde el Sistema RR.LL: pase de un solo uso en la dirección ──
+// #sso=<pase>.<firma> válido y vigente (90 s) → entra directo sin login.
+// El pase se borra de la barra al instante: la URL copiada lleva al login.
+async function ssoDesdeRRLL() {
+  try {
+    const m = location.hash.match(/#sso=([^.]+)\.([a-f0-9]{64})/);
+    if (!m) return;
+    history.replaceState(null, '', location.pathname + location.search);  // borrar el pase
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m[1] + '|RL-SSO-VERFRUT-2026'));
+    const firma = Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+    if (firma !== m[2]) return;                                            // pase adulterado
+    const d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if (!d || !d.u || !d.exp || Date.now() > Number(d.exp)) return;        // pase caducado
+    const u = String(d.u).toLowerCase();
+    let found = USUARIOS.find(x => x.usuario === u);
+    if (!found) {
+      // ¿Cuenta de supervisor registrada en la nube?
+      try {
+        const snap = await getDocs(collection(db, COL_USERS));
+        const c = snap.docs.map(x => ({ id: x.id, ...x.data() }))
+          .find(x => String(x.usuario || '').toLowerCase() === u && x.estado !== 'inactivo');
+        if (c) found = { usuario: c.usuario, nombre: c.supervisorNombre, rol: 'supervisor' };
+      } catch (e) {}
+    }
+    if (found) entrarConUsuario(found);
+  } catch (e) {}
+}
 
 // ─── LOGIN ────────────────────────────────────────────────────
 function initLogin() {
@@ -122,6 +151,11 @@ async function intentarLogin() {
 
   if(!found) { errDiv.style.display='flex'; return; }
   errDiv.style.display='none';
+  entrarConUsuario(found);
+}
+
+// Arranque de sesión (lo usa el login normal y el ingreso directo SSO desde RR.LL)
+function entrarConUsuario(found) {
   usuarioActual = found;
   resumenMostrado = false;
   avisoSupMostrado = false;
