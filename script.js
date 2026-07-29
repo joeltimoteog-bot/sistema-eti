@@ -151,7 +151,26 @@ async function intentarLogin() {
 
   if(!found) { errDiv.style.display='flex'; return; }
   errDiv.style.display='none';
+  // 🔐 Supervisores y equipo ya NO entran por este login: su puerta es el
+  // Sistema RR.LL (tarjeta con pase SSO). Solo administradores conservan
+  // el login manual como respaldo.
+  if (found.rol !== 'admin') { mostrarAvisoIngresoRRLL(); return; }
   entrarConUsuario(found);
+}
+
+function mostrarAvisoIngresoRRLL() {
+  let ov = document.getElementById('avisoSSO');
+  if (ov) { ov.style.display = 'flex'; return; }
+  ov = document.createElement('div');
+  ov.id = 'avisoSSO';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,40,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:420px;text-align:center;padding:30px 26px;box-shadow:0 20px 60px rgba(0,0,0,.45)">' +
+    '<div style="font-size:44px">🔐</div>' +
+    '<div style="font-size:17px;font-weight:800;color:#0a2463;margin-top:8px">El ingreso ahora es desde el Sistema RR.LL</div>' +
+    '<div style="font-size:13.5px;color:#475569;margin-top:10px;line-height:1.55">Por seguridad, entra al <b>Sistema de Relaciones Laborales</b> con tu usuario y contraseña de siempre, y haz clic en la tarjeta del <b>Sistema ETI</b>: entrarás directo, sin volver a escribir tu clave.</div>' +
+    '<button onclick="window.location.href=\'' + (URL_SISTEMA_RRLL || 'https://joeltimoteog-bot.github.io/sistema-rl-verfrut/index.html') + '\'" style="margin-top:18px;background:#0a2463;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-weight:800;font-size:14px;cursor:pointer">🏢 Ir al Sistema RR.LL</button>' +
+    '<div style="margin-top:10px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="document.getElementById(\'avisoSSO\').remove()">cerrar</div></div>';
+  document.body.appendChild(ov);
 }
 
 // Arranque de sesión (lo usa el login normal y el ingreso directo SSO desde RR.LL)
