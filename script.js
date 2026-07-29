@@ -251,7 +251,11 @@ function aplicarLinkRRLL() {
   ['linkRRLL','linkRRLLLogin','linkRRLLTop'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
-    if(URL_SISTEMA_RRLL) { el.href = URL_SISTEMA_RRLL; el.style.display = 'inline-flex'; }
+    if(URL_SISTEMA_RRLL) {
+      el.href = URL_SISTEMA_RRLL;
+      el.target = '_self';   // volver al Sistema RR.LL en la MISMA pestaña (sin abrir otra página)
+      el.style.display = 'inline-flex';
+    }
     else el.style.display = 'none';
   });
 }
