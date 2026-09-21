@@ -111,7 +111,12 @@ async function ssoDesdeRRLL() {
         if (c) found = { usuario: c.usuario, nombre: c.supervisorNombre, rol: 'supervisor' };
       } catch (e) {}
     }
+    /* _SSO_ALTA_V1 (20-set-2026): pase firmado y vigente pero usuario sin ficha aqui.
+       Antes se quedaba en el login (y su clave del RR.LL no sirve en este sistema).
+       Ahora entra como supervisor con el nombre que trae el pase. */
+    if (!found && d.n) found = { usuario: u, nombre: String(d.n), rol: 'supervisor', alta_sso: true };
     if (found) entrarConUsuario(found);
+    else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
 }
 
