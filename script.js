@@ -1515,13 +1515,15 @@ function renderProgramaciones() {
       <td style="font-weight:700;">${(() => {
         const rg = rangoProg(p);
         const reprogBadge = (p.vecesReprogramada>0) ? `<br><span class="badge badge-naranja" style="font-size:8.5px;" title="${esc((p.reprogramaciones||[]).map(x=>x.motivo).join(', '))}">🔄 Reprogramada x${p.vecesReprogramada}</span>` : '';
+        const _solP = window.etiSolicitudPendiente ? window.etiSolicitudPendiente(p) : null;   /* _SOLREPROG_V1 */
+        const solBadge = _solP ? `<br><span class="badge badge-rojo" style="font-size:8.5px;" title="${esc((_solP.nombre||'')+': '+(_solP.motivo||'')+' — '+(_solP.detalle||''))}">📝 Pide reprogramar: ${esc(_solP.motivo||'')}</span>` : '';
         const consec = rg.fechas.length === fechasHabilesDelRango(rg.ini, rg.fin).length;
         const fechasTitle = rg.fechas.map(f=>formatDateDisplay(f)).join(' · ');
         return (rg.ini===rg.fin
           ? formatDateDisplay(rg.ini)
           : consec
             ? `${formatDateDisplay(rg.ini)} – ${formatDateDisplay(rg.fin)}<br><span style="font-size:9px;color:var(--azul-mid);">📆 ${rg.dias} día(s) designado(s)</span>`
-            : `<span title="${fechasTitle}">${formatDateDisplay(rg.ini)} … ${formatDateDisplay(rg.fin)}</span><br><span style="font-size:9px;color:var(--naranja);" title="${fechasTitle}">📆 ${rg.dias} fechas específicas: ${fechasTitle}</span>`) + reprogBadge;
+            : `<span title="${fechasTitle}">${formatDateDisplay(rg.ini)} … ${formatDateDisplay(rg.fin)}</span><br><span style="font-size:9px;color:var(--naranja);" title="${fechasTitle}">📆 ${rg.dias} fechas específicas: ${fechasTitle}</span>`) + reprogBadge + solBadge;
       })()}</td>
       <td><span class="badge ${e.badge}">${e.label}</span></td>
       <td>${diasTxt}</td>
@@ -1849,7 +1851,7 @@ function renderCalendario() {
     progs.slice(0,3).forEach(p => {
       const cls = p._est.key==='ejecutada'?'c-ejecutada':p._est.key==='vencida'?'c-vencida':p._est.key==='hoy'?'c-hoy':'c-proxima';
     const nombreCorto = p.supervisor.split(' ')[0]+' '+(p.supervisor.split(' ')[1]||'');
-      const temaCorto = p.tema==='CAPACITACIONES ETI'?'ETI':p.tema==='EVALUACIONES DE CHECKLIST'?'CHECKLIST':'REFORZ.';
+      const temaCorto = p.tema==='CAPACITACIONES ETI'?'ETI':p.tema==='EVALUACIONES DE CHECKLIST'?'CHECKLIST':p.tema==='INGRESOS MASIVOS'?'INGRESOS':'REFORZ.';   /* _KPI_RRLL_V1 */
       const diaTag = p._diasTot>1 ? ` (${p._nDia}/${p._diasTot})` : '';
       chips += `<span class="cal-chip ${cls}" title="${esc(p.supervisor)} · ${esc(p.tema)} · ${esc(p.sector||'')}${p._diasTot>1?` · Día ${p._nDia} de ${p._diasTot}`:''}" onclick="verProgDia('${fStr}')">${temaCorto}: ${esc(nombreCorto)}${diaTag}</span>`;
     });
@@ -1900,6 +1902,11 @@ window.abrirReprog = function(id) {
   editFechasSel = [...rg.fechas];
   document.getElementById('eMotivo').value = '';
   document.getElementById('eDetalle').value = '';
+  const _sol = window.etiSolicitudPendiente ? window.etiSolicitudPendiente(p) : null;   /* _SOLREPROG_V1 */
+  if(_sol) {
+    document.getElementById('eProgInfo').innerHTML += `<div style="margin-top:8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:7px 9px;font-size:12px;">📝 <b>${esc(_sol.nombre||'')}</b> pidió reprogramar ${(_sol.fechas||[]).map(f=>formatDateDisplay(f)).join(', ')} el ${formatDateDisplay(String(_sol.fecha||'').slice(0,10))}.<br>Motivo: <b>${esc(_sol.motivo||'')}</b> — ${esc(_sol.detalle||'')}</div>`;
+    document.getElementById('eDetalle').value = 'Solicitud del supervisor: ' + (_sol.motivo||'') + ' — ' + (_sol.detalle||'');
+  }
   document.getElementById('eFechaExtra').value = '';
   renderEFechasList();
   document.getElementById('modalReprog').classList.add('open');
@@ -1979,7 +1986,8 @@ window.guardarReprog = async function() {
       fechas: nuevas,
       diasDesignados: nuevas.length,
       reprogramaciones: [...(p.reprogramaciones||[]), entrada],
-      vecesReprogramada: (p.vecesReprogramada||0) + 1
+      vecesReprogramada: (p.vecesReprogramada||0) + 1,
+      ...((p.solicitudesReprog||[]).length && window.etiSolicitudesAtendidas ? { solicitudesReprog: window.etiSolicitudesAtendidas(p.solicitudesReprog, usuarioActual?.nombre || '') } : {})   /* _SOLREPROG_V1 */
     });
     cerrarReprog();
     showToast(`🔄 Reprogramada: ${cambios.join(' · ')}`);
@@ -2267,6 +2275,7 @@ function renderPanelSupervisor() {
         </div>
         <span class="badge ${p._est.badge}">${p._est.label}${p._est.key==='vencida'?` · ${p._est.dias} día(s) de atraso`:p._est.key==='proxima'?` · en ${p._est.dias} día(s)`:''}</span>
         ${p._est.key!=='ejecutada' ? `<button class="btn btn-primary btn-sm" onclick="abrirRegistroSup('${p.id}')"><svg class="ico sm"><use href="#i-plus"/></svg> Registrar</button>` : ''}
+        ${p._est.key==='vencida' ? ((window.etiSolicitudPendiente && window.etiSolicitudPendiente(p)) ? `<span class="badge badge-naranja" title="${esc(window.etiSolicitudPendiente(p).motivo||'')}">⏳ Reprogramación solicitada</span>` : `<button class="btn btn-secondary btn-sm" onclick="etiSolicitarReprog('${p.id}')" title="No se realizó: informar el motivo y pedir reprogramación">📝 No se realizó</button>`) : ''}
       </div>`;
     }).join('');
   }
@@ -3178,3 +3187,6 @@ function rlCrearChatUI() {
   setTimeout(acVerificar,15000);
   setInterval(acVerificar,60000);
 })();
+
+/* _SOLREPROG_V1 (30-set-2026): usuario supervisor para "Actividad no realizada / pedir reprogramación" (solreprog.js) */
+window._etiUsuarioReprog = () => (usuarioActual && usuarioActual.rol === 'supervisor') ? { usuario: usuarioActual.usuario, nombre: usuarioActual.nombre } : null;
