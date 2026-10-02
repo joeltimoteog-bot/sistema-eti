@@ -6,7 +6,14 @@
 //      módulo de supervisores y sincronización Sheets
 // ════════════════════════════════════════════════
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+/* _PROGRESO_ETI_V1 (02-oct-2026): circulo "Guardando… / Actualizando… / Eliminando…" y ✓ (progreso.js del Sistema RR.LL.).
+   Las escrituras de 2do plano (migrar contraseña al entrar, marcar programacion ejecutada) usan _fs* directo: sin circulo. */
+const _prog = (t, fn) => (window.RLProgreso && window.RLProgreso.accion) ? window.RLProgreso.accion(t, fn) : fn();
+const _T = k => (window.RLProgreso && window.RLProgreso.T && window.RLProgreso.T[k]) || ['…', '✓'];
+const addDoc = (...a) => _prog(_T('guardar'), () => _fsAddDoc(...a));
+const updateDoc = (...a) => _prog(_T('actualizar'), () => _fsUpdateDoc(...a));
+const deleteDoc = (...a) => _prog(_T('eliminar'), () => _fsDeleteDoc(...a));
 
 const firebaseConfig = {
   apiKey: "AIzaSyAv-1VcbT8VCerClNAeVtVXzOxhSffeDpc",
@@ -147,7 +154,7 @@ async function intentarLogin() {
       if(c) {
         found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
         if(!c.password_hash && hash) {
-          try { await updateDoc(doc(db, COL_USERS, c.id), {password_hash: hash, password: deleteField()}); }
+          try { await _fsUpdateDoc(doc(db, COL_USERS, c.id), {password_hash: hash, password: deleteField()}); }
           catch(eM) { console.warn('No se pudo migrar la cuenta a huella cifrada:', eM); }
         }
       }
@@ -225,7 +232,7 @@ async function migrarCuentasAHuella() {
       const c = d.data();
       if(c.password && !c.password_hash && c.usuario) {
         try {
-          await updateDoc(doc(db, COL_USERS, d.id),
+          await _fsUpdateDoc(doc(db, COL_USERS, d.id),
             {password_hash: await etiHash(String(c.usuario).toLowerCase(), c.password), password: deleteField()});
           n++;
         } catch(e) { console.warn('migración', c.usuario, e); }
@@ -607,7 +614,7 @@ async function guardarRegistro() {
     // Si viene de una programación, marcarla como ejecutada
     const progId = document.getElementById('fProgId').value;
     if(progId) {
-      try { await updateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+      try { await _fsUpdateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
       catch(e2) { console.error('Error al marcar programación:', e2); }
     }
     showToast(progId ? '✅ Registro guardado y programación marcada como ejecutada.' : '✅ Registro guardado correctamente.', false);
@@ -920,7 +927,7 @@ async function borrarTodo() {
   if(!confirm('Confirma nuevamente: se eliminarán TODOS los registros de la nube.'))return;
   try{
     const snap=await getDocs(collection(db,COL));
-    for(const d of snap.docs)await deleteDoc(doc(db,COL,d.id));
+    await _prog(_T('eliminar'), async () => { for(const d of snap.docs) await _fsDeleteDoc(doc(db,COL,d.id)); });   /* _PROGRESO_ETI_V1: un solo circulo */
     showToast('🗑 Todos los registros fueron eliminados.');
   }catch(e){showToast('❌ Error.',true);}
 }
@@ -2375,7 +2382,7 @@ async function guardarRegistroSupervisor() {
   };
   try {
     const refDoc = await addDoc(collection(db, COL), reg);
-    try { await updateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+    try { await _fsUpdateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
     catch(e2) { console.error('Error al marcar programación:', e2); }
     cerrarFormSup();
     showToast('✅ Capacitación registrada. ¡Gracias! Relaciones Laborales ya puede verla.');
