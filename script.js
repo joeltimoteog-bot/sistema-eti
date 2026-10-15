@@ -101,6 +101,7 @@ async function ssoDesdeRRLL() {
   try {
     const m = location.hash.match(/#sso=([^.]+)\.([a-f0-9]{64})/);
     if (!m) return;
+    const m2 = location.hash.match(/[#&]sso2=([A-Za-z0-9_\-\.]+)/);   /* _ETI_PERMISO_V1: pase firmado por el servidor */
     history.replaceState(null, '', location.pathname + location.search);  // borrar el pase
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m[1] + '|RL-SSO-VERFRUT-2026'));
     const firma = Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
@@ -122,6 +123,24 @@ async function ssoDesdeRRLL() {
        Antes se quedaba en el login (y su clave del RR.LL no sirve en este sistema).
        Ahora entra como supervisor con el nombre que trae el pase. */
     if (!found && d.n) found = { usuario: u, nombre: String(d.n), rol: 'supervisor', alta_sso: true };
+    /* _ETI_PERMISO_V1 (14-oct-2026): si el administrador le dio "Capacitaciones ETI (programar)"
+       en Acceso a Modulos del Sistema RR.LL, entra con el rol del EQUIPO ('usuario'): programar,
+       reprogramar, registrar y ver estadisticas. Lo exclusivo del administrador (usuarios, borrar
+       registros, eliminar supervisores) sigue solo para el admin. El permiso lo confirma el
+       SERVIDOR (pase sso2 firmado en Azure); si no responde, entra como siempre. */
+    try {
+      if (m2 && found && found.rol === 'supervisor') {
+        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+        const r = await fetch('https://rl-functions-verfrut-c0ctfjc0cjf5f0hz.brazilsouth-01.azurewebsites.net/api/auth/sso',
+          { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
+        clearTimeout(t);
+        const j = await r.json();
+        if (j && j.success && j.user && String(j.user.usuario || '').toLowerCase() === u && j.user.etiProg === true) {
+          found = { usuario: u, nombre: found.nombre || String(d.n || u), rol: 'usuario', permisoRRLL: true };
+          console.log('[_ETI_PERMISO_V1] ' + u + ' entra con permiso de programar (Acceso a Modulos)');
+        }
+      }
+    } catch (eP) { console.warn('[_ETI_PERMISO_V1] no se pudo confirmar el permiso:', eP && eP.message); }
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
