@@ -157,6 +157,33 @@ async function intentarLogin() {
   const user = document.getElementById('loginUser').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value;
   const errDiv = document.getElementById('loginError');
+  /* _LOGIN_COMUN_V1 (18-oct): la contraseña es la MISMA del Sistema RR.LL. Se valida igual que allá
+     (Azure y, si Azure no responde, Google). Las listas locales solo quedan como último recurso
+     cuando ningún servidor responde. */
+  const errTxt = (m) => { errDiv.innerHTML = '<svg class="ico sm"><use href="#i-alert"/></svg> ' + String(m).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); errDiv.style.display = 'flex'; };
+  if (!user || !pass) { errTxt('Ingresa tu usuario y contraseña.'); return; }
+  const btnL = document.getElementById('btnLogin'); const txtL = btnL ? btnL.innerHTML : '';
+  let rc = null;
+  if (window.rlLoginComun) {
+    if (btnL) { btnL.disabled = true; btnL.textContent = 'Verificando…'; }
+    try { rc = await window.rlLoginComun(user, pass); } catch (e) { rc = null; }
+    if (btnL) { btnL.disabled = false; btnL.innerHTML = txtL; }
+  }
+  if (rc && rc.ok) {
+    const su = rc.user || {}, uu = String(su.usuario || user).toLowerCase().trim();
+    const loc = USUARIOS.find(x => x.usuario === uu);
+    const fnd = { usuario: uu, nombre: (loc && loc.nombre) || su.nombre || uu, rol: (loc && loc.rol === 'admin') ? 'admin' : 'supervisor' };
+    errDiv.style.display = 'none';
+    if (fnd.rol !== 'admin') { mostrarAvisoIngresoRRLL(); return; }
+    entrarConUsuario(fnd);
+    return;
+  }
+  if (rc && !rc.sinServidor) {
+    errTxt(rc.bloqueado ? (rc.error || 'Usuario bloqueado temporalmente. Comunícate con el administrador del sistema, Joel Timoteo.')
+      : 'Usuario o contraseña incorrectos (es la misma del Sistema RR.LL.).' + (typeof rc.intentosRestantes === 'number' && rc.intentosRestantes > 0 ? ' Te quedan ' + rc.intentosRestantes + ' intento(s).' : ''));
+    document.getElementById('loginPass').value = '';
+    return;
+  }
   let hash = '';
   try { hash = await etiHash(user, pass); } catch(e) { console.error('hash', e); }
   let found = USUARIOS.find(u => u.usuario===user && u.ph===hash);
@@ -180,7 +207,7 @@ async function intentarLogin() {
     } catch(e) { console.error('Error consultando cuentas:', e); }
   }
 
-  if(!found) { errDiv.style.display='flex'; return; }
+  if(!found) { errTxt(rc && rc.sinServidor ? rc.error : 'Usuario o contraseña incorrectos'); return; }
   errDiv.style.display='none';
   // 🔐 Supervisores y equipo ya NO entran por este login: su puerta es el
   // Sistema RR.LL (tarjeta con pase SSO). Solo administradores conservan
