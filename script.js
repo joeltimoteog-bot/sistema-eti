@@ -1493,6 +1493,29 @@ function limpiarProg() {
   renderPFechasChips();
 }
 
+/* ═══ _COBERTURAS_ETI_V1 (18-oct-2026): reemplazos registrados en el Sistema RR.LL. (Gestión de usuarios › Ausencia).
+   Si en las fechas de una programación su supervisor estaba ausente con reemplazo, la programación la responde el
+   reemplazo: la ve en su panel, la registra a su nombre "en reemplazo de …" y las alertas lo nombran a él. ═══ */
+function cobDeProg(p) {
+  try {
+    if (!window.ETICob || !p || p.estado === 'ejecutada') return null;
+    const cta = usuariosCuentas.find(c => (c.supervisorNombre||'') === p.supervisor);
+    for (const f of fechasDeProg(p)) {
+      const c = (cta && ETICob.deTitular(cta.usuario, f)) || ETICob.deTitular(p.supervisor, f);
+      if (c) return c;
+    }
+  } catch (e) {}
+  return null;
+}
+function esReemplazoDe(p, nombre) {
+  const c = cobDeProg(p); if (!c || !window.ETICob) return false;
+  const cta = usuariosCuentas.find(x => (x.supervisorNombre||'') === nombre);
+  return (cta && ETICob.mismo(cta.usuario, c.reemplazo)) || ETICob.mismo(nombre, c.reemplazo_nombre) || (usuarioActual && ETICob.mismo(usuarioActual.usuario||'', c.reemplazo));
+}
+function esMiaProg(p, nombre) { const c = cobDeProg(p); return c ? esReemplazoDe(p, nombre) : p.supervisor === nombre; }
+function supLbl(p) { const c = cobDeProg(p); return c ? `${ETICob.titulo(c.reemplazo_nombre || c.reemplazo)} (🔄 ${ETICob.texto(c)})` : p.supervisor; }
+window.addEventListener('eti-coberturas', () => { try { renderProgramaciones(); } catch (e) {} try { renderNotificaciones(); } catch (e) {} try { renderPanelSupervisor(); } catch (e) {} });
+
 // Estado calculado de una programación (soporta rango de días designados)
 function estadoProg(p) {
   if(p.estado === 'ejecutada') return {key:'ejecutada', label:'Ejecutada', badge:'badge-verde', dias:0};
@@ -1519,6 +1542,16 @@ function estadoProg(p) {
 }
 
 function renderProgramaciones() {
+  /* _COBERTURAS_ETI_V1: aviso de reemplazos vigentes (registrados en el Sistema RR.LL.) */
+  try {
+    const tab = document.getElementById('tab-programacion');
+    if (tab) {
+      let bx = document.getElementById('pCobBanner');
+      if (!bx) { bx = document.createElement('div'); bx.id = 'pCobBanner'; tab.insertBefore(bx, tab.firstChild); }
+      const V = window.ETICob ? ETICob.vigentes() : [];
+      bx.innerHTML = V.length ? `<div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.6"><strong style="color:#3730A3">🔄 Reemplazos vigentes</strong> <span style="color:#64748b">(se registran en Sistema RR.LL. › Gestión de usuarios › Ausencia)</span><br>${V.map(c => `• <strong>${esc(ETICob.titulo(c.reemplazo_nombre||c.reemplazo))}</strong> ${esc(ETICob.texto(c))}`).join('<br>')}</div>` : '';
+    }
+  } catch (e) {}
   // KPIs
   const conEst = programaciones.map(p => ({...p, _est: estadoProg(p)}));
   setText('pkTotal', programaciones.length);
@@ -1562,7 +1595,7 @@ function renderProgramaciones() {
       : e.key==='proxima' ? `${e.dias} día(s)` : '–';
     return `<tr>
       <td>${i+1}</td>
-      <td><strong>${esc(p.supervisor)}</strong></td>
+      <td><strong>${esc(p.supervisor)}</strong>${cobDeProg(p)?`<br><span style="font-size:10px;font-weight:700;color:#4338CA">🔄 La cubre ${esc(ETICob.titulo(cobDeProg(p).reemplazo_nombre||cobDeProg(p).reemplazo))} · ${esc(ETICob.tipoTxt(cobDeProg(p).tipo))}</span>`:''}</td>
       <td style="font-size:10.5px;">${esc(p.sector||'')}</td>
       <td style="font-size:10.5px;">${esc(p.tema)}</td>
       <td style="font-weight:700;">${(() => {
@@ -1766,17 +1799,17 @@ function renderAlertasProg() {
   vencidas.slice(0,5).forEach(p => {
     const rg = rangoProg(p);
     const fechasTxt = rg.ini===rg.fin ? `el <strong>${formatDateDisplay(rg.ini)}</strong>` : `del <strong>${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}</strong> (${rg.dias} días designados)`;
-    html += `<div class="alert-card alert-rojo"><span class="alert-icon"><svg class="ico"><use href="#i-alert"/></svg></span><div><strong>INCUMPLIMIENTO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada ${fechasTxt} — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
+    html += `<div class="alert-card alert-rojo"><span class="alert-icon"><svg class="ico"><use href="#i-alert"/></svg></span><div><strong>INCUMPLIMIENTO — ${esc(supLbl(p))}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada ${fechasTxt} — <strong>${p._est.dias} día(s) hábil(es) de atraso</strong></div></div>`;
   });
   enCurso.forEach(p => {
     const rg = rangoProg(p);
-    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-activity"/></svg></span><div><strong>EN CURSO — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — <strong>día ${p._est.diaActual} de ${p._est.diasTot} designados</strong> (${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}). Al terminar el último día, registra la ejecución.</div></div>`;
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-activity"/></svg></span><div><strong>EN CURSO — ${esc(supLbl(p))}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} — <strong>día ${p._est.diaActual} de ${p._est.diasTot} designados</strong> (${formatDateDisplay(rg.ini)} al ${formatDateDisplay(rg.fin)}). Al terminar el último día, registra la ejecución.</div></div>`;
   });
   paraHoy.forEach(p => {
-    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-clock"/></svg></span><div><strong>HOY — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
+    html += `<div class="alert-card alert-amarillo"><span class="alert-icon"><svg class="ico"><use href="#i-clock"/></svg></span><div><strong>HOY — ${esc(supLbl(p))}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} programada para <strong>hoy</strong>. No olvides ejecutarla y registrarla.</div></div>`;
   });
   proximas.slice(0,4).forEach(p => {
-    html += `<div class="alert-card alert-azul"><span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span><div><strong>Próxima — ${esc(p.supervisor)}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> (en ${p._est.dias} día(s))</div></div>`;
+    html += `<div class="alert-card alert-azul"><span class="alert-icon"><svg class="ico"><use href="#i-calendar"/></svg></span><div><strong>Próxima — ${esc(supLbl(p))}</strong> · ${esc(p.sector||'')}<br>${esc(p.tema)} el <strong>${formatDateDisplay(p.fechaProgramada)}</strong> (en ${p._est.dias} día(s))</div></div>`;
   });
   if(vencidas.length) {
     html += `<div style="margin-top:8px;"><button class="btn btn-pdf btn-sm" onclick="document.getElementById('btnIncumplPdf').click()"><svg class="ico sm"><use href="#i-file"/></svg> Generar Informe de Incumplimientos</button></div>`;
@@ -2156,24 +2189,24 @@ function calcularAlertas() {
   let progs = programaciones.map(p => ({...p, _est: estadoProg(p)}));
   let regs = registros.map(r => ({...r, ...calcularEstado(r)}));
   if(esSup) {
-    progs = progs.filter(p => p.supervisor === miNombre);
+    progs = progs.filter(p => esMiaProg(p, miNombre));   /* _COBERTURAS_ETI_V1 */
     regs = regs.filter(r => r.supervisor === miNombre);
   }
 
   const alertas = [];
   // Programaciones vencidas (lo más urgente)
   progs.filter(p => p._est.key==='vencida').sort((a,b)=>b._est.dias-a._est.dias).forEach(p => {
-    alertas.push({tipo:'rojo', icono:'i-alert', titulo:`Programación VENCIDA — ${p.supervisor}`,
+    alertas.push({tipo:'rojo', icono:'i-alert', titulo:`Programación VENCIDA — ${supLbl(p)}`,
       detalle:`${p.tema} · ${p.sector||''}`, meta:`${p._est.dias} día(s) hábil(es) de atraso · fechas: ${fechasDeProg(p).map(f=>formatDateDisplay(f)).join(', ')}`, urgente:true});
   });
   // Para hoy / en curso
   progs.filter(p => p._est.key==='hoy' || p._est.key==='curso').forEach(p => {
-    alertas.push({tipo:'ambar', icono:'i-clock', titulo:`${p._est.key==='hoy'?'Programada para HOY':'En curso'} — ${p.supervisor}`,
+    alertas.push({tipo:'ambar', icono:'i-clock', titulo:`${p._est.key==='hoy'?'Programada para HOY':'En curso'} — ${supLbl(p)}`,
       detalle:`${p.tema} · ${p.sector||''}`, meta: p._est.key==='curso'?`Día ${p._est.diaActual} de ${p._est.diasTot} designados`:'Ejecutar y registrar hoy', urgente:false});
   });
   // Próximas a vencer (3, 2, 1 días)
   progs.filter(p => p._est.key==='proxima' && p._est.dias<=3).sort((a,b)=>a._est.dias-b._est.dias).forEach(p => {
-    alertas.push({tipo:'azul', icono:'i-calendar', titulo:`${p._est.dias===1?'Vence MAÑANA':'En '+p._est.dias+' días'} — ${p.supervisor}`,
+    alertas.push({tipo:'azul', icono:'i-calendar', titulo:`${p._est.dias===1?'Vence MAÑANA':'En '+p._est.dias+' días'} — ${supLbl(p)}`,
       detalle:`${p.tema} · ${p.sector||''}`, meta:`Programada para el ${formatDateDisplay(p.fechaProgramada)}`, urgente:false});
   });
   // Actas con retraso
@@ -2290,7 +2323,7 @@ function cerrarFormSup() {
 function renderPanelSupervisor() {
   if(!usuarioActual || usuarioActual.rol!=='supervisor') return;
   const nombre = usuarioActual.nombre;
-  const mias = programaciones.filter(p => p.supervisor===nombre).map(p => ({...p, _est: estadoProg(p)}));
+  const mias = programaciones.filter(p => esMiaProg(p, nombre)).map(p => ({...p, _est: estadoProg(p)}));   /* _COBERTURAS_ETI_V1 */
   const pendientes = mias.filter(p => p._est.key!=='ejecutada');
   const vencidas = pendientes.filter(p => p._est.key==='vencida');
   const proximas = pendientes.filter(p => p._est.key==='proxima' && p._est.dias<=3);
@@ -2417,8 +2450,11 @@ async function guardarRegistroSupervisor() {
   const obs = document.getElementById('sObs').value.trim();
   const {fechaLimite, temporada} = calcularFechaLimite(fechaE);
 
+  /* _COBERTURAS_ETI_V1: si quien registra está cubriendo al titular, el registro queda a su nombre "en reemplazo de …" */
+  let _cob = null; try { const c = cobDeProg(p); if (c && esReemplazoDe(p, usuarioActual.nombre)) _cob = c; } catch (e) {}
   const reg = {
-    supervisor: p.supervisor, sector: p.sector||'', varones:v, mujeres:m, total:v+m,
+    supervisor: _cob ? usuarioActual.nombre : p.supervisor, sector: p.sector||'', varones:v, mujeres:m, total:v+m,
+    ...(_cob ? { cubreA: p.supervisor, cobertura: {titular:_cob.titular, titular_nombre:_cob.titular_nombre, tipo:_cob.tipo, desde:_cob.desde, hasta:_cob.hasta||'', id:_cob.id||''} } : {}),
     tema: p.tema, fechaEjecucion: fechaE, fechaLimite, temporada,
     fechaEnvio: null, observaciones: obs,
     tipoPersonal:'', rutasTipo: rutasTxt?'texto':'ninguna', rutas:[], rutasTexto: rutasTxt,
