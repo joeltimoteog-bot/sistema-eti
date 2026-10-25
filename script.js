@@ -131,7 +131,7 @@ async function ssoDesdeRRLL() {
     try {
       if (m2 && found && found.rol === 'supervisor') {
         const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
-        const r = await fetch('https://rl-functions-verfrut-c0ctfjc0cjf5f0hz.brazilsouth-01.azurewebsites.net/api/auth/sso',
+        const r = await fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso',
           { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
         clearTimeout(t);
         const j = await r.json();
