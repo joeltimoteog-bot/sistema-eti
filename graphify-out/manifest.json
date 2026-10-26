@@ -1,0 +1,146 @@
+{
+  "guia.js": {
+    "mtime": 1789963076.3451636,
+    "seen": 1792976636.9551167,
+    "ast_hash": "f9bf4ce859c7bdb881b26b1794f40593",
+    "semantic_hash": "f9bf4ce859c7bdb881b26b1794f40593"
+  },
+  "js/alertas-pendientes.js": {
+    "mtime": 1792973884.4322915,
+    "seen": 1792976636.9551167,
+    "ast_hash": "2cb3e4cdaab17498f6a06f59625d8d96",
+    "semantic_hash": "2cb3e4cdaab17498f6a06f59625d8d96"
+  },
+  "js/cierre-horario.js": {
+    "mtime": 1792973884.4406435,
+    "seen": 1792976636.9551167,
+    "ast_hash": "cc618ff58c93b2a9731543ae56acde8f",
+    "semantic_hash": "cc618ff58c93b2a9731543ae56acde8f"
+  },
+  "js/estadisticas.js": {
+    "mtime": 1792974020.2190847,
+    "seen": 1792976636.9551167,
+    "ast_hash": "21b2910d3a9ac0b2560ce564cf42a284",
+    "semantic_hash": "21b2910d3a9ac0b2560ce564cf42a284"
+  },
+  "js/presencia-chat.js": {
+    "mtime": 1792973884.4597936,
+    "seen": 1792976636.9551167,
+    "ast_hash": "918fecce9e6bb40b165e557c86e17a18",
+    "semantic_hash": "918fecce9e6bb40b165e557c86e17a18"
+  },
+  "script.js": {
+    "mtime": 1793016026.8487866,
+    "seen": 1793016326.3774593,
+    "ast_hash": "939d12ad77fa9e92fa8a0a011db08938",
+    "semantic_hash": ""
+  },
+  "solreprog.js": {
+    "mtime": 1790741044.2974925,
+    "seen": 1792976636.9551167,
+    "ast_hash": "574f428bb3bf3e98659562eeb8b7e965",
+    "semantic_hash": "574f428bb3bf3e98659562eeb8b7e965"
+  },
+  "construir-script.ps1": {
+    "mtime": 1793016026.5914314,
+    "seen": 1793016326.3774593,
+    "ast_hash": "7f83c6ff97fe8b89d0a6027e0fa3ac74",
+    "semantic_hash": ""
+  },
+  "src/01-core.js": {
+    "mtime": 1793016026.4428697,
+    "seen": 1793016326.3774593,
+    "ast_hash": "4e7edfd2e540a7ab00f63454ed09857d",
+    "semantic_hash": ""
+  },
+  "src/02-sesion.js": {
+    "mtime": 1793016026.4535632,
+    "seen": 1793016326.3774593,
+    "ast_hash": "ca1cb493242beaf6563b0928f04b7e72",
+    "semantic_hash": ""
+  },
+  "src/03-datos-base.js": {
+    "mtime": 1793016026.4634233,
+    "seen": 1793016326.3774593,
+    "ast_hash": "bf69ff795c1fb2a13828b7d94437320b",
+    "semantic_hash": ""
+  },
+  "src/04-formulario.js": {
+    "mtime": 1793016026.4754255,
+    "seen": 1793016326.3774593,
+    "ast_hash": "ad500ed8589003861de3ab484f41e652",
+    "semantic_hash": ""
+  },
+  "src/05-dashboard.js": {
+    "mtime": 1793016026.4845612,
+    "seen": 1793016326.3774593,
+    "ast_hash": "7e0bc087ba280053c1e58981caa8d5f6",
+    "semantic_hash": ""
+  },
+  "src/06-registros.js": {
+    "mtime": 1793016026.494279,
+    "seen": 1793016326.3774593,
+    "ast_hash": "eba3188145ba5acd96c2c0730531495b",
+    "semantic_hash": ""
+  },
+  "src/07-utils.js": {
+    "mtime": 1793016026.5039575,
+    "seen": 1793016326.3774593,
+    "ast_hash": "15de55e48d6d8e6f19fbeb9c7867f083",
+    "semantic_hash": ""
+  },
+  "src/08-supervisores.js": {
+    "mtime": 1793016026.5118477,
+    "seen": 1793016326.3774593,
+    "ast_hash": "823eb2fc572e075237252bc74905266b",
+    "semantic_hash": ""
+  },
+  "src/09-programacion.js": {
+    "mtime": 1793016026.5238495,
+    "seen": 1793016326.3774593,
+    "ast_hash": "0d218a9302a5038ac9924ee6d7483e5c",
+    "semantic_hash": ""
+  },
+  "src/10-salud-calendario.js": {
+    "mtime": 1793016026.534408,
+    "seen": 1793016326.3774593,
+    "ast_hash": "c5e410286fa5adb4e89693b87bd41a99",
+    "semantic_hash": ""
+  },
+  "src/11-reprogramacion.js": {
+    "mtime": 1793016026.542526,
+    "seen": 1793016326.3774593,
+    "ast_hash": "9e28dc3d48ae364942788a6fad16fe29",
+    "semantic_hash": ""
+  },
+  "src/12-notificaciones.js": {
+    "mtime": 1793016026.5526152,
+    "seen": 1793016326.3774593,
+    "ast_hash": "29d4caf26923f517011f1715fcf84a05",
+    "semantic_hash": ""
+  },
+  "src/13-mi-panel.js": {
+    "mtime": 1793016026.5626137,
+    "seen": 1793016326.3774593,
+    "ast_hash": "228f54ac481922e756585696583f23fd",
+    "semantic_hash": ""
+  },
+  "src/14-usuarios.js": {
+    "mtime": 1793016026.5720274,
+    "seen": 1793016326.3774593,
+    "ast_hash": "0afe7a01ed3ca21647fdc1936edf0e74",
+    "semantic_hash": ""
+  },
+  "GUIA_GOOGLE_SHEETS.md": {
+    "mtime": 1784485563.635787,
+    "seen": 1793016326.3774593,
+    "ast_hash": "26669d1ae470712f84076999b5a70596",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1793016039.0981524,
+    "seen": 1793016326.3774593,
+    "ast_hash": "08514fedc3299a2561ac9d2d15abbce8",
+    "semantic_hash": ""
+  }
+}

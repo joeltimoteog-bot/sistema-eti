@@ -1,0 +1,21 @@
+{
+  "0": "esc",
+  "6": "initBotones",
+  "7": "estadoProg",
+  "9": "calcularFechaLimite",
+  "11": "01-core.js",
+  "13": "09-programacion.js",
+  "14": "02-sesion.js",
+  "15": "03-datos-base.js",
+  "16": "14-usuarios.js",
+  "17": "Guía de instalación — Google Sheets + Correos de alerta",
+  "18": "renderPanelSupervisor",
+  "19": "11-reprogramacion.js",
+  "20": "13-mi-panel.js",
+  "21": "07-utils.js",
+  "22": "10-salud-calendario.js",
+  "23": "12-notificaciones.js",
+  "24": "05-dashboard.js",
+  "25": "08-supervisores.js",
+  "26": "construir-script.ps1"
+}

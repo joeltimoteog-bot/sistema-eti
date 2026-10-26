@@ -1,0 +1,44 @@
+{
+  "guia.js": {
+    "mtime": 1789963076.3451636,
+    "seen": 1792976636.9551167,
+    "ast_hash": "f9bf4ce859c7bdb881b26b1794f40593",
+    "semantic_hash": "f9bf4ce859c7bdb881b26b1794f40593"
+  },
+  "js/alertas-pendientes.js": {
+    "mtime": 1792973884.4322915,
+    "seen": 1792976636.9551167,
+    "ast_hash": "2cb3e4cdaab17498f6a06f59625d8d96",
+    "semantic_hash": "2cb3e4cdaab17498f6a06f59625d8d96"
+  },
+  "js/cierre-horario.js": {
+    "mtime": 1792973884.4406435,
+    "seen": 1792976636.9551167,
+    "ast_hash": "cc618ff58c93b2a9731543ae56acde8f",
+    "semantic_hash": "cc618ff58c93b2a9731543ae56acde8f"
+  },
+  "js/estadisticas.js": {
+    "mtime": 1792974020.2190847,
+    "seen": 1792976636.9551167,
+    "ast_hash": "21b2910d3a9ac0b2560ce564cf42a284",
+    "semantic_hash": "21b2910d3a9ac0b2560ce564cf42a284"
+  },
+  "js/presencia-chat.js": {
+    "mtime": 1792973884.4597936,
+    "seen": 1792976636.9551167,
+    "ast_hash": "918fecce9e6bb40b165e557c86e17a18",
+    "semantic_hash": "918fecce9e6bb40b165e557c86e17a18"
+  },
+  "script.js": {
+    "mtime": 1792974020.3264582,
+    "seen": 1792976636.9551167,
+    "ast_hash": "3c3f8da73e4393247ff91656af1259ed",
+    "semantic_hash": "3c3f8da73e4393247ff91656af1259ed"
+  },
+  "solreprog.js": {
+    "mtime": 1790741044.2974925,
+    "seen": 1792976636.9551167,
+    "ast_hash": "574f428bb3bf3e98659562eeb8b7e965",
+    "semantic_hash": "574f428bb3bf3e98659562eeb8b7e965"
+  }
+}
