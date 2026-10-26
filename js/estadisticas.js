@@ -29,7 +29,7 @@ function exportarExcel() {
 
 // ─── RANKING ──────────────────────────────────────────────────
 function calcularRanking() {
-  const conEstado=C.registros.map(r=>({...r,...calcularEstado(r)}));
+  const conEstado=C.registros.map(r=>({...r,...C.calcularEstado(r)}));
   const porSup={};
   conEstado.forEach(r=>{
     if(!porSup[r.supervisor])porSup[r.supervisor]={nombre:r.supervisor,sector:r.sector,total:0,cumplidos:0,retrasos:0,proceso:0,trabajadores:0,varones:0,mujeres:0};
@@ -121,7 +121,7 @@ function poblarAnios() {
 function renderEstadisticas() {
   poblarAnios();
   const anio=document.getElementById('statAnio').value;
-  let data=C.registros.map(r=>({...r,...calcularEstado(r)}));
+  let data=C.registros.map(r=>({...r,...C.calcularEstado(r)}));
   if(anio)data=data.filter(r=>new Date(r.fechaEjecucion+'T12:00:00').getFullYear()===parseInt(anio));
 
   const cumplidos=data.filter(r=>r.estado==='cumplido').length;
@@ -203,7 +203,7 @@ function renderChartsStats(data) {
 
 function exportStatsPDF() {
   const anio=document.getElementById('statAnio').value;
-  let data=C.registros.map(r=>({...r,...calcularEstado(r)}));
+  let data=C.registros.map(r=>({...r,...C.calcularEstado(r)}));
   if(anio)data=data.filter(r=>new Date(r.fechaEjecucion+'T12:00:00').getFullYear()===parseInt(anio));
   if(!data.length){C.showToast('Sin datos',true);return;}
 
