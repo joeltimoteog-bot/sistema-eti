@@ -1,3 +1,5 @@
+// GENERADO por construir-script.ps1 — NO EDITAR AQUI: editar src\NN-*.js y volver a construir (_ETI_SRC_V1)
+// ═══════════ src/01-core.js ═══════════
 // ════════════════════════════════════════════════
 //  SISTEMA ETI v6.0 — VERFRUT · RAPEL
 //  Capacitaciones de Ética e Integridad
@@ -101,7 +103,7 @@ const { rlPresenciaIniciar, rlPresenciaDetener } = instalarPresenciaChat(_CTX);
 instalarAlertasPendientes(_CTX);
 instalarCierreHorario(_CTX);
 const { exportarExcel, renderRanking, exportRankingPDF, renderEstadisticas, exportStatsPDF } = instalarEstadisticas(_CTX);
-
+// ═══════════ src/02-sesion.js ═══════════
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initLogin();
@@ -361,7 +363,7 @@ function cerrarSesion() {
   document.getElementById('loginUser').value='';
   document.getElementById('loginPass').value='';
 }
-
+// ═══════════ src/03-datos-base.js ═══════════
 // ─── FIREBASE REALTIME ────────────────────────────────────────
 function escucharFirebase() {
   const q = query(collection(db, COL), orderBy('creadoEn', 'desc'));
@@ -482,7 +484,7 @@ function initTabs() {
     });
   });
 }
-
+// ═══════════ src/04-formulario.js ═══════════
 // ─── FORM ─────────────────────────────────────────────────────
 function initForm() {
   document.getElementById('fSupervisor').addEventListener('change', function() {
@@ -710,7 +712,7 @@ function limpiarFormulario() {
   document.getElementById('fProgId').value='';
   document.getElementById('progVinculadaBanner').style.display='none';
 }
-
+// ═══════════ src/05-dashboard.js ═══════════
 // ─── DASHBOARD ────────────────────────────────────────────────
 function renderDashboard() {
   const conEstado=registros.map(r=>({...r,...calcularEstado(r)}));
@@ -826,7 +828,7 @@ function renderChartsDashboard(cumplidos,proceso,conEstado) {
     data:{labels,datasets:[{label:'Capacitaciones',data:dataCaps,borderColor:'#0050c8',backgroundColor:'rgba(0,80,200,.09)',tension:.4,fill:true,pointRadius:5,pointBackgroundColor:'#0050c8'}]},
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});}
 }
-
+// ═══════════ src/06-registros.js ═══════════
 // ─── TABLA / FILTROS ──────────────────────────────────────────
 function initFiltros() {
   ['filtBusqueda','filtSupervisor','filtEstado','filtTema','filtMes'].forEach(id => {
@@ -995,7 +997,7 @@ async function borrarTodo() {
 }
 
 // ─── EXCEL / RANKING / ESTADÍSTICAS: en js/estadisticas.js (_ETI_MODULAR_V1) ───
-
+// ═══════════ src/07-utils.js ═══════════
 // ─── UTILS ────────────────────────────────────────────────────
 function setText(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1016,7 +1018,7 @@ function showToast(msg,isError=false,isWarn=false){
   t.innerHTML=msg;document.body.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},5000);
 }
-
+// ═══════════ src/08-supervisores.js ═══════════
 // ════════════════════════════════════════════════
 //  SUPERVISORES DINÁMICOS
 // ════════════════════════════════════════════════
@@ -1110,6 +1112,7 @@ window.eliminarSup = async function(id) {
 };
 
 // ════════════════════════════════════════════════
+// ═══════════ src/09-programacion.js ═══════════
 //  PROGRAMACIÓN DE CAPACITACIONES (PROYECCIÓN)
 // ════════════════════════════════════════════════
 function escucharProgramaciones() {
@@ -1571,7 +1574,7 @@ function renderAlertasProg() {
   }
   div.innerHTML = html;
 }
-
+// ═══════════ src/10-salud-calendario.js ═══════════
 // ════════════════════════════════════════════════
 //  SEMÁFORO GLOBAL DE SALUD
 // ════════════════════════════════════════════════
@@ -1725,6 +1728,7 @@ window.verProgDia = function(fechaStr) {
 };
 
 // ════════════════════════════════════════════════
+// ═══════════ src/11-reprogramacion.js ═══════════
 //  REPROGRAMACIÓN (EDITAR FECHAS CON MOTIVO)
 // ════════════════════════════════════════════════
 let chartMotivos = null;
@@ -1921,6 +1925,7 @@ window.quitarFechaP = function(i) {
 };
 
 // ════════════════════════════════════════════════
+// ═══════════ src/12-notificaciones.js ═══════════
 //  CAMPANA DE NOTIFICACIONES Y RESUMEN DE VENCIMIENTOS
 // ════════════════════════════════════════════════
 function initNotificaciones() {
@@ -2052,6 +2057,7 @@ function mostrarResumenSiCorresponde(alertas) {
 window.cerrarResumen = function() { document.getElementById('modalResumen').classList.remove('open'); };
 
 // ════════════════════════════════════════════════
+// ═══════════ src/13-mi-panel.js ═══════════
 //  MI PANEL — MÓDULO DE REGISTRO PARA SUPERVISORES
 // ════════════════════════════════════════════════
 function initPanelSupervisor() {
@@ -2230,6 +2236,7 @@ async function guardarRegistroSupervisor() {
 }
 
 // ════════════════════════════════════════════════
+// ═══════════ src/14-usuarios.js ═══════════
 //  GESTIÓN DE CUENTAS DE USUARIOS (ADMIN)
 // ════════════════════════════════════════════════
 function escucharUsuarios() {
