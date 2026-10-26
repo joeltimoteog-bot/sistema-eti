@@ -2,7 +2,7 @@
    Extraido de script.js el 25-oct-2026 (_ETI_MODULAR_V1) SIN cambios de logica: lee el estado compartido
    a traves de C (registros, ESTADO_META, calcularEstado, contarDiasHabiles, formatDate*, setText, esc, showToast). */
 export function instalarEstadisticas(C) {
-  let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMensual=null, stTemporada=null;
+  let stEstados=null, stTemas=null, stSupervisores=null, stTrabajadores=null, stMensual=null, stTemporada=null, stPersonal=null;
 // ─── EXCEL ────────────────────────────────────────────────────
 function exportarExcel() {
   if(!C.registros.length){C.showToast('Sin datos para exportar',true);return;}

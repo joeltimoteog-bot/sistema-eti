@@ -9,7 +9,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { instalarPresenciaChat } from './js/presencia-chat.js?v=1';
 import { instalarAlertasPendientes } from './js/alertas-pendientes.js?v=1';
 import { instalarCierreHorario } from './js/cierre-horario.js?v=1';
-import { instalarEstadisticas } from './js/estadisticas.js?v=2';
+import { instalarEstadisticas } from './js/estadisticas.js?v=3';
 import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 /* _PROGRESO_ETI_V1 (02-oct-2026): circulo "Guardando… / Actualizando… / Eliminando…" y ✓ (progreso.js del Sistema RR.LL.).
    Las escrituras de 2do plano (migrar contraseña al entrar, marcar programacion ejecutada) usan _fs* directo: sin circulo. */
