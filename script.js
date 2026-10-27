@@ -40,7 +40,7 @@ const COL_USERS = 'usuarios_eti';
 // Cuando tengas la URL de tu sistema de Relaciones Laborales
 // (por ejemplo la web app de Apps Script), pégala entre las comillas.
 // Si está vacía, el botón "Sistema RR.LL" no se muestra.
-const URL_SISTEMA_RRLL = 'https://sistemarrll.com/sistema-rl-verfrut/index.html';
+const URL_SISTEMA_RRLL = 'https://joeltimoteog-bot.github.io/sistema-rl-verfrut/index.html';
 
 // Seed inicial de supervisores (solo si la colección está vacía)
 const SUPS_SEED = [
@@ -244,7 +244,7 @@ function mostrarAvisoIngresoRRLL() {
     '<div style="font-size:44px">🔐</div>' +
     '<div style="font-size:17px;font-weight:800;color:#0a2463;margin-top:8px">El ingreso ahora es desde el Sistema RR.LL</div>' +
     '<div style="font-size:13.5px;color:#475569;margin-top:10px;line-height:1.55">Por seguridad, entra al <b>Sistema de Relaciones Laborales</b> con tu usuario y contraseña de siempre, y haz clic en la tarjeta del <b>Sistema ETI</b>: entrarás directo, sin volver a escribir tu clave.</div>' +
-    '<button onclick="window.location.href=\'' + (URL_SISTEMA_RRLL || 'https://sistemarrll.com/sistema-rl-verfrut/index.html') + '\'" style="margin-top:18px;background:#0a2463;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-weight:800;font-size:14px;cursor:pointer">🏢 Ir al Sistema RR.LL</button>' +
+    '<button onclick="window.location.href=\'' + (URL_SISTEMA_RRLL || 'https://joeltimoteog-bot.github.io/sistema-rl-verfrut/index.html') + '\'" style="margin-top:18px;background:#0a2463;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-weight:800;font-size:14px;cursor:pointer">🏢 Ir al Sistema RR.LL</button>' +
     '<div style="margin-top:10px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="document.getElementById(\'avisoSSO\').remove()">cerrar</div></div>';
   document.body.appendChild(ov);
 }
