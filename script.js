@@ -2348,7 +2348,7 @@ function renderListaUsuarios() {
       <div class="user-row-avatar">${iniciales(c.supervisorNombre)}</div>
       <div class="user-row-info">
         <div class="user-row-nombre">${esc(c.supervisorNombre)} ${c.estado==='inactivo'?'<span style="color:var(--rojo);font-size:10px;font-weight:700;">· INACTIVA</span>':''}</div>
-        <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>${c.password?esc(c.password):'🔒 protegida'}</code></div>
+        <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>🔒 protegida</code></div>
       </div>
       <div style="display:flex;gap:5px;">
         <button class="btn btn-secondary btn-sm" onclick="resetPassUsuario('${c.id}')" title="Cambiar contraseña"><svg class="ico sm"><use href="#i-key"/></svg></button>
@@ -2370,7 +2370,7 @@ window.resetPassUsuario = async function(id) {
   if(usuarioActual?.rol !== 'admin') return;
   const c = usuariosCuentas.find(x => x.id===id);
   if(!c) return;
-  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, c.password || (c.usuario + new Date().getFullYear()));
+  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, (c.usuario + new Date().getFullYear()));
   if(!nueva || nueva.trim().length < 6) { if(nueva!==null) showToast('Mínimo 6 caracteres.', true); return; }
   try {
     await updateDoc(doc(db, COL_USERS, id), {password_hash: await etiHash(c.usuario, nueva.trim()), password: deleteField()});
@@ -2390,7 +2390,7 @@ function exportUsuariosExcel() {
   if(!usuariosCuentas.length) { showToast('Sin cuentas para exportar', true); return; }
   const data = usuariosCuentas.map(c => ({
     'Supervisor': c.supervisorNombre, 'Usuario': c.usuario,
-    'Contraseña': c.password || '🔒 Protegida (usa "Cambiar contraseña" para asignar una nueva)',
+    'Contraseña': '🔒 Protegida (usa "Cambiar contraseña" para asignar una nueva)',
     'Estado': c.estado||'activo', 'Creada': (c.creadoEn||'').substring(0,10)
   }));
   const ws = XLSX.utils.json_to_sheet(data);
