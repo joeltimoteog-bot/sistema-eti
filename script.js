@@ -2129,6 +2129,7 @@ function renderPanelSupervisor() {
 
   // Lista de programaciones del supervisor
   const div = document.getElementById('supProgramaciones');
+  try { avisoReprogSup(mias, div); } catch (e) { console.warn('[_AVISO_REPROG_V1]', e); }
   if(div) {
     const orden = {vencida:0, curso:1, hoy:1, proxima:2, ejecutada:3};
     const lista = [...mias].sort((a,b) => orden[a._est.key]-orden[b._est.key] || (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
@@ -2261,6 +2262,36 @@ async function guardarRegistroSupervisor() {
 }
 
 // ════════════════════════════════════════════════
+
+/* ═══ _AVISO_REPROG_V1 (06-nov-2026) ══════════════════════════════════════════════════════════
+   Aviso al supervisor cuando le cambian las fechas de una programación (desde Capacitaciones ETI o desde
+   la Programación ETI del Sistema RR.LL.): sale arriba de "Mis programaciones" con antes → después y el
+   motivo, hasta que pulsa "Entendido" (se guarda reprogVistoEn en la programación). Solo últimos 30 días. */
+function reprogSinVer(p) {
+  const L = p.reprogramaciones || []; const u = L[L.length - 1];
+  if (!u || !u.fecha || p.estado === 'ejecutada') return null;
+  if (p.reprogVistoEn && p.reprogVistoEn >= u.fecha) return null;
+  if (Date.now() - new Date(u.fecha).getTime() > 30 * 86400000) return null;
+  return u;
+}
+function avisoReprogSup(mias, div) {
+  if (!div) return;
+  let box = document.getElementById('supAvisoReprog');
+  if (!box) { box = document.createElement('div'); box.id = 'supAvisoReprog'; div.parentNode.insertBefore(box, div); }
+  const L = mias.map(p => ({ p, u: reprogSinVer(p) })).filter(x => x.u);
+  if (!L.length) { box.innerHTML = ''; return; }
+  const f = a => (a || []).map(formatDateDisplay).join(', ');
+  box.innerHTML = `<div style="background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;padding:12px 14px;margin:0 0 12px">
+    <div style="font-weight:800;color:#9A3412;margin-bottom:6px">🔄 Te cambiaron las fechas de ${L.length === 1 ? 'una programación' : L.length + ' programaciones'}</div>
+    ${L.map(({ p, u }) => `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-top:1px dashed #FED7AA">
+      <div style="font-size:13px"><b>${esc(p.tema)}</b> · ${esc(p.sector || '')}<br>Antes: <s>${f(u.fechasAnterior)}</s> → <b>Ahora: ${f(u.fechasNueva || fechasDeProg(p))}</b><br>
+      <span style="color:#7C2D12">Motivo: ${esc(u.motivo || '—')}${u.detalle ? ' — ' + esc(u.detalle) : ''} · por ${esc(u.registradoPor || '—')}</span></div>
+      <button class="btn btn-primary btn-sm" onclick="vistoReprog('${p.id}','${u.fecha}')">✔ Entendido</button></div>`).join('')}</div>`;
+  try { const k = 'eti_aviso_reprog_' + L.map(x => x.u.fecha).join('|'); if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); showToast('🔄 Te cambiaron las fechas de ' + L.length + ' programación(es). Revisa "Mi Panel".'); } } catch (e) {}
+}
+window.vistoReprog = async function (id, fecha) {
+  try { await _fsUpdateDoc(doc(db, COL_PROG, id), { reprogVistoEn: fecha }); } catch (e) { showToast('No se pudo guardar. Revisa tu conexión.', true); }
+};
 // ═══════════ src/14-usuarios.js ═══════════
 //  GESTIÓN DE CUENTAS DE USUARIOS (ADMIN)
 // ════════════════════════════════════════════════
