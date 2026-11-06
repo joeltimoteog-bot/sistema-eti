@@ -170,9 +170,11 @@ function cambiosEjecucion(p, fechaEjec, regId) {
   const fechas = p ? fechasDeProg(p) : [];
   const ejec = new Set(((p && p.fechasEjecutadas) || []).filter(f => fechas.includes(f)));
   const pend = fechas.filter(f => !ejec.has(f));
-  ejec.add(fechas.includes(fechaEjec) ? fechaEjec : (pend[0] || fechaEjec));
+  const fProg = fechas.includes(fechaEjec) ? fechaEjec : (pend[0] || fechaEjec);
+  ejec.add(fProg);
   const falta = fechas.filter(f => !ejec.has(f));
   const c = { fechasEjecutadas: [...ejec].sort(), estado: falta.length ? 'pendiente' : 'ejecutada', registroId: regId,
+    ejecuciones: [...((p && p.ejecuciones) || []), { prog: fProg, real: fechaEjec, reg: regId }],   /* _KPI_FIX_V2: dia REAL de cada registro (KPI K3 sabe si fue tarde) */
     registroIds: [...new Set([...((p && p.registroIds) || (p && p.registroId ? [p.registroId] : [])), regId])] };
   if (!falta.length) c.ejecutadaEn = new Date().toISOString();
   return c;
