@@ -53,6 +53,12 @@ async function ssoDesdeRRLL() {
         }
       }
     } catch (eP) { console.warn('[_ETI_PERMISO_V1] no se pudo confirmar el permiso:', eP && eP.message); }
+    /* _ETI_ELIM_V1 (27-oct-2026): el administrador guarda una sesion de Azure (con el pase sso2 del RR.LL.)
+       para poder consultar que usuarios fueron eliminados en Gestion de Usuarios. No bloquea el ingreso. */
+    if (found && found.rol === 'admin' && m2) {
+      fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) })
+        .then(r => r.json()).then(j => { if (j && j.success && j.token) { try { sessionStorage.setItem('eti_rl_token', j.token); } catch (e) {} } }).catch(() => {});
+    }
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}

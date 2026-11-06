@@ -159,6 +159,12 @@ async function ssoDesdeRRLL() {
         }
       }
     } catch (eP) { console.warn('[_ETI_PERMISO_V1] no se pudo confirmar el permiso:', eP && eP.message); }
+    /* _ETI_ELIM_V1 (27-oct-2026): el administrador guarda una sesion de Azure (con el pase sso2 del RR.LL.)
+       para poder consultar que usuarios fueron eliminados en Gestion de Usuarios. No bloquea el ingreso. */
+    if (found && found.rol === 'admin' && m2) {
+      fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) })
+        .then(r => r.json()).then(j => { if (j && j.success && j.token) { try { sessionStorage.setItem('eti_rl_token', j.token); } catch (e) {} } }).catch(() => {});
+    }
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
@@ -2395,11 +2401,28 @@ async function guardarUsuario() {
   } catch(e) { console.error(e); showToast('❌ Error al crear la cuenta.', true); }
 }
 
+/* _ETI_ELIM_V1 (27-oct-2026): usuarios ELIMINADOS en Gestion de Usuarios del Sistema RR.LL. -> no se listan aqui.
+   (Ya no pueden entrar: el login y el SSO son los del RR.LL.). Si Azure no responde, la lista se ve como antes. */
+let _etiElim = null, _etiElimPidiendo = false;
+function _etiCargarElim() {
+  if (_etiElimPidiendo || _etiElim) return;
+  let tk = ''; try { tk = sessionStorage.getItem('eti_rl_token') || ''; } catch (e) {}
+  if (!tk) return;
+  _etiElimPidiendo = true;
+  fetch('https://rl-fn-verfrut.azurewebsites.net/api/usuarios/lista?incluirEliminados=1', { headers: { Authorization: 'Bearer ' + tk } })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && j.success) { _etiElim = {}; (j.data || []).forEach(x => { if (x.eliminado) _etiElim[String(x.usuario || '').trim().toLowerCase()] = true; }); renderListaUsuarios(); } })
+    .catch(() => {}).finally(() => { _etiElimPidiendo = false; });
+}
 function renderListaUsuarios() {
   const div = document.getElementById('listaUsuarios');
   if(!div) return;
+  _etiCargarElim();
+  const _todas = usuariosCuentas;
+  const usuariosCuentasVis = _etiElim ? _todas.filter(c => !_etiElim[String(c.usuario || '').trim().toLowerCase()]) : _todas;
+  const _ocultos = _todas.length - usuariosCuentasVis.length;
   if(!usuariosCuentas.length) { div.innerHTML='<p class="empty-msg">Sin cuentas registradas aún. Crea la primera arriba.</p>'; return; }
-  div.innerHTML = usuariosCuentas.map(c => `
+  div.innerHTML = (_ocultos ? `<p class="empty-msg" style="margin:0 0 8px">🗑️ ${_ocultos} usuario(s) eliminado(s) en el Sistema RR.LL. no se muestran.</p>` : '') + usuariosCuentasVis.map(c => `
     <div class="user-row ${c.estado==='inactivo'?'inactivo':''}">
       <div class="user-row-avatar">${iniciales(c.supervisorNombre)}</div>
       <div class="user-row-info">
