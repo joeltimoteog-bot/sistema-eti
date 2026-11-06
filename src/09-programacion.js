@@ -159,8 +159,33 @@ function esMiaProg(p, nombre) { const c = cobDeProg(p); return c ? esReemplazoDe
 function supLbl(p) { const c = cobDeProg(p); return c ? `${ETICob.titulo(c.reemplazo_nombre || c.reemplazo)} (🔄 ${ETICob.texto(c)})` : p.supervisor; }
 window.addEventListener('eti-coberturas', () => { try { renderProgramaciones(); } catch (e) {} try { renderNotificaciones(); } catch (e) {} try { renderPanelSupervisor(); } catch (e) {} });
 
+/* ═══ _PROG_FECHAS_V1 (06-nov-2026) ═══════════════════════════════════════════════════════════
+   · Check List: se ejecuta en Evaluación ETI (que marca cada fecha evaluada). Aquí ya no se "Registra"
+     como capacitación (antes se podía y la programación quedaba ejecutada sin evaluación).
+   · Cada registro marca SU fecha (fechasEjecutadas, igual que Evaluación ETI). La programación queda
+     "Ejecutada" cuando todas sus fechas designadas tienen registro; mientras tanto se ve "2/3 días".
+     Registro en una fecha que no estaba programada (a destiempo) → cuenta para la primera pendiente. */
+function esChecklistProg(p) { return /CHECKLIST/i.test(String((p && p.tema) || '')); }
+function cambiosEjecucion(p, fechaEjec, regId) {
+  const fechas = p ? fechasDeProg(p) : [];
+  const ejec = new Set(((p && p.fechasEjecutadas) || []).filter(f => fechas.includes(f)));
+  const pend = fechas.filter(f => !ejec.has(f));
+  ejec.add(fechas.includes(fechaEjec) ? fechaEjec : (pend[0] || fechaEjec));
+  const falta = fechas.filter(f => !ejec.has(f));
+  const c = { fechasEjecutadas: [...ejec].sort(), estado: falta.length ? 'pendiente' : 'ejecutada', registroId: regId,
+    registroIds: [...new Set([...((p && p.registroIds) || (p && p.registroId ? [p.registroId] : [])), regId])] };
+  if (!falta.length) c.ejecutadaEn = new Date().toISOString();
+  return c;
+}
 // Estado calculado de una programación (soporta rango de días designados)
 function estadoProg(p) {
+  const e = _estadoProgBase(p);
+  if (e.key === 'ejecutada') return e;
+  const fechas = fechasDeProg(p), hechas = (p.fechasEjecutadas || []).filter(f => fechas.includes(f)).length;
+  if (hechas) { e.label += ` · ${hechas}/${fechas.length} días registrados`; e.hechas = hechas; }
+  return e;
+}
+function _estadoProgBase(p) {
   if(p.estado === 'ejecutada') return {key:'ejecutada', label:'Ejecutada', badge:'badge-verde', dias:0};
   const {ini, fin, dias} = rangoProg(p);
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -258,7 +283,7 @@ function renderProgramaciones() {
       <td>${diasTxt}</td>
       <td style="max-width:140px;font-size:10px;">${esc((p.observaciones||'').substring(0,40))}${(p.observaciones||'').length>40?'…':''}</td>
       <td style="white-space:nowrap;">
-        ${p.estado!=='ejecutada' ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución"><svg class="ico sm"><use href="#i-play"/></svg></button>` : ''}
+        ${p.estado!=='ejecutada' && esChecklistProg(p) ? `<span class="badge badge-azul" title="El Check List se registra al evaluar en Evaluación ETI (marca cada fecha)">📋 Eval. ETI</span>` : ''}${p.estado!=='ejecutada' && !esChecklistProg(p) ? `<button class="btn btn-success btn-sm" onclick="ejecutarProg('${p.id}')" title="Registrar ejecución"><svg class="ico sm"><use href="#i-play"/></svg></button>` : ''}
         ${p.estado!=='ejecutada' ? `<button class="btn btn-secondary btn-sm" onclick="abrirReprog('${p.id}')" title="Editar / Reprogramar fechas"><svg class="ico sm"><use href="#i-edit"/></svg></button>` : ''}
         ${esAdmin || p.estado!=='ejecutada' ? `<button class="btn btn-danger btn-sm" onclick="eliminarProg('${p.id}')" title="Eliminar"><svg class="ico sm"><use href="#i-trash"/></svg></button>` : ''}
       </td>

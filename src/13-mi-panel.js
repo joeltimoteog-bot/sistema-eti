@@ -61,7 +61,7 @@ function renderPanelSupervisor() {
           <div class="prog-card-meta">${esc(p.sector||'')} · Fechas: ${fechasTxt}${p.observaciones?`<br>Nota: ${esc(p.observaciones)}`:''}</div>
         </div>
         <span class="badge ${p._est.badge}">${p._est.label}${p._est.key==='vencida'?` · ${p._est.dias} día(s) de atraso`:p._est.key==='proxima'?` · en ${p._est.dias} día(s)`:''}</span>
-        ${p._est.key!=='ejecutada' ? `<button class="btn btn-primary btn-sm" onclick="abrirRegistroSup('${p.id}')"><svg class="ico sm"><use href="#i-plus"/></svg> Registrar</button>` : ''}
+        ${p._est.key!=='ejecutada' && esChecklistProg(p) ? `<span class="badge badge-azul" title="Se registra solo al evaluar en el sistema Evaluación ETI">📋 Se registra en Evaluación ETI</span>` : ''}${p._est.key!=='ejecutada' && !esChecklistProg(p) ? `<button class="btn btn-primary btn-sm" onclick="abrirRegistroSup('${p.id}')"><svg class="ico sm"><use href="#i-plus"/></svg> Registrar</button>` : ''}
         ${p._est.key==='vencida' ? ((window.etiSolicitudPendiente && window.etiSolicitudPendiente(p)) ? `<span class="badge badge-naranja" title="${esc(window.etiSolicitudPendiente(p).motivo||'')}">⏳ Reprogramación solicitada</span>` : `<button class="btn btn-secondary btn-sm" onclick="etiSolicitarReprog('${p.id}')" title="No se realizó: informar el motivo y pedir reprogramación">📝 No se realizó</button>`) : ''}
       </div>`;
     }).join('');
@@ -165,7 +165,7 @@ async function guardarRegistroSupervisor() {
   };
   try {
     const refDoc = await addDoc(collection(db, COL), reg);
-    try { await _fsUpdateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+    try { await _fsUpdateDoc(doc(db, COL_PROG, progId), cambiosEjecucion(p, fechaE, refDoc.id)); }   /* _PROG_FECHAS_V1 */
     catch(e2) { console.error('Error al marcar programación:', e2); }
     cerrarFormSup();
     showToast('✅ Capacitación registrada. ¡Gracias! Relaciones Laborales ya puede verla.');

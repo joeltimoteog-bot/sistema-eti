@@ -191,10 +191,10 @@ async function guardarRegistro() {
     // Si viene de una programación, marcarla como ejecutada
     const progId = document.getElementById('fProgId').value;
     if(progId) {
-      try { await _fsUpdateDoc(doc(db, COL_PROG, progId), {estado:'ejecutada', registroId:refDoc.id, ejecutadaEn:new Date().toISOString()}); }
+      try { await _fsUpdateDoc(doc(db, COL_PROG, progId), cambiosEjecucion(programaciones.find(x=>x.id===progId), fechaE, refDoc.id)); }   /* _PROG_FECHAS_V1 */
       catch(e2) { console.error('Error al marcar programación:', e2); }
     }
-    showToast(progId ? '✅ Registro guardado y programación marcada como ejecutada.' : '✅ Registro guardado correctamente.', false);
+    showToast(progId ? '✅ Registro guardado y su fecha marcada en la programación.' : '✅ Registro guardado correctamente.', false);
     limpiarFormulario();
     document.querySelector('[data-tab="dashboard"]').click();
   } catch(e) {
