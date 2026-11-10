@@ -1,0 +1,394 @@
+{
+  "communities": {
+    "0": [
+      "script_calcularalertas",
+      "script_calcularestado",
+      "script_cobdeprog",
+      "script_contardiashabiles",
+      "script_esc",
+      "script_escucharprogramaciones",
+      "script_esmiaprog",
+      "script_esreemplazode",
+      "script_estadoprog",
+      "script_exportincumplimientospdf",
+      "script_exportprogexcel",
+      "script_fechasdeprog",
+      "script_formatdate",
+      "script_formatdatedisplay",
+      "script_mostrarresumensicorresponde",
+      "script_poblarfiltros",
+      "script_rangoprog",
+      "script_renderalertasprog",
+      "script_renderavancesupervisores",
+      "script_renderavisosupervisor",
+      "script_rendercalendario",
+      "script_renderdashboard",
+      "script_rendermotivosreprog",
+      "script_rendernotificaciones",
+      "script_renderpanelsupervisor",
+      "script_renderprogramaciones",
+      "script_rendersemaforo",
+      "script_rendertabla",
+      "script_rendertodo",
+      "script_settext",
+      "script_suplbl"
+    ],
+    "1": [
+      "ref_https",
+      "ref_js_alertas_pendientes_js_v_1",
+      "ref_js_cierre_horario_js_v_1",
+      "ref_js_estadisticas_js_v_3",
+      "ref_js_presencia_chat_js_v_1",
+      "script",
+      "script_app",
+      "script_calanio",
+      "script_calmes",
+      "script_cerrarsesion",
+      "script_ctx",
+      "script_db",
+      "script_editfechasorig",
+      "script_editfechassel",
+      "script_estado_meta",
+      "script_exportarexcel_renderranking_exportrankingpdf_renderestadisticas_exportstatspdf",
+      "script_festivos_peru",
+      "script_firebaseconfig",
+      "script_progfechassel",
+      "script_progmasurgente",
+      "script_programaciones",
+      "script_registros",
+      "script_renderchartsdashboard",
+      "script_rendertendencias",
+      "script_rlpresenciainiciar_rlpresenciadetener",
+      "script_rol_label",
+      "script_supervisores",
+      "script_sups_seed",
+      "script_usuarios",
+      "script_usuarioscuentas"
+    ],
+    "2": [
+      "guia",
+      "guia_arrancar",
+      "guia_bot",
+      "guia_crear",
+      "guia_emit",
+      "guia_esadmin",
+      "guia_esc",
+      "guia_guia",
+      "guia_irtab",
+      "guia_logueado",
+      "guia_nombre",
+      "guia_num",
+      "guia_pintar",
+      "guia_tab",
+      "guia_togglechat",
+      "guia_tourend",
+      "guia_tournext",
+      "guia_tourpaint",
+      "guia_tourstart",
+      "guia_user",
+      "guia_val"
+    ],
+    "3": [
+      "js_alertas_pendientes",
+      "js_alertas_pendientes_instalaralertaspendientes",
+      "js_alertas_pendientes_instalaralertaspendientes_actualizar",
+      "js_alertas_pendientes_instalaralertaspendientes_cargarcaps",
+      "js_alertas_pendientes_instalaralertaspendientes_cargarevals",
+      "js_alertas_pendientes_instalaralertaspendientes_cargarrrll",
+      "js_alertas_pendientes_instalaralertaspendientes_coincide",
+      "js_alertas_pendientes_instalaralertaspendientes_esca",
+      "js_alertas_pendientes_instalaralertaspendientes_fmtd",
+      "js_alertas_pendientes_instalaralertaspendientes_fsdocs",
+      "js_alertas_pendientes_instalaralertaspendientes_fsget",
+      "js_alertas_pendientes_instalaralertaspendientes_fsval",
+      "js_alertas_pendientes_instalaralertaspendientes_getu",
+      "js_alertas_pendientes_instalaralertaspendientes_hoyiso",
+      "js_alertas_pendientes_instalaralertaspendientes_norm",
+      "js_alertas_pendientes_instalaralertaspendientes_pila",
+      "js_alertas_pendientes_instalaralertaspendientes_quitarui",
+      "js_alertas_pendientes_instalaralertaspendientes_rendercard",
+      "js_alertas_pendientes_instalaralertaspendientes_renderpill"
+    ],
+    "4": [
+      "js_presencia_chat",
+      "js_presencia_chat_instalarpresenciachat",
+      "js_presencia_chat_instalarpresenciachat_rlabrirchat",
+      "js_presencia_chat_instalarpresenciachat_rlbadge",
+      "js_presencia_chat_instalarpresenciachat_rlcrearchatui",
+      "js_presencia_chat_instalarpresenciachat_rlenviarmsg",
+      "js_presencia_chat_instalarpresenciachat_rlhora",
+      "js_presencia_chat_instalarpresenciachat_rlmarcarleidos",
+      "js_presencia_chat_instalarpresenciachat_rlmarcarpresencia",
+      "js_presencia_chat_instalarpresenciachat_rlnombrede",
+      "js_presencia_chat_instalarpresenciachat_rlnormalizar",
+      "js_presencia_chat_instalarpresenciachat_rlpresenciadetener",
+      "js_presencia_chat_instalarpresenciachat_rlpresenciainiciar",
+      "js_presencia_chat_instalarpresenciachat_rlprespayload",
+      "js_presencia_chat_instalarpresenciachat_rlprocmsgs",
+      "js_presencia_chat_instalarpresenciachat_rlprocpresencia",
+      "js_presencia_chat_instalarpresenciachat_rlrenderchat",
+      "js_presencia_chat_instalarpresenciachat_rltogglechat"
+    ],
+    "5": [
+      "solreprog",
+      "solreprog_cargar",
+      "solreprog_css",
+      "solreprog_dm",
+      "solreprog_enc",
+      "solreprog_enviar",
+      "solreprog_esc",
+      "solreprog_hoy",
+      "solreprog_norm",
+      "solreprog_pintar",
+      "solreprog_refrescarboton",
+      "solreprog_todos",
+      "solreprog_u",
+      "solreprog_val"
+    ],
+    "6": [
+      "js_estadisticas",
+      "js_estadisticas_instalarestadisticas",
+      "js_estadisticas_instalarestadisticas_calcularranking",
+      "js_estadisticas_instalarestadisticas_exportarexcel",
+      "js_estadisticas_instalarestadisticas_exportrankingpdf",
+      "js_estadisticas_instalarestadisticas_exportstatspdf",
+      "js_estadisticas_instalarestadisticas_poblaranios",
+      "js_estadisticas_instalarestadisticas_renderchartsstats",
+      "js_estadisticas_instalarestadisticas_renderestadisticas",
+      "js_estadisticas_instalarestadisticas_renderranking",
+      "script_initbotones"
+    ],
+    "7": [
+      "script_actualizarheaderfecha",
+      "script_detectartemporada",
+      "script_diashabilesrango",
+      "script_esdiahabil",
+      "script_esfestivo",
+      "script_fechashabilesdelrango",
+      "script_guardarprogramacion",
+      "script_initprogramacion",
+      "script_limpiarprog",
+      "script_renderefechaslist",
+      "script_renderpfechaschips"
+    ],
+    "8": [
+      "script_aplicarlinkrrll",
+      "script_aplicarrol",
+      "script_entrarconusuario",
+      "script_escucharusuarios",
+      "script_iniciales",
+      "script_initfiltros",
+      "script_initnotificaciones",
+      "script_inittabs",
+      "script_pintarusuarioui",
+      "script_renderlistausuarios",
+      "script_ssodesderrll"
+    ],
+    "9": [
+      "script_calcularfechalimite",
+      "script_cerrarformsup",
+      "script_escucharfirebase",
+      "script_guardarregistro",
+      "script_guardarregistrosupervisor",
+      "script_initpanelsupervisor",
+      "script_limpiarformulario",
+      "script_mostrarpreview",
+      "script_obtenerareas",
+      "script_obtenerrutas",
+      "script_parsecodigos"
+    ],
+    "10": [
+      "js_cierre_horario",
+      "js_cierre_horario_instalarcierrehorario",
+      "js_cierre_horario_instalarcierrehorario_accerrar",
+      "js_cierre_horario_instalarcierrehorario_acesc",
+      "js_cierre_horario_instalarcierrehorario_acfuera",
+      "js_cierre_horario_instalarcierrehorario_acmostrar",
+      "js_cierre_horario_instalarcierrehorario_acquitar",
+      "js_cierre_horario_instalarcierrehorario_acukey",
+      "js_cierre_horario_instalarcierrehorario_acuser",
+      "js_cierre_horario_instalarcierrehorario_acverificar"
+    ],
+    "11": [
+      "script_adddoc",
+      "script_borrartodo",
+      "script_deletedoc",
+      "script_escucharsupervisores",
+      "script_poblarselectssupervisores",
+      "script_prog",
+      "script_renderlistasups",
+      "script_t",
+      "script_updatedoc"
+    ],
+    "12": [
+      "script_crearnuevointegrante",
+      "script_etihash",
+      "script_exportusuariosexcel",
+      "script_generarcredenciales",
+      "script_guardarusuario",
+      "script_initusuariosadmin",
+      "script_migrarcuentasahuella",
+      "script_showtoast",
+      "script_sugerircredenciales"
+    ],
+    "13": [
+      "script_generarareas",
+      "script_generarrutas",
+      "script_initform",
+      "script_verificarretrasoform"
+    ],
+    "14": [
+      "script_initlogin",
+      "script_intentarlogin",
+      "script_mostraravisoingresorrll"
+    ]
+  },
+  "cohesion": {
+    "0": 0.18064516129032257,
+    "1": 0.06666666666666667,
+    "2": 0.1761904761904762,
+    "3": 0.2573099415204678,
+    "4": 0.2549019607843137,
+    "5": 0.2857142857142857,
+    "6": 0.34545454545454546,
+    "7": 0.2545454545454545,
+    "8": 0.2,
+    "9": 0.23636363636363636,
+    "10": 0.4,
+    "11": 0.3055555555555556,
+    "12": 0.3888888888888889,
+    "13": 0.5,
+    "14": 0.6666666666666666
+  },
+  "gods": [
+    {
+      "id": "script_entrarconusuario",
+      "label": "entrarConUsuario()",
+      "degree": 19
+    },
+    {
+      "id": "js_alertas_pendientes_instalaralertaspendientes",
+      "label": "instalarAlertasPendientes()",
+      "degree": 18
+    },
+    {
+      "id": "js_presencia_chat_instalarpresenciachat",
+      "label": "instalarPresenciaChat()",
+      "degree": 17
+    },
+    {
+      "id": "script_esc",
+      "label": "esc()",
+      "degree": 16
+    },
+    {
+      "id": "script_showtoast",
+      "label": "showToast()",
+      "degree": 15
+    },
+    {
+      "id": "script_estadoprog",
+      "label": "estadoProg()",
+      "degree": 14
+    },
+    {
+      "id": "script_formatdatedisplay",
+      "label": "formatDateDisplay()",
+      "degree": 13
+    },
+    {
+      "id": "script_renderdashboard",
+      "label": "renderDashboard()",
+      "degree": 13
+    },
+    {
+      "id": "script_renderprogramaciones",
+      "label": "renderProgramaciones()",
+      "degree": 12
+    },
+    {
+      "id": "script_initprogramacion",
+      "label": "initProgramacion()",
+      "degree": 12
+    }
+  ],
+  "surprises": [
+    {
+      "source": "initBotones()",
+      "target": "exportarExcel()",
+      "source_files": [
+        "script.js",
+        "js/estadisticas.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `exportarExcel()` unexpectedly reaches hub `initBotones()`"
+    },
+    {
+      "source": "initBotones()",
+      "target": "exportRankingPDF()",
+      "source_files": [
+        "script.js",
+        "js/estadisticas.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "initBotones()",
+      "target": "exportStatsPDF()",
+      "source_files": [
+        "script.js",
+        "js/estadisticas.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "initBotones()",
+      "target": "renderEstadisticas()",
+      "source_files": [
+        "script.js",
+        "js/estadisticas.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "initBotones()",
+      "target": "renderRanking()",
+      "source_files": [
+        "script.js",
+        "js/estadisticas.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `initBotones()` connect `initBotones` to `entrarConUsuario`, `script.js`, `addDoc`, `calcularFechaLimite`?",
+      "why": "High betweenness centrality (0.054) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `instalarPresenciaChat()` (e.g. with `rlPresenciaDetener()` and `rlPresenciaIniciar()`) actually correct?",
+      "why": "`instalarPresenciaChat()` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `script.js` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `entrarConUsuario()` connect `entrarConUsuario` to `esc`, `script.js`, `initBotones`, `initProgramacion`, `calcularFechaLimite`, `addDoc`, `showToast`, `initForm`, `intentarLogin`?",
+      "why": "High betweenness centrality (0.007) - this node is a cross-community bridge."
+    }
+  ]
+}
