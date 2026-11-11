@@ -162,15 +162,16 @@ async function migrarCuentasAHuella() {
     let n = 0;
     for(const d of snap.docs) {
       const c = d.data();
-      if(c.password && !c.password_hash && c.usuario) {
+      /* _SIN_CLAVES_ETI_V1 (11-nov-2026): antes aquí se convertía la clave a huella. Ahora los ETI no guardan claves
+         (el ingreso se valida en el Sistema RR.LL.): se RETIRAN de la nube la huella y cualquier clave antigua. */
+      if(c.password !== undefined || c.password_hash !== undefined) {
         try {
-          await _fsUpdateDoc(doc(db, COL_USERS, d.id),
-            {password_hash: await etiHash(String(c.usuario).toLowerCase(), c.password), password: deleteField()});
+          await _fsUpdateDoc(doc(db, COL_USERS, d.id), {password_hash: deleteField(), password: deleteField()});
           n++;
-        } catch(e) { console.warn('migración', c.usuario, e); }
+        } catch(e) { console.warn('limpieza de claves', c.usuario, e); }
       }
     }
-    if(n) showToast(`🔐 Seguridad: ${n} cuenta(s) migrada(s) a contraseña cifrada.`);
+    if(n) showToast(`🔐 Seguridad: se retiraron las claves guardadas de ${n} cuenta(s). El ingreso se valida en el Sistema RR.LL.`);
   } catch(e) { console.warn('migración de cuentas:', e); }
 }
 

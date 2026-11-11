@@ -624,8 +624,10 @@
           <input type="text" id="uUsuario" placeholder="Ej: ptamayo" style="text-transform:lowercase;" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="uPassword">Contraseña *</label>
-          <input type="text" id="uPassword" placeholder="Ej: ptamayo2026" autocomplete="off" />
+          <!-- _SIN_CLAVES_ETI_V1 (11-nov-2026): los ETI ya no guardan contraseñas -->
+          <label>Contraseña</label>
+          <input type="hidden" id="uPassword" />
+          <div style="font-size:13px;color:#64748b;padding:8px 0">Se administra en el Sistema RR.LL.</div>
         </div>
       </div>
       <div class="actions-row">
@@ -651,8 +653,10 @@
           <input type="text" id="niUsuario" placeholder="Ej: cramirez" style="text-transform:lowercase;" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="niPassword">Contraseña *</label>
-          <input type="text" id="niPassword" placeholder="Ej: cramirez2026" autocomplete="off" />
+          <!-- _SIN_CLAVES_ETI_V1 -->
+          <label>Contraseña</label>
+          <input type="hidden" id="niPassword" />
+          <div style="font-size:13px;color:#64748b;padding:8px 0">Se administra en el Sistema RR.LL.</div>
         </div>
       </div>
       <div class="actions-row">
@@ -877,7 +881,7 @@
 </div>
 
 <script src="https://sistemarrll.com/sistema-rl-verfrut/frontend/js/progreso.js?v=6"></script>  <!-- _PROGRESO_ETI_V1 (02-oct): circulo "Guardando…" y ✓ -->
-<script type="module" src="script.js?v=src9"></script>  <!-- _SIN_HUELLAS_V1 (10-nov): sin huellas de clave en el navegador -->  <!-- _ETI_MODULAR_V1 (25-oct): presencia/chat, alertas y cierre por horario en js/ -->
+<script type="module" src="script.js?v=src10"></script>  <!-- _SIN_HUELLAS_V1 (10-nov): sin huellas de clave en el navegador -->  <!-- _ETI_MODULAR_V1 (25-oct): presencia/chat, alertas y cierre por horario en js/ -->
 <script src="guia.js?v=1"></script>  <!-- _GUIA_V1: guia paso a paso, asistente y tour -->
 <script src="solreprog.js?v=1"></script>  <!-- _SOLREPROG_V1: actividad no realizada -> motivo y pedido de reprogramacion -->
 <script src="https://sistemarrll.com/sistema-rl-verfrut/frontend/js/plataforma-gh.js?v=1"></script>  <!-- _PLATAFORMA_GH_V1 (05-nov): imagen institucional comun (solo presentacion; apagar: localStorage.gh_tema=off) -->

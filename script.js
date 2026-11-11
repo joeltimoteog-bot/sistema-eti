@@ -270,15 +270,16 @@ async function migrarCuentasAHuella() {
     let n = 0;
     for(const d of snap.docs) {
       const c = d.data();
-      if(c.password && !c.password_hash && c.usuario) {
+      /* _SIN_CLAVES_ETI_V1 (11-nov-2026): antes aquí se convertía la clave a huella. Ahora los ETI no guardan claves
+         (el ingreso se valida en el Sistema RR.LL.): se RETIRAN de la nube la huella y cualquier clave antigua. */
+      if(c.password !== undefined || c.password_hash !== undefined) {
         try {
-          await _fsUpdateDoc(doc(db, COL_USERS, d.id),
-            {password_hash: await etiHash(String(c.usuario).toLowerCase(), c.password), password: deleteField()});
+          await _fsUpdateDoc(doc(db, COL_USERS, d.id), {password_hash: deleteField(), password: deleteField()});
           n++;
-        } catch(e) { console.warn('migración', c.usuario, e); }
+        } catch(e) { console.warn('limpieza de claves', c.usuario, e); }
       }
     }
-    if(n) showToast(`🔐 Seguridad: ${n} cuenta(s) migrada(s) a contraseña cifrada.`);
+    if(n) showToast(`🔐 Seguridad: se retiraron las claves guardadas de ${n} cuenta(s). El ingreso se valida en el Sistema RR.LL.`);
   } catch(e) { console.warn('migración de cuentas:', e); }
 }
 
@@ -2308,8 +2309,8 @@ async function crearNuevoIntegrante() {
   const usuario = document.getElementById('niUsuario').value.trim().toLowerCase();
   const password = document.getElementById('niPassword').value.trim();
 
-  if(!nombre || !sector || !usuario || !password) { showToast('Completa nombre, sector, usuario y contraseña.', true); return; }
-  if(password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', true); return; }
+  /* _SIN_CLAVES_ETI_V1 (11-nov-2026): los ETI ya no guardan contraseñas (el ingreso se valida en el Sistema RR.LL.); aquí solo se enlaza el usuario con su supervisor */
+  if(!nombre || !sector || !usuario) { showToast('Completa nombre, sector y usuario.', true); return; }
   if(!sector.startsWith('SECTOR')) sector = 'SECTOR ' + sector;
   if(usuariosCuentas.some(c => c.usuario===usuario) || USUARIOS.some(c => c.usuario===usuario)) {
     showToast('⚠️ Ese nombre de usuario ya existe. Elige otro.', true); return;
@@ -2322,11 +2323,11 @@ async function crearNuevoIntegrante() {
     await addDoc(collection(db, COL_SUPS), {nombre, sector, estado:'activo', creadoEn:new Date().toISOString()});
     // 2) Crear su cuenta de acceso (solo se guarda la huella cifrada)
     await addDoc(collection(db, COL_USERS), {
-      usuario, password_hash: await etiHash(usuario, password), supervisorNombre: nombre,
+      usuario, supervisorNombre: nombre,   /* _SIN_CLAVES_ETI_V1: sin huella de clave */
       estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
     });
     ['niNombre','niSector','niUsuario','niPassword'].forEach(id => document.getElementById(id).value='');
-    showToast(`✅ ${nombre} registrado como supervisor de ${sector}. Usuario: ${usuario} · Contraseña: ${password} — anótala ahora: por seguridad no volverá a mostrarse.`);
+    showToast(`✅ ${nombre} registrado como supervisor de ${sector} (usuario: ${usuario}). Su ingreso y su contraseña se administran en el Sistema RR.LL.`);
   } catch(e) { console.error(e); showToast('❌ Error al crear el nuevo integrante.', true); }
 }
 
@@ -2356,20 +2357,19 @@ async function guardarUsuario() {
   const supervisorNombre = document.getElementById('uSupervisor').value;
   const usuario = document.getElementById('uUsuario').value.trim().toLowerCase();
   const password = document.getElementById('uPassword').value.trim();
-  if(!supervisorNombre || !usuario || !password) { showToast('Completa supervisor, usuario y contraseña.', true); return; }
-  if(password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', true); return; }
+  if(!supervisorNombre || !usuario) { showToast('Completa supervisor y usuario.', true); return; }   /* _SIN_CLAVES_ETI_V1 */
   if(usuariosCuentas.some(c => c.usuario===usuario) || USUARIOS.some(c => c.usuario===usuario)) {
     showToast('⚠️ Ese nombre de usuario ya existe. Elige otro.', true); return;
   }
   try {
     await addDoc(collection(db, COL_USERS), {
-      usuario, password_hash: await etiHash(usuario, password), supervisorNombre,
+      usuario, supervisorNombre,   /* _SIN_CLAVES_ETI_V1: sin huella de clave */
       estado:'activo', creadoPor: usuarioActual.nombre, creadoEn: new Date().toISOString()
     });
     document.getElementById('uSupervisor').value='';
     document.getElementById('uUsuario').value='';
     document.getElementById('uPassword').value='';
-    showToast(`✅ Cuenta creada para ${supervisorNombre} (usuario: ${usuario} · contraseña: ${password}) — anótala ahora: por seguridad no volverá a mostrarse.`);
+    showToast(`✅ Cuenta enlazada para ${supervisorNombre} (usuario: ${usuario}). Su ingreso y su contraseña se administran en el Sistema RR.LL.`);
   } catch(e) { console.error(e); showToast('❌ Error al crear la cuenta.', true); }
 }
 
@@ -2402,7 +2402,7 @@ function renderListaUsuarios() {
         <div class="user-row-meta">Usuario: <code>${esc(c.usuario)}</code> · Contraseña: <code>🔒 protegida</code></div>
       </div>
       <div style="display:flex;gap:5px;">
-        <button class="btn btn-secondary btn-sm" onclick="resetPassUsuario('${c.id}')" title="Cambiar contraseña"><svg class="ico sm"><use href="#i-key"/></svg></button>
+        <button class="btn btn-secondary btn-sm" onclick="resetPassUsuario('${c.id}')" title="La contraseña se cambia en el Sistema RR.LL."><svg class="ico sm"><use href="#i-key"/></svg></button>
         ${c.estado==='inactivo'
           ? `<button class="btn btn-success btn-sm" onclick="toggleUsuario('${c.id}','activo')" title="Reactivar"><svg class="ico sm"><use href="#i-check"/></svg></button>`
           : `<button class="btn btn-danger btn-sm" onclick="toggleUsuario('${c.id}','inactivo')" title="Desactivar acceso"><svg class="ico sm"><use href="#i-lock"/></svg></button>`}
@@ -2421,13 +2421,8 @@ window.resetPassUsuario = async function(id) {
   if(usuarioActual?.rol !== 'admin') return;
   const c = usuariosCuentas.find(x => x.id===id);
   if(!c) return;
-  const nueva = prompt(`Nueva contraseña para ${c.supervisorNombre} (usuario: ${c.usuario}):`, (c.usuario + new Date().getFullYear()));
-  if(!nueva || nueva.trim().length < 6) { if(nueva!==null) showToast('Mínimo 6 caracteres.', true); return; }
-  try {
-    await updateDoc(doc(db, COL_USERS, id), {password_hash: await etiHash(c.usuario, nueva.trim()), password: deleteField()});
-    showToast(`🔑 Contraseña actualizada: ${nueva.trim()} — entrégala al supervisor; por seguridad no volverá a mostrarse.`);
-  }
-  catch(e) { showToast('Error', true); }
+  /* _SIN_CLAVES_ETI_V1 (11-nov-2026): los ETI ya no guardan contraseñas. La clave de cada persona es la del Sistema RR.LL. */
+  showToast(`La contraseña de ${c.supervisorNombre} se cambia en el Sistema RR.LL. → Gestión de Usuarios. Capacitaciones ETI ya no guarda claves.`);
 };
 
 window.eliminarUsuario = async function(id) {
