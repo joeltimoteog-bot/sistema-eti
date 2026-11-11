@@ -69,8 +69,8 @@ async function intentarLogin() {
   const pass = document.getElementById('loginPass').value;
   const errDiv = document.getElementById('loginError');
   /* _LOGIN_COMUN_V1 (18-oct): la contraseña es la MISMA del Sistema RR.LL. Se valida igual que allá
-     (Azure y, si Azure no responde, Google). Las listas locales solo quedan como último recurso
-     cuando ningún servidor responde. */
+     (Azure y, si Azure no responde, Google). Ya no hay listas locales de respaldo
+     (_SIN_HUELLAS_V1, 10-nov-2026). */
   const errTxt = (m) => { errDiv.innerHTML = '<svg class="ico sm"><use href="#i-alert"/></svg> ' + String(m).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); errDiv.style.display = 'flex'; };
   if (!user || !pass) { errTxt('Ingresa tu usuario y contraseña.'); return; }
   const btnL = document.getElementById('btnLogin'); const txtL = btnL ? btnL.innerHTML : '';
@@ -95,36 +95,11 @@ async function intentarLogin() {
     document.getElementById('loginPass').value = '';
     return;
   }
-  let hash = '';
-  try { hash = await etiHash(user, pass); } catch(e) { console.error('hash', e); }
-  let found = USUARIOS.find(u => u.usuario===user && u.ph===hash);
-
-  // Cuentas de supervisores registradas en la nube.
-  // Se comparan por huella cifrada; las cuentas antiguas (contraseña en texto
-  // plano) siguen entrando y se migran solas a huella en ese momento.
-  if(!found && user && pass) {
-    try {
-      const snap = await getDocs(collection(db, COL_USERS));
-      const cuentas = snap.docs.map(d => ({id:d.id, ...d.data()}));
-      const c = cuentas.find(u => (u.usuario||'').toLowerCase()===user && u.estado!=='inactivo' &&
-        ((u.password_hash && u.password_hash===hash) || (u.password && u.password===pass)));
-      if(c) {
-        found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
-        if(!c.password_hash && hash) {
-          try { await _fsUpdateDoc(doc(db, COL_USERS, c.id), {password_hash: hash, password: deleteField()}); }
-          catch(eM) { console.warn('No se pudo migrar la cuenta a huella cifrada:', eM); }
-        }
-      }
-    } catch(e) { console.error('Error consultando cuentas:', e); }
-  }
-
-  if(!found) { errTxt(rc && rc.sinServidor ? rc.error : 'Usuario o contraseña incorrectos'); return; }
-  errDiv.style.display='none';
-  // 🔐 Supervisores y equipo ya NO entran por este login: su puerta es el
-  // Sistema RR.LL (tarjeta con pase SSO). Solo administradores conservan
-  // el login manual como respaldo.
-  if (found.rol !== 'admin') { mostrarAvisoIngresoRRLL(); return; }
-  entrarConUsuario(found);
+  /* _SIN_HUELLAS_V1 (10-nov-2026): se retiro la comparacion local de huellas (lista USUARIOS y cuentas de la nube).
+     La clave SOLO la valida el servidor (misma del Sistema RR.LL.). Si ningun servidor responde no se entra por aqui:
+     el ingreso es con el pase del Sistema RR.LL. */
+  errTxt('No hay conexión con el servidor en este momento. Ingresa desde el Sistema RR.LL. o intenta de nuevo en unos segundos.');
+  document.getElementById('loginPass').value = '';
 }
 
 function mostrarAvisoIngresoRRLL() {

@@ -1,0 +1,5 @@
+# copias de respaldo locales: nunca se suben
+*.bak-*
+*.bak
+_parches/
+_parche-*.diff

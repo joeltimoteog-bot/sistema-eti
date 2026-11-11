@@ -56,21 +56,23 @@ const SUPS_SEED = [
 ];
 
 // ─── USUARIOS ─────────────────────────────────────────────────
-// SEGURIDAD: las contraseñas NO se guardan en texto plano. "ph" es la huella
-// SHA-256 de (usuario|contraseña|sal); no se puede recuperar la clave desde ella.
+// SEGURIDAD: las contraseñas NO se guardan en texto plano ni en este codigo. etiHash calcula la huella
+// SHA-256 de (usuario|contraseña|sal) solo para las cuentas de Gestion de Usuarios.
 const ETI_SALT = 'ETI-VERFRUT-2026';
 async function etiHash(user, pwd) {
   const data = new TextEncoder().encode(String(user) + '|' + String(pwd) + '|' + ETI_SALT);
   const buf = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+/* _SIN_HUELLAS_V1 (10-nov-2026): esta lista ya NO lleva huellas de contraseña ni sirve para validar claves.
+   Solo indica el ROL dentro de Capacitaciones ETI (administrador / equipo) de quien ya fue validado por el SERVIDOR
+   (pase del Sistema RR.LL. o login comun). Se retiraron las cuentas de quienes ya no pertenecen al area.
+   etiHash queda solo para las cuentas de supervisores de Gestion de Usuarios (src/14-usuarios.js). */
 const USUARIOS = [
-  { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza',   ph:'4144313f138f53a9a7a81c5f855a70e754df61c61eb6a8c1d5bcf90b296ee068', rol:'admin'   },
-  { usuario:'ovilela',   nombre:'Olga Vilela Ludeña',      ph:'a4058bf9d3a7e75eed5f35bd673969e4e022bb092e3f92340090594d18d31ea6', rol:'usuario' },
-  { usuario:'jchavez',   nombre:'Jorge Chavez Cordova',    ph:'d7817f54685be778b1523c966ea6d47c3d1fa321a2a19130b163b99ac0cdbaee', rol:'usuario' },
-  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', ph:'2f699f266bd2b7a16460622e28c55a63a1e48f2c8071d7f2e8622a5ff0692e03', rol:'usuario' },
-  { usuario:'lcastillo', nombre:'L. Castillo',             ph:'52c593614509a45cae2ebbeaa3a1b5c3f53efbac7eb2c8074fbaac9acab3bfbb', rol:'usuario' },
-  { usuario:'tmendoza',  nombre:'T. Mendoza',              ph:'70b22897ebab5a7c25f9aff0d0d5175bd80adde36b44df6ac914d076900950e4', rol:'usuario' }
+  { usuario:'jtimoteo',  nombre:'Joel A. Timoteo Gonza', rol:'admin'   },
+  { usuario:'gcastillo', nombre:'Lucia Castillo Gonzalez', rol:'usuario' },
+  { usuario:'lcastillo', nombre:'L. Castillo', rol:'usuario' },
+  { usuario:'tmendoza',  nombre:'T. Mendoza', rol:'usuario' }
 ];
 
 const FESTIVOS_PERU = ['01-01','04-17','04-18','05-01','06-29','07-28','07-29','08-30','10-08','11-01','12-08','12-09','12-25'];
@@ -175,8 +177,8 @@ async function intentarLogin() {
   const pass = document.getElementById('loginPass').value;
   const errDiv = document.getElementById('loginError');
   /* _LOGIN_COMUN_V1 (18-oct): la contraseña es la MISMA del Sistema RR.LL. Se valida igual que allá
-     (Azure y, si Azure no responde, Google). Las listas locales solo quedan como último recurso
-     cuando ningún servidor responde. */
+     (Azure y, si Azure no responde, Google). Ya no hay listas locales de respaldo
+     (_SIN_HUELLAS_V1, 10-nov-2026). */
   const errTxt = (m) => { errDiv.innerHTML = '<svg class="ico sm"><use href="#i-alert"/></svg> ' + String(m).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); errDiv.style.display = 'flex'; };
   if (!user || !pass) { errTxt('Ingresa tu usuario y contraseña.'); return; }
   const btnL = document.getElementById('btnLogin'); const txtL = btnL ? btnL.innerHTML : '';
@@ -201,36 +203,11 @@ async function intentarLogin() {
     document.getElementById('loginPass').value = '';
     return;
   }
-  let hash = '';
-  try { hash = await etiHash(user, pass); } catch(e) { console.error('hash', e); }
-  let found = USUARIOS.find(u => u.usuario===user && u.ph===hash);
-
-  // Cuentas de supervisores registradas en la nube.
-  // Se comparan por huella cifrada; las cuentas antiguas (contraseña en texto
-  // plano) siguen entrando y se migran solas a huella en ese momento.
-  if(!found && user && pass) {
-    try {
-      const snap = await getDocs(collection(db, COL_USERS));
-      const cuentas = snap.docs.map(d => ({id:d.id, ...d.data()}));
-      const c = cuentas.find(u => (u.usuario||'').toLowerCase()===user && u.estado!=='inactivo' &&
-        ((u.password_hash && u.password_hash===hash) || (u.password && u.password===pass)));
-      if(c) {
-        found = { usuario:c.usuario, nombre:c.supervisorNombre, rol:'supervisor' };
-        if(!c.password_hash && hash) {
-          try { await _fsUpdateDoc(doc(db, COL_USERS, c.id), {password_hash: hash, password: deleteField()}); }
-          catch(eM) { console.warn('No se pudo migrar la cuenta a huella cifrada:', eM); }
-        }
-      }
-    } catch(e) { console.error('Error consultando cuentas:', e); }
-  }
-
-  if(!found) { errTxt(rc && rc.sinServidor ? rc.error : 'Usuario o contraseña incorrectos'); return; }
-  errDiv.style.display='none';
-  // 🔐 Supervisores y equipo ya NO entran por este login: su puerta es el
-  // Sistema RR.LL (tarjeta con pase SSO). Solo administradores conservan
-  // el login manual como respaldo.
-  if (found.rol !== 'admin') { mostrarAvisoIngresoRRLL(); return; }
-  entrarConUsuario(found);
+  /* _SIN_HUELLAS_V1 (10-nov-2026): se retiro la comparacion local de huellas (lista USUARIOS y cuentas de la nube).
+     La clave SOLO la valida el servidor (misma del Sistema RR.LL.). Si ningun servidor responde no se entra por aqui:
+     el ingreso es con el pase del Sistema RR.LL. */
+  errTxt('No hay conexión con el servidor en este momento. Ingresa desde el Sistema RR.LL. o intenta de nuevo en unos segundos.');
+  document.getElementById('loginPass').value = '';
 }
 
 function mostrarAvisoIngresoRRLL() {
