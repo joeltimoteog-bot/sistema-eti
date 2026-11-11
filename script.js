@@ -117,15 +117,20 @@ document.addEventListener('DOMContentLoaded', () => {
 // El pase se borra de la barra al instante: la URL copiada lleva al login.
 async function ssoDesdeRRLL() {
   try {
-    const m = location.hash.match(/#sso=([^.]+)\.([a-f0-9]{64})/);
-    if (!m) return;
-    const m2 = location.hash.match(/[#&]sso2=([A-Za-z0-9_\-\.]+)/);   /* _ETI_PERMISO_V1: pase firmado por el servidor */
-    history.replaceState(null, '', location.pathname + location.search);  // borrar el pase
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m[1] + '|RL-SSO-VERFRUT-2026'));
-    const firma = Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
-    if (firma !== m[2]) return;                                            // pase adulterado
-    const d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    if (!d || !d.u || !d.exp || Date.now() > Number(d.exp)) return;        // pase caducado
+    /* _SSO_SOLO_SERVIDOR_V1 (10-nov-2026): solo vale el pase firmado por el SERVIDOR (sso2). El pase antiguo (#sso=)
+       se firmaba con un secreto visible en el navegador: cualquiera podia fabricar un pase a nombre de otro usuario.
+       Sin pase valido se muestra el login de siempre (misma clave del Sistema RR.LL.). */
+    const m2 = location.hash.match(/[#&]sso2=([A-Za-z0-9_\-\.]+)/);
+    if (/[#&]sso2?=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);  // borrar el pase
+    if (!m2) return;
+    let jv = null;
+    try {
+      const ctl0 = new AbortController(); const t0 = setTimeout(() => ctl0.abort(), 8000);
+      const r0 = await fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', signal: ctl0.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
+      clearTimeout(t0); jv = await r0.json();
+    } catch (e0) { console.warn('[SSO] el servidor no respondio; se muestra el login', e0 && e0.name); }
+    if (!jv || !jv.success || !jv.user || !jv.user.usuario) return;          // pase invalido o vencido
+    const d = { u: jv.user.usuario, n: jv.user.nombre || '' };
     const u = String(d.u).toLowerCase();
     let found = USUARIOS.find(x => x.usuario === u);
     if (!found) {
@@ -146,25 +151,13 @@ async function ssoDesdeRRLL() {
        reprogramar, registrar y ver estadisticas. Lo exclusivo del administrador (usuarios, borrar
        registros, eliminar supervisores) sigue solo para el admin. El permiso lo confirma el
        SERVIDOR (pase sso2 firmado en Azure); si no responde, entra como siempre. */
-    try {
-      if (m2 && found && found.rol === 'supervisor') {
-        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
-        const r = await fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso',
-          { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
-        clearTimeout(t);
-        const j = await r.json();
-        if (j && j.success && j.user && String(j.user.usuario || '').toLowerCase() === u && j.user.etiProg === true) {
-          found = { usuario: u, nombre: found.nombre || String(d.n || u), rol: 'usuario', permisoRRLL: true };
-          console.log('[_ETI_PERMISO_V1] ' + u + ' entra con permiso de programar (Acceso a Modulos)');
-        }
-      }
-    } catch (eP) { console.warn('[_ETI_PERMISO_V1] no se pudo confirmar el permiso:', eP && eP.message); }
+    if (found && found.rol === 'supervisor' && jv.user.etiProg === true) {   /* el permiso ya viene confirmado por el servidor */
+      found = { usuario: u, nombre: found.nombre || String(d.n || u), rol: 'usuario', permisoRRLL: true };
+      console.log('[_ETI_PERMISO_V1] ' + u + ' entra con permiso de programar (Acceso a Modulos)');
+    }
     /* _ETI_ELIM_V1 (27-oct-2026): el administrador guarda una sesion de Azure (con el pase sso2 del RR.LL.)
        para poder consultar que usuarios fueron eliminados en Gestion de Usuarios. No bloquea el ingreso. */
-    if (found && found.rol === 'admin' && m2) {
-      fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) })
-        .then(r => r.json()).then(j => { if (j && j.success && j.token) { try { sessionStorage.setItem('eti_rl_token', j.token); } catch (e) {} } }).catch(() => {});
-    }
+    if (found && found.rol === 'admin' && jv.token) { try { sessionStorage.setItem('eti_rl_token', jv.token); } catch (e) {} }
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
