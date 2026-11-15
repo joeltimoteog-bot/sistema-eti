@@ -128,7 +128,7 @@ async function ssoDesdeRRLL() {
     let jv = null;
     try {
       const ctl0 = new AbortController(); const t0 = setTimeout(() => ctl0.abort(), 8000);
-      const r0 = await fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', signal: ctl0.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
+      const r0 = await fetch('https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/auth/sso?forceFunctionRegion=sa-east-1', {   /* _SUPABASE_DIRECTO_V1 (14-nov-2026): antes la direccion de Azure, que reescribia rl-edge.js */ method: 'POST', signal: ctl0.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
       clearTimeout(t0); jv = await r0.json();
     } catch (e0) { console.warn('[SSO] el servidor no respondio; se muestra el login', e0 && e0.name); }
     if (!jv || !jv.success || !jv.user || !jv.user.usuario) return;          // pase invalido o vencido
@@ -2381,7 +2381,7 @@ function _etiCargarElim() {
   let tk = ''; try { tk = sessionStorage.getItem('eti_rl_token') || ''; } catch (e) {}
   if (!tk) return;
   _etiElimPidiendo = true;
-  fetch('https://rl-fn-verfrut.azurewebsites.net/api/usuarios/lista?incluirEliminados=1', { headers: { Authorization: 'Bearer ' + tk } })
+  fetch('https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/usuarios/lista?incluirEliminados=1&forceFunctionRegion=sa-east-1', { headers: { Authorization: 'Bearer ' + tk } })
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j && j.success) { _etiElim = {}; (j.data || []).forEach(x => { if (x.eliminado) _etiElim[String(x.usuario || '').trim().toLowerCase()] = true; }); renderListaUsuarios(); } })
     .catch(() => {}).finally(() => { _etiElimPidiendo = false; });
