@@ -20,7 +20,7 @@ async function ssoDesdeRRLL() {
     let jv = null;
     try {
       const ctl0 = new AbortController(); const t0 = setTimeout(() => ctl0.abort(), 8000);
-      const r0 = await fetch('https://rl-fn-verfrut.azurewebsites.net/api/auth/sso', { method: 'POST', signal: ctl0.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
+      const r0 = await fetch('https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/auth/sso?forceFunctionRegion=sa-east-1', {   /* _SUPABASE_DIRECTO_V1 (14-nov-2026): antes la direccion de Azure, que reescribia rl-edge.js */ method: 'POST', signal: ctl0.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'verificar', pase: m2[1] }) });
       clearTimeout(t0); jv = await r0.json();
     } catch (e0) { console.warn('[SSO] el servidor no respondio; se muestra el login', e0 && e0.name); }
     if (!jv || !jv.success || !jv.user || !jv.user.usuario) return;          // pase invalido o vencido
@@ -51,7 +51,7 @@ async function ssoDesdeRRLL() {
     }
     /* _ETI_ELIM_V1 (27-oct-2026): el administrador guarda una sesion de Azure (con el pase sso2 del RR.LL.)
        para poder consultar que usuarios fueron eliminados en Gestion de Usuarios. No bloquea el ingreso. */
-    if (found && found.rol === 'admin' && jv.token) { try { sessionStorage.setItem('eti_rl_token', jv.token); } catch (e) {} }
+    if (found && jv.token) { try { sessionStorage.setItem('eti_rl_token', jv.token); } catch (e) {} }   /* _ETI_SUPABASE_V3: el token se guarda para TODOS (antes solo admin): con el se leen/guardan los datos en Supabase */
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
@@ -81,6 +81,7 @@ async function intentarLogin() {
     if (btnL) { btnL.disabled = false; btnL.innerHTML = txtL; }
   }
   if (rc && rc.ok) {
+    if (rc.token) { try { sessionStorage.setItem('eti_rl_token', rc.token); } catch (e) {} }   /* _ETI_SUPABASE_V3 */
     const su = rc.user || {}, uu = String(su.usuario || user).toLowerCase().trim();
     const loc = USUARIOS.find(x => x.usuario === uu);
     const fnd = { usuario: uu, nombre: (loc && loc.nombre) || su.nombre || uu, rol: (loc && loc.rol === 'admin') ? 'admin' : 'supervisor' };

@@ -10,7 +10,9 @@ import { instalarPresenciaChat } from './js/presencia-chat.js?v=1';
 import { instalarAlertasPendientes } from './js/alertas-pendientes.js?v=1';
 import { instalarCierreHorario } from './js/cierre-horario.js?v=1';
 import { instalarEstadisticas } from './js/estadisticas.js?v=3';
-import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+/* _ETI_SUPABASE_V3 (15-nov-2026) — ETAPA 3: los datos de Capacitaciones ETI se leen y guardan en SUPABASE; Firestore queda como respaldo.
+   Las mismas funciones de siempre, servidas por js/eti-fs-shim.js. Volver a Firestore sin publicar: localStorage.eti_motor = "firestore". */
+import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "./js/eti-fs-shim.js?v=1";
 /* _PROGRESO_ETI_V1 (02-oct-2026): circulo "Guardando… / Actualizando… / Eliminando…" y ✓ (progreso.js del Sistema RR.LL.).
    Las escrituras de 2do plano (migrar contraseña al entrar, marcar programacion ejecutada) usan _fs* directo: sin circulo. */
 const _prog = (t, fn) => (window.RLProgreso && window.RLProgreso.accion) ? window.RLProgreso.accion(t, fn) : fn();

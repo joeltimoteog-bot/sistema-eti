@@ -12,7 +12,9 @@ import { instalarPresenciaChat } from './js/presencia-chat.js?v=1';
 import { instalarAlertasPendientes } from './js/alertas-pendientes.js?v=1';
 import { instalarCierreHorario } from './js/cierre-horario.js?v=1';
 import { instalarEstadisticas } from './js/estadisticas.js?v=3';
-import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+/* _ETI_SUPABASE_V3 (15-nov-2026) — ETAPA 3: los datos de Capacitaciones ETI se leen y guardan en SUPABASE; Firestore queda como respaldo.
+   Las mismas funciones de siempre, servidas por js/eti-fs-shim.js. Volver a Firestore sin publicar: localStorage.eti_motor = "firestore". */
+import { getFirestore, collection, addDoc as _fsAddDoc, getDocs, deleteDoc as _fsDeleteDoc, doc, updateDoc as _fsUpdateDoc, deleteField, query, orderBy, onSnapshot } from "./js/eti-fs-shim.js?v=1";
 /* _PROGRESO_ETI_V1 (02-oct-2026): circulo "Guardando… / Actualizando… / Eliminando…" y ✓ (progreso.js del Sistema RR.LL.).
    Las escrituras de 2do plano (migrar contraseña al entrar, marcar programacion ejecutada) usan _fs* directo: sin circulo. */
 const _prog = (t, fn) => (window.RLProgreso && window.RLProgreso.accion) ? window.RLProgreso.accion(t, fn) : fn();
@@ -159,7 +161,7 @@ async function ssoDesdeRRLL() {
     }
     /* _ETI_ELIM_V1 (27-oct-2026): el administrador guarda una sesion de Azure (con el pase sso2 del RR.LL.)
        para poder consultar que usuarios fueron eliminados en Gestion de Usuarios. No bloquea el ingreso. */
-    if (found && found.rol === 'admin' && jv.token) { try { sessionStorage.setItem('eti_rl_token', jv.token); } catch (e) {} }
+    if (found && jv.token) { try { sessionStorage.setItem('eti_rl_token', jv.token); } catch (e) {} }   /* _ETI_SUPABASE_V3: el token se guarda para TODOS (antes solo admin): con el se leen/guardan los datos en Supabase */
     if (found) entrarConUsuario(found);
     else console.warn('[SSO] pase valido pero sin usuario registrado:', u);
   } catch (e) {}
@@ -189,6 +191,7 @@ async function intentarLogin() {
     if (btnL) { btnL.disabled = false; btnL.innerHTML = txtL; }
   }
   if (rc && rc.ok) {
+    if (rc.token) { try { sessionStorage.setItem('eti_rl_token', rc.token); } catch (e) {} }   /* _ETI_SUPABASE_V3 */
     const su = rc.user || {}, uu = String(su.usuario || user).toLowerCase().trim();
     const loc = USUARIOS.find(x => x.usuario === uu);
     const fnd = { usuario: uu, nombre: (loc && loc.nombre) || su.nombre || uu, rol: (loc && loc.rol === 'admin') ? 'admin' : 'supervisor' };

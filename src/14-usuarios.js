@@ -107,7 +107,7 @@ function _etiCargarElim() {
   let tk = ''; try { tk = sessionStorage.getItem('eti_rl_token') || ''; } catch (e) {}
   if (!tk) return;
   _etiElimPidiendo = true;
-  fetch('https://rl-fn-verfrut.azurewebsites.net/api/usuarios/lista?incluirEliminados=1', { headers: { Authorization: 'Bearer ' + tk } })
+  fetch('https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/usuarios/lista?incluirEliminados=1&forceFunctionRegion=sa-east-1', { headers: { Authorization: 'Bearer ' + tk } })
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j && j.success) { _etiElim = {}; (j.data || []).forEach(x => { if (x.eliminado) _etiElim[String(x.usuario || '').trim().toLowerCase()] = true; }); renderListaUsuarios(); } })
     .catch(() => {}).finally(() => { _etiElimPidiendo = false; });
