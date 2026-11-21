@@ -646,7 +646,10 @@
         </div>
         <div class="form-group">
           <label for="niSector">Sector Designado *</label>
-          <input type="text" id="niSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" autocomplete="off" />
+          <input type="text" id="niSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" autocomplete="off" list="dlSectoresSede" />
+          <!-- _ETI_SEDE_SUPS_V1 (21-nov-2026): sugerencias de sector. En Olmos cada empresa es un sector: con estos nombres el servidor reconoce al supervisor como de la sede Olmos. -->
+          <datalist id="dlSectoresSede"><option value="SECTOR BOMAREA"><option value="SECTOR PIRONA"><option value="SECTOR MOSQUETA"><option value="SECTOR HEFEI"><option value="SECTOR LEFKADA"></datalist>
+          <small>Sede Olmos: elige BOMAREA, PIRONA, MOSQUETA, HEFEI o LEFKADA (aparecen como sugerencia).</small>
         </div>
         <div class="form-group">
           <label for="niUsuario">Usuario * <span style="font-weight:400;color:var(--texto-3);">(se sugiere solo)</span></label>
@@ -834,7 +837,8 @@
         </div>
         <div class="form-group">
           <label>Sector Designado *</label>
-          <input type="text" id="nsSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" />
+          <input type="text" id="nsSector" placeholder="Ej: SECTOR SAN VICENTE" style="text-transform:uppercase;" list="dlSectoresSede" />
+          <small>Sede Olmos: elige BOMAREA, PIRONA, MOSQUETA, HEFEI o LEFKADA (aparecen como sugerencia).</small>
         </div>
       </div>
       <div class="actions-row" style="margin-top:12px;">
