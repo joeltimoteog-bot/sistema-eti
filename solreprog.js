@@ -18,6 +18,35 @@
     'Descanso médico, vacaciones o ausencia', 'Falta de materiales o movilidad', 'Otro'];
   var LISTA = [], CUENTA = null;
 
+  /* ══ _SOLREPROG_SUPABASE_V2 (27-nov-2026): el pedido se LEE y GUARDA en Supabase (la base de Capacitaciones ETI desde
+     el 15-nov); Firestore queda como copia en segundo plano. Antes se guardaba solo en Firestore y el administrador,
+     que lee de Supabase, no lo veia. Sin sesion del RR.LL. o si Supabase no responde al leer: se usa Firestore como antes.
+     Volver atras en este navegador: localStorage.eti_motor = 'firestore' y recargar. ══ */
+  var API = 'https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/eti/';
+  function tokenRL() { try { return sessionStorage.getItem('eti_rl_token') || ''; } catch (e) { return ''; } }
+  function motorSb() { try { if (localStorage.getItem('eti_motor') === 'firestore') return false; } catch (e) {} return !!tokenRL() && navigator.onLine !== false; }
+  var FUENTE = 'firestore';
+  async function sb(accion, cuerpo) {
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 20000);
+    try {
+      var r = await fetch(API + accion + '?forceFunctionRegion=sa-east-1', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tokenRL() }, body: JSON.stringify(cuerpo || {}) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok || j.success === false) { var e = new Error(j.error || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+      return j;
+    } finally { clearTimeout(t); }
+  }
+  async function todosSb(col) {
+    var j = await sb('consultar', { col: col, limite: 20000 });
+    return (j.docs || []).map(function (d) { var o = {}; var x = d.datos || {}; Object.keys(x).forEach(function (k) { o[k] = x[k]; }); o._id = d.id; o._col = col; return o; });
+  }
+  /* copia a Firestore (no bloquea ni muestra errores) */
+  function copiaFirestore(col, id, lista) {
+    try {
+      fetch(FS + col + '/' + id + '?key=' + KEY + '&updateMask.fieldPaths=solicitudesReprog', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { solicitudesReprog: { arrayValue: { values: lista.map(enc) } } } }) }).catch(function () {});
+    } catch (e) {}
+  }
+
   function U() { try { return window._etiUsuarioReprog ? window._etiUsuarioReprog() : null; } catch (e) { return null; } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function norm(s) { return String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
@@ -53,7 +82,16 @@
   /* programaciones del usuario con fechas vencidas sin ejecutar */
   async function cargar() {
     var u = U(); if (!u) return [];
-    var res = await Promise.all([todos('usuarios_eti').catch(function () { return []; }), todos('programaciones_eti'), todos('programaciones_eval').catch(function () { return []; })]);
+    var res = null;
+    if (motorSb()) {
+      try {
+        /* las cuentas solo las leen los gestores en Supabase; el supervisor las toma de Firestore (solo lectura, como el ingreso) */
+        res = await Promise.all([todosSb('usuarios_eti').catch(function () { return todos('usuarios_eti').catch(function () { return []; }); }),
+          todosSb('programaciones_eti'), todosSb('programaciones_eval').catch(function () { return []; })]);
+        FUENTE = 'supabase';
+      } catch (e) { console.warn('[_SOLREPROG_SUPABASE_V2] Supabase no respondio (' + e.message + ') -> Firestore'); res = null; }
+    }
+    if (!res) { FUENTE = 'firestore'; res = await Promise.all([todos('usuarios_eti').catch(function () { return []; }), todos('programaciones_eti'), todos('programaciones_eval').catch(function () { return []; })]); }
     CUENTA = res[0].filter(function (c) { return String(c.usuario || '').toLowerCase() === String(u.usuario || '').toLowerCase() && c.estado !== 'inactivo'; })[0] || null;
     var miNombre = norm(CUENTA ? CUENTA.supervisorNombre : u.nombre), h = hoy();
     var out = [];
@@ -134,6 +172,25 @@
       if (!mot) { err.textContent = 'Selecciona el motivo.'; return; }
       if (det.length < 10) { err.textContent = 'Escribe el detalle (mínimo 10 caracteres).'; return; }
       var b = m.querySelector('#_srSi'); b.disabled = true; b.textContent = 'Enviando…';
+      var s = null;
+      function nueva() { return { id: 's' + Date.now().toString(36), estado: 'PENDIENTE', motivo: mot, detalle: det, fechas: sel.sinPedir,
+          usuario: String(u.usuario || ''), nombre: String((CUENTA && CUENTA.supervisorNombre) || u.nombre || ''), fecha: new Date().toISOString() }; }
+      if (FUENTE === 'supabase' && motorSb()) {
+        try {
+          var dj = await sb('doc', { col: sel.col, id: sel.id });
+          if (!dj.existe) throw Object.assign(new Error('No se encontró la programación'), { status: 404 });
+          var prevS = (dj.datos && Array.isArray(dj.datos.solicitudesReprog)) ? dj.datos.solicitudesReprog : [];
+          s = nueva();
+          var lista = prevS.concat([s]);
+          await sb('escribir', { ops: [{ col: sel.col, id: sel.id, op: 'update', datos: { solicitudesReprog: lista } }] });
+          copiaFirestore(sel.col, sel.id, lista);
+          console.log('[_SOLREPROG_SUPABASE_V2] pedido guardado en Supabase (' + sel.col + ')');
+          m.querySelector('.bx').innerHTML = '<h3>✅ Enviado</h3><p style="font-size:14px;line-height:1.5">Se registró el motivo y tu pedido de reprogramación de ' + sel.sinPedir.map(dm).join(', ') +
+            '.<br>El coordinador asignará la nueva fecha; te aparecerá en tu calendario.</p><div style="text-align:right"><button class="bt" style="background:#0a2463;color:#fff" onclick="document.getElementById(\'_srM\').remove()">Listo</button></div>';
+          refrescarBoton();
+        } catch (e) { err.textContent = '⚠️ ' + (e.status === 403 ? 'No tienes permiso para esta programación.' : 'No se pudo guardar: ' + e.message); b.disabled = false; b.textContent = 'Enviar al coordinador'; }
+        return;
+      }
       try {
         var url = FS + sel.col + '/' + sel.id + '?key=' + KEY;
         var r = await fetch(url); if (!r.ok) throw new Error('No se pudo leer la programación (' + r.status + ')');
