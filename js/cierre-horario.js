@@ -86,7 +86,11 @@ export function instalarCierreHorario(C) {
     if(_acCard){ if(!acFuera(u))acQuitar(); return; }
     if(Date.now()<_acPospon)return;
     if(!acFuera(u))return;
-    fetch(AC_GAS,{method:'POST',headers:{'Content-Type':'text/plain'},
+    /* _CIERRE_HORARIO_PROPIO_V1 (27-nov-2026): primero el HORARIO PROPIO de Acceso a Modulos (Supabase, el mismo que usa el
+       RR.LL.); si lo tiene vigente, no se cierra. Si no, el acceso temporal aprobado a mano (Google), como antes. */
+    acHorarioPropio(u.usuario).then(function(hp){
+      if(hp&&hp.tieneAcceso){_acPospon=Date.now()+Math.min(30*60*1000,Math.max(60*1000,(Number(hp.expiraEn)||0)-Date.now()));return null;}
+      return fetch(AC_GAS,{method:'POST',headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({action:'verificarAccesoTemporal',usuario:u.usuario})})
       .then(function(r){return r.json();})['catch'](function(){return null;})
       .then(function(d){
@@ -94,6 +98,13 @@ export function instalarCierreHorario(C) {
         var u2=acUser();
         if(u2&&acFuera(u2))acMostrar(u2);
       });
+    });
+  }
+  function acHorarioPropio(usuario){
+    var ctl=new AbortController(),t=setTimeout(function(){ctl.abort();},6000);
+    return fetch('https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/acceso/accesoHorarioDeUsuario?forceFunctionRegion=sa-east-1',
+      {method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'accesoHorarioDeUsuario',usuario:usuario})})
+      .then(function(r){clearTimeout(t);return r.ok?r.json():null;},function(){clearTimeout(t);return null;})['catch'](function(){return null;});
   }
   setTimeout(acVerificar,15000);
   setInterval(acVerificar,60000);

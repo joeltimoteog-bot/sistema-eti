@@ -49,11 +49,27 @@ export function instalarAlertasPendientes(C) {
   }
   function fsDocs(j){return (j&&j.documents||[]).map(function(d){var o={},f=d.fields||{};Object.keys(f).forEach(function(k){o[k]=fsVal(f[k]);});return o;});}
   function fsGet(col){return fetch(FS+col+'?pageSize=300&key='+KEY).then(function(r){return r.json();}).then(fsDocs);}
+  /* ══ _ALERTAS_SUPABASE_V1 (27-nov-2026): las programaciones se leen de Supabase (la base de Capacitaciones ETI) y los
+     pendientes del RR.LL. de Supabase (/api/cumpl/getCumplimiento, el mismo del RR.LL.). Si Supabase no responde o no hay
+     sesion del RR.LL., se usa Firestore / Google como antes. Volver atras: localStorage.eti_motor = 'firestore'. ══ */
+  var SB='https://exdjzbfinppzatjyimxn.supabase.co/functions/v1/api/';
+  function sbTok(){try{return sessionStorage.getItem('eti_rl_token')||'';}catch(e){return '';}}
+  function sbOn(){try{if(localStorage.getItem('eti_motor')==='firestore')return false;}catch(e){}return !!sbTok();}
+  function sbPost(ruta,cuerpo,ms){
+    var ctl=new AbortController(),t=setTimeout(function(){ctl.abort();},ms||15000);
+    return fetch(SB+ruta+'?forceFunctionRegion=sa-east-1',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json',Authorization:'Bearer '+sbTok()},body:JSON.stringify(cuerpo||{})})
+      .then(function(r){clearTimeout(t);return r.json().then(function(j){if(!r.ok||!j||j.success===false)throw new Error((j&&j.error)||('HTTP '+r.status));return j;});},function(e){clearTimeout(t);throw e;});
+  }
+  function leer(col){
+    if(!sbOn())return fsGet(col);
+    return sbPost('eti/consultar',{col:col,limite:20000}).then(function(j){return (j.docs||[]).map(function(d){return d.datos||{};});})
+      ['catch'](function(e){console.warn('[_ALERTAS_SUPABASE_V1] '+col+': '+e.message+' -> Firestore');return fsGet(col);});
+  }
   function hoyISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   function fmtD(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString('es-PE',{day:'2-digit',month:'short'});}catch(e){return iso||'';}}
 
   function cargarCaps(u){
-    return Promise.all([fsGet('usuarios_eti')['catch'](function(){return[];}),fsGet('programaciones_eti')['catch'](function(){return[];})])
+    return Promise.all([leer('usuarios_eti')['catch'](function(){return[];}),leer('programaciones_eti')['catch'](function(){return[];})])
       .then(function(res){
         var cuentas=res[0],progs=res[1],hoy=hoyISO(),lista=[];
         var cta=cuentas.find(function(c){return String(c.usuario||'').toLowerCase()===String(u.usuario).toLowerCase();});
@@ -74,7 +90,7 @@ export function instalarAlertasPendientes(C) {
       });
   }
   function cargarEvals(u){
-    return fsGet('programaciones_eval')['catch'](function(){return[];}).then(function(progs){
+    return leer('programaciones_eval')['catch'](function(){return[];}).then(function(progs){
       var hoy=hoyISO(),lista=[];
       progs.forEach(function(p){
         if(p.estado==='ejecutada')return;
@@ -99,8 +115,8 @@ export function instalarAlertasPendientes(C) {
     });
   }
   function cargarRRLL(u){
-    return fetch(GAS+'?'+new URLSearchParams({action:'getCumplimiento',usuario:u.usuario||''}))
-      .then(function(r){return r.json();})
+    var gas=function(){return fetch(GAS+'?'+new URLSearchParams({action:'getCumplimiento',usuario:u.usuario||''})).then(function(r){return r.json();});};
+    return (sbOn()?sbPost('cumpl/getCumplimiento',{usuario:u.usuario||''},8000)['catch'](function(e){console.warn('[_ALERTAS_SUPABASE_V1] cumplimiento: '+e.message+' -> Google');return gas();}):gas())
       .then(function(res){
         if(!res||!res.success)return{visitas:[],casos:0};
         var visitas=(res.pendientesVisitas||[]).filter(function(p){return coincide(p.nombre,u.nombre);}).map(function(p){return p.estado||'vencido';});

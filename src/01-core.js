@@ -7,8 +7,8 @@
 // ════════════════════════════════════════════════
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { instalarPresenciaChat } from './js/presencia-chat.js?v=1';
-import { instalarAlertasPendientes } from './js/alertas-pendientes.js?v=1';
-import { instalarCierreHorario } from './js/cierre-horario.js?v=1';
+import { instalarAlertasPendientes } from './js/alertas-pendientes.js?v=2';
+import { instalarCierreHorario } from './js/cierre-horario.js?v=2';
 import { instalarEstadisticas } from './js/estadisticas.js?v=3';
 /* _ETI_SUPABASE_V3 (15-nov-2026) — ETAPA 3: los datos de Capacitaciones ETI se leen y guardan en SUPABASE; Firestore queda como respaldo.
    Las mismas funciones de siempre, servidas por js/eti-fs-shim.js. Volver a Firestore sin publicar: localStorage.eti_motor = "firestore". */
